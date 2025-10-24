@@ -1,0 +1,14 @@
+{
+    "development": {
+        "player": {
+        "recordPlayingState": true,
+        "openaiProxyUrl": "proxy.matovu-farid.com/api/openai"
+        }
+    },
+    "production": {
+        "player": {
+        "recordPlayingState": false,
+        "openaiProxyUrl": "proxy.matovu-farid.com/api/openai"
+        }
+    }
+}
