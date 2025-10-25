@@ -1,5 +1,5 @@
 import { type CSSProperties } from "react";
-import { type NavItem } from "@/epubjs/src";
+import { type NavItem } from "@/epubjs";
 import { type IReactReaderStyle } from "../style";
 
 // Props for individual table of contents items

@@ -5,9 +5,12 @@ import { getEpubCover } from "./getEpubCover";
 import { getManifestFiles } from "./getManifestFiles";
 import { unzipEpub } from "./unzipEpub";
 import { path } from "@tauri-apps/api";
+import { convertFileSrc } from "@tauri-apps/api/core";
+import { getBookPath } from "./getBookPath";
 
 export async function getCoverImage(filePath: string): Promise<string | null> {
   try {
+    debugger;
     const bookFolder = md5(filePath);
     const file = await fs.readFile(filePath);
     const types = filetypename(file);
@@ -18,11 +21,13 @@ export async function getCoverImage(filePath: string): Promise<string | null> {
       return null;
     }
     await unzipEpub(filePath, bookFolder);
-    const { opfFileObj } = await getManifestFiles(bookFolder);
+    const bookPath = await path.join(await getBookPath(),bookFolder);
+    const { opfFileObj,workingFolder } = await getManifestFiles(bookPath);
     const cover = await getEpubCover(opfFileObj);
-    const { workingFolder } = await getManifestFiles(bookFolder);
 
-    return path.join(workingFolder, cover);
+    const coverPath = await path.join(workingFolder, cover);
+
+    return convertFileSrc(coverPath);
   } catch (e) {
     console.log(e);
     return null;

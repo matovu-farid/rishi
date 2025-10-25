@@ -1,7 +1,6 @@
 import { path } from "@tauri-apps/api";
 import * as fs from "@tauri-apps/plugin-fs";
 import type { Store } from "@/types";
-import { getBookPath } from "./getBookPath";
 
 export async function saveBookStore(
   data: Store,
@@ -11,7 +10,6 @@ export async function saveBookStore(
 
   const jsonString = encoder.encode(JSON.stringify(data));
   const bookStorePath = await path.join(
-    await getBookPath(),
     outputDir,
     "store.json"
   );
@@ -29,6 +27,7 @@ export async function updateBookStore(
 
 async function fetchBookStoreData(bookStorePath: string): Promise<Store> {
   try {
+    // debugger;
     const jsonString = await fs.readTextFile(bookStorePath);
     return JSON.parse(jsonString);
   } catch {
@@ -36,11 +35,7 @@ async function fetchBookStoreData(bookStorePath: string): Promise<Store> {
   }
 }
 export async function getBookStore(bookFolder: string): Promise<Store> {
-  const bookStorePath = await path.join(
-    await getBookPath(),
-    bookFolder,
-    "store.json"
-  );
+  const bookStorePath = await path.join(bookFolder, "store.json");
   return fs
     .exists(bookStorePath)
     .then(() => fetchBookStoreData(bookStorePath))

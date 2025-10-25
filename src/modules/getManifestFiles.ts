@@ -2,8 +2,11 @@ import { path } from "@tauri-apps/api";
 import convert from "xml-js";
 import type { ManifestAttr, OPF, Container } from "@/types";
 import { readTextFile } from "@tauri-apps/plugin-fs";
+import { getBookPath } from "./getBookPath";
 
 export async function getManifestFiles(bookFolder: string) {
+  debugger;
+
   const absoluteBookPath = await path.join(bookFolder);
 
   const containerPath = await path.join(
@@ -11,7 +14,7 @@ export async function getManifestFiles(bookFolder: string) {
     "META-INF",
     "container.xml"
   );
-
+  // debugger;
   const containerData = await readTextFile(containerPath);
   const containerObj = convert.xml2js(containerData, {
     compact: true,
@@ -22,6 +25,7 @@ export async function getManifestFiles(bookFolder: string) {
     absoluteBookPath,
     await path.dirname(opfFilePath)
   );
+  // debugger;
   const opfFileData = await readTextFile(
     await path.join(absoluteBookPath, opfFilePath)
   );

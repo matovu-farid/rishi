@@ -8,6 +8,7 @@ import { getManifestFiles } from "./getManifestFiles";
 import { getBookPath } from "./getBookPath";
 import { formatBookDatails } from "./formatBookDatails";
 import { getBookStore, saveBookStore } from "./getBookStore";
+import { convertFileSrc } from "@tauri-apps/api/core";
 
 export async function updateCurrentBookId(
   bookFolder: string,
@@ -19,12 +20,11 @@ export async function updateCurrentBookId(
 }
 // function to delete a book from a book folder
 export async function deleteBook(bookFolder: string): Promise<void> {
-  const bookPath = await path.join(await getBookPath(), bookFolder);
+  const bookPath = await path.join(bookFolder);
   await fs.remove(bookPath, { recursive: true });
 }
 
 export async function getBooks(): Promise<Book[]> {
-  debugger;
   const baseBookPath = await getBookPath();
 
   const booksNames = (await fs.readDir(baseBookPath)).filter(
@@ -33,18 +33,21 @@ export async function getBooks(): Promise<Book[]> {
   const booksPaths = await Promise.all(
     booksNames.map((bookName) => path.join(baseBookPath, bookName.name))
   );
-  return Promise.all(booksPaths.map((bookPath) => parseEpub(bookPath)));
+  const books = await Promise.all(
+    booksPaths.map((bookPath) => parseEpub(bookPath))
+  );
+
+  return books;
 }
 
-async function parseEpub(bookFolder: string): Promise<Book> {
-  debugger;
+async function parseEpub(bookPath: string): Promise<Book> {
   try {
     const { manifest, workingFolder, opfFileObj, opfFilePath } =
-      await getManifestFiles(bookFolder);
+      await getManifestFiles(bookPath);
 
     const assets = await getAssets(manifest, workingFolder);
 
-    const store = await getBookStore(bookFolder).catch(() => ({
+    const store = await getBookStore(bookPath).catch(() => ({
       currentBookId: 0,
       epubPath: "",
     }));
@@ -53,22 +56,23 @@ async function parseEpub(bookFolder: string): Promise<Book> {
       manifest,
       opfFileObj,
       opfFilePath,
-      bookFolder
+      bookPath
     );
     // await updateSpineImageUrls(spine, bookFolder)
 
     const cover = await getEpubCover(opfFileObj);
-    const coverPath = await path.join(bookFolder, cover);
-    return {
+    const coverPath = await path.join(workingFolder, cover);
+    const result = {
       currentBookId: store.currentBookId,
-      id: md5(bookFolder),
-      cover: coverPath || "",
+      id: md5(bookPath),
+      cover: convertFileSrc(coverPath) || "",
       spine,
       title,
-      internalFolderName: bookFolder,
+      internalFolderName: bookPath,
       assets,
-      epubPath: store.epubPath,
+      epubPath: convertFileSrc(store.epubPath),
     };
+    return result;
   } catch (e) {
     if (e instanceof Error) {
       console.log({ messege: "Failed to parse epub", error: e.message });
@@ -80,7 +84,7 @@ async function parseEpub(bookFolder: string): Promise<Book> {
       cover: "",
       spine: [],
       title: "",
-      internalFolderName: bookFolder,
+      internalFolderName: bookPath,
       assets: {},
       epubPath: "",
     };

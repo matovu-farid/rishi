@@ -10,7 +10,6 @@ import { Button } from "@components/ui/Button";
 import { IconButton } from "@components/ui/IconButton";
 import { Menu } from "@components/ui/Menu";
 import { Radio, RadioGroup } from "@components/ui/Radio";
-import type Rendition from "@epubjs/rendition";
 import { ThemeType } from "@/themes/common";
 import { themes } from "@/themes/themes";
 import createIReactReaderTheme from "@/themes/readerThemes";
@@ -18,6 +17,8 @@ import { Palette } from "lucide-react";
 import { useState } from "react";
 import { TTSControls } from "@components/TTSControls";
 import { getBooks, updateCurrentBookId } from "@/modules/epub";
+import { Rendition } from "@/epubjs/types";
+import { convertFileSrc } from "@tauri-apps/api/core";
 
 export const Route = createLazyFileRoute("/books/$id")({
   component: () => <BookView />,

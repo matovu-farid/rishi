@@ -2,17 +2,24 @@
 // Project: https://github.com/futurepress/epub.js#readme
 // Definitions by: Fred Chasen <https://github.com/fchasen>
 // Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
-import Epub from './epub'
+import Epub from "./epub";
 
-export as namespace ePub
+export as namespace ePub;
 
-export default Epub
+export default Epub;
 
-export { default as Book } from './book'
-export { default as EpubCFI } from './epubcfi'
-export { default as Rendition, Location } from './rendition'
-export { default as Contents } from './contents'
-export { default as Layout } from './layout'
-export { NavItem } from './navigation'
+export { default as Book } from "./book";
+export { default as EpubCFI } from "./epubcfi";
+export { default as Rendition, Location } from "./rendition";
+export { default as Contents } from "./contents";
+export { default as Layout } from "./layout";
+export { NavItem } from "./navigation";
+
+export * from "./book";
+export * from "./epubcfi";
+export * from "./rendition";
+export * from "./contents";
+export * from "./layout";
+export * from "./navigation";
 
 declare namespace ePub {}

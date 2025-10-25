@@ -1,7 +1,7 @@
 import type Rendition from "@/epubjs/types/rendition";
 import type { ParagraphWithCFI } from "@/types";
 import EventEmitter from "events";
-import { EVENTS } from "@/epubjs/src/utils/constants";
+import { EVENTS } from "@/epubjs";
 import {
   getTTSAudioPath,
   requestTTSAudio,

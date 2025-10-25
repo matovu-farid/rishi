@@ -29,6 +29,7 @@ function FileDrop(): React.JSX.Element {
     queryFn: () => getBooks(),
   });
   const deleteBookMutation = useMutation({
+    mutationKey: ["deleteBook"],
     mutationFn: async ({ book }: { book: Book }) => {
       await deleteBook(book.internalFolderName);
     },
@@ -42,6 +43,7 @@ function FileDrop(): React.JSX.Element {
     },
   });
   const getCoverImageMutation = useMutation({
+    mutationKey: ["getCoverImage"],
     mutationFn: async ({ filePath }: { filePath: string }) => {
       const coverImage = await getCoverImage(filePath);
       if (coverImage === null) {

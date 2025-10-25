@@ -14,7 +14,7 @@ import { toast } from "react-toastify";
 import { useEffect, useState } from "react";
 import { PlayingState } from "@/stores/ttsStore";
 import { Player, PlayerEvent } from "@/models/Player";
-import type Rendition from "@epubjs/rendition";
+import type Rendition from "@/epubjs/types/rendition";
 import { useDebug } from "@/hooks/useDebug";
 interface TTSControlsProps {
   bookId: string;
