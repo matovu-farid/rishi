@@ -63,6 +63,7 @@ function FileDrop(): React.JSX.Element {
   const handleChooseFiles = async () => {
     try {
       const filePaths: string[] = await chooseFiles();
+      console.log({ filePaths });
       if (filePaths.length > 0) {
         filePaths.forEach((filePath) => {
           getCoverImageMutation.mutate({ filePath });
@@ -78,6 +79,7 @@ function FileDrop(): React.JSX.Element {
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
       acceptedFiles.forEach((file) => {
+        console.log({ file });
         // In Electron, File objects have a .path property with the real path
         const electronFile = file as ElectronFile;
         if (electronFile.path) {

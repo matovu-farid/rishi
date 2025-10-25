@@ -26,7 +26,7 @@ export type Asset = "css" | "font" | "xml" | "other";
 export interface Book {
   currentBookId: string | number;
   cover: string;
-  spine: { idref: string; route: string; mediaType: string }[];
+  spine: { idref: string; path: string; mediaType: string }[];
   title: string;
   id: string;
   internalFolderName: string;

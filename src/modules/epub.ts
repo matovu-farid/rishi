@@ -24,8 +24,12 @@ export async function deleteBook(bookFolder: string): Promise<void> {
 }
 
 export async function getBooks(): Promise<Book[]> {
+  debugger;
   const baseBookPath = await getBookPath();
-  const booksNames = await fs.readDir(baseBookPath);
+
+  const booksNames = (await fs.readDir(baseBookPath)).filter(
+    (bookName) => !bookName.name.startsWith(".")
+  );
   const booksPaths = await Promise.all(
     booksNames.map((bookName) => path.join(baseBookPath, bookName.name))
   );
@@ -33,9 +37,11 @@ export async function getBooks(): Promise<Book[]> {
 }
 
 async function parseEpub(bookFolder: string): Promise<Book> {
+  debugger;
   try {
     const { manifest, workingFolder, opfFileObj, opfFilePath } =
       await getManifestFiles(bookFolder);
+
     const assets = await getAssets(manifest, workingFolder);
 
     const store = await getBookStore(bookFolder).catch(() => ({
@@ -43,21 +49,19 @@ async function parseEpub(bookFolder: string): Promise<Book> {
       epubPath: "",
     }));
 
-    const absoluteBookPath = await path.join(await getBookPath(), bookFolder);
-
     const { spine, title } = await formatBookDatails(
       manifest,
       opfFileObj,
       opfFilePath,
-      absoluteBookPath
+      bookFolder
     );
     // await updateSpineImageUrls(spine, bookFolder)
 
     const cover = await getEpubCover(opfFileObj);
-    const coverPath = await path.join(absoluteBookPath, cover);
+    const coverPath = await path.join(bookFolder, cover);
     return {
       currentBookId: store.currentBookId,
-      id: md5(absoluteBookPath),
+      id: md5(bookFolder),
       cover: coverPath || "",
       spine,
       title,
