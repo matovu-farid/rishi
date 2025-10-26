@@ -23,18 +23,22 @@ export class TTSCache {
   }
   async init() {
     this.cacheDir = await path.join(await path.appDataDir(), PUBLIC, TTS_CACHE);
-    this.ensurePublicDir();
+    await this.ensureCacheDirExists();
   }
 
   /**
    * Ensure the public directory exists for Express server
    */
-  private async ensurePublicDir(): Promise<void> {
-    const publicDir = await path.join(await path.appDataDir(), PUBLIC);
+  private async ensureCacheDirExists(): Promise<void> {
+    const cacheDir = await path.join(
+      await path.appDataDir(),
+      PUBLIC,
+      TTS_CACHE
+    );
 
     try {
-      await fs.mkdir(publicDir, { recursive: true });
-      console.log("Public directory ensured at:", publicDir);
+      await fs.mkdir(cacheDir, { recursive: true });
+      console.log("Cache directory ensured at:", cacheDir);
     } catch (error) {
       console.error("Failed to create public directory:", error);
       throw new Error(`Failed to create public directory: ${error}`);
@@ -55,26 +59,13 @@ export class TTSCache {
     bookId: string,
     cfiRange: string
   ): Promise<string> {
+    console.log(">>> Get audio file path");
     const bookCacheDir = await this.getBookCacheDir(bookId);
+    if (!(await fs.exists(bookCacheDir))) {
+      await fs.mkdir(bookCacheDir, { recursive: true });
+    }
     const hashedCfi = md5(cfiRange);
     return path.join(bookCacheDir, `${hashedCfi}.mp3`);
-  }
-
-  /**
-   * Get the HTTP URL for a cached audio file
-   */
-  private async getAudioPath(
-    bookId: string,
-    cfiRange: string
-  ): Promise<string> {
-    const hashedCfi = md5(cfiRange);
-    return await path.join(
-      await path.appDataDir(),
-      PUBLIC,
-      TTS_CACHE,
-      bookId,
-      `${hashedCfi}.mp3`
-    );
   }
 
   /**
@@ -84,15 +75,9 @@ export class TTSCache {
     bookId: string,
     cfiRange: string
   ): Promise<CachedAudioInfo> {
+    console.log(">>> Get cached audio");
     const filePath = await this.getAudioFilePath(bookId, cfiRange);
-    const path = await this.getAudioPath(bookId, cfiRange);
-
-    try {
-      await fs.exists(filePath);
-      return { filePath, path: path, exists: true };
-    } catch {
-      return { filePath, path: path, exists: false };
-    }
+    return { filePath, path: filePath, exists: await fs.exists(filePath) };
   }
 
   /**
@@ -101,28 +86,25 @@ export class TTSCache {
   async saveCachedAudio(
     bookId: string,
     cfiRange: string,
-    audioBuffer: Buffer
+    audioData: Uint8Array
   ): Promise<string> {
+    console.log(">>> Save cached audio");
+
     try {
       const filePath = await this.getAudioFilePath(bookId, cfiRange);
-      const bookCacheDir = await this.getBookCacheDir(bookId);
-      const path = await this.getAudioPath(bookId, cfiRange);
 
-      console.log("Saving TTS audio:");
-      console.log("  Book ID:", bookId);
-      console.log("  CFI Range:", cfiRange);
-      console.log("  File Path:", filePath);
-      console.log("  Path:", path);
-      console.log("  Cache Dir:", this.cacheDir);
-
-      // Ensure book cache directory exists
-      await fs.mkdir(bookCacheDir, { recursive: true });
+      console.log({
+        bookId,
+        cfiRange,
+        filePath,
+        cacheDir: this.cacheDir,
+      });
 
       // Check cache size before saving
       await this.checkAndCleanupCache();
 
       // Save audio buffer to file
-      await fs.writeFile(filePath, new Uint8Array(audioBuffer));
+      await fs.writeFile(filePath, audioData);
 
       // Verify file was created
       const stats = await fs.stat(filePath);
@@ -131,7 +113,7 @@ export class TTSCache {
         size: stats.size,
       });
 
-      return path;
+      return filePath;
     } catch (error) {
       console.error("Failed to save cached audio:", error);
       throw new Error(`Failed to save cached audio: ${error}`);

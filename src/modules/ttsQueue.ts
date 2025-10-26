@@ -5,6 +5,7 @@ import { ttsCache } from "./ttsCache";
 import { TTSQueueEvents } from "./ipc_handles";
 import config from "@/config.json";
 import { isDev } from "@/utils/is_dev";
+import { fetch } from "@tauri-apps/plugin-http";
 
 export interface QueueItem extends TTSRequest {
   priority: number;
@@ -71,6 +72,7 @@ export class TTSQueue extends EventEmitter {
     text: string,
     priority = 0 // 0 is normal priority, 1 is high priority, 2 is highest priority
   ): Promise<string> {
+    console.log(">>> Queue: Request audio");
     this.emit(TTSQueueEvents.REQUEST_AUDIO, {
       bookId,
       cfiRange,
@@ -144,6 +146,7 @@ export class TTSQueue extends EventEmitter {
   }
 
   private async processBatch(): Promise<void> {
+    console.log(">>> Queue: Process batch");
     this.isProcessing = true;
     const batchSize = 5;
     while (this.queue.size() > 0) {
@@ -160,6 +163,7 @@ export class TTSQueue extends EventEmitter {
    * Process the queue sequentially
    */
   private async processQueue(batch: QueueItem[]): Promise<void> {
+    console.log(">>> Queue: Process queue");
     const promises = batch.map(async (item) => {
       // Check if request is too old and should be cancelled
       if (Date.now() - item.timestamp > this.REQUEST_TIMEOUT_MS) {
@@ -174,18 +178,23 @@ export class TTSQueue extends EventEmitter {
 
       try {
         // TODO: Check if this can be optimized as a stream
-        const audioBuffer = await this.generateAudio(item);
+        const audioData = await this.generateAudio(item);
+        console.log(">>> Queue: Generated audio buffer");
 
         // Save directly to cache
         const audioPath = await ttsCache.saveCachedAudio(
           item.bookId,
           item.cfiRange,
-          audioBuffer
+          audioData
         );
+        console.log(">>> Queue: Saved audio to cache", { audioPath });
 
         // Clean up tracking
         this.pendingRequests.delete(item.requestId);
         this.activeRequests.delete(item.requestId);
+        console.log(">>> Queue: Cleaned up tracking", {
+          requestId: item.requestId,
+        });
 
         // Resolve the promise and emit events
         item.resolve(audioPath);
@@ -195,6 +204,9 @@ export class TTSQueue extends EventEmitter {
           bookId: item.bookId,
           cfiRange: item.cfiRange,
           audioPath,
+          requestId: item.requestId,
+        });
+        console.log(">>> Queue: Emitted audio-ready event", {
           requestId: item.requestId,
         });
       } catch (error) {
@@ -250,10 +262,10 @@ export class TTSQueue extends EventEmitter {
   /**
    * Generate audio using OpenAI TTS API
    */
-  private async generateAudio(item: QueueItem): Promise<Buffer> {
+  private async generateAudio(item: QueueItem): Promise<Uint8Array> {
     try {
       const url = `http://${this.openaiProxyUrl}/v1/audio/speech`;
-      console.log("Generating audio for:", url);
+      console.log(">>> Queue: Generating audio for:", url);
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -267,12 +279,18 @@ export class TTSQueue extends EventEmitter {
           speed: 1.0,
         }),
       });
+      console.log(">>> Queue: Response", { status: response.status });
 
       // Convert response to buffer
-      const audioBuffer = Buffer.from(await response.arrayBuffer());
-
-      return audioBuffer;
+      const audioData = await response.bytes();
+      console.log(">>> Queue: Converted response to buffer");
+      return audioData;
     } catch (error) {
+      if (error instanceof Error) {
+        console.log(">>> Queue: Error", { error: error.message });
+      } else {
+        console.log(">>> Queue: Error", { error: String(error) });
+      }
       throw new Error(`OpenAI TTS API error: ${error}`);
     }
   }

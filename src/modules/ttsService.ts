@@ -61,6 +61,7 @@ export class TTSService extends EventEmitter {
     text: string,
     priority = 0 // 0 is normal priority, 1 is high priority, 2 is highest priority
   ): Promise<string> {
+    console.log(">>> Service: Request audio");
     const requestId = `${bookId}-${cfiRange}`;
 
     try {
@@ -136,6 +137,7 @@ export class TTSService extends EventEmitter {
    * Get audio path if cached
    */
   async getAudioPath(bookId: string, cfiRange: string): Promise<string | null> {
+    console.log(">>> Service: Get audio path");
     const cached = await ttsCache.getCachedAudio(bookId, cfiRange);
     return cached.exists ? cached.path : null;
   }

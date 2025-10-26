@@ -6,6 +6,7 @@ import {
   getTTSAudioPath,
   requestTTSAudio,
 } from "@/modules/ipc_handel_functions";
+import { convertFileSrc } from "@tauri-apps/api/core";
 export enum PlayingState {
   Playing = "playing",
   Paused = "paused",
@@ -111,7 +112,6 @@ export class Player extends EventEmitter<PlayerEventMap> {
 
   private handleLocationChanged = async () => {
     await this.clearHighlights();
-    console.log("🎵 Location changed, playing state:", this.playingState);
     if (this.playingState === PlayingState.Playing) {
       await this.stop();
       await this.resetParagraphs();
@@ -197,7 +197,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
     this.audioElement.currentTime = 0;
 
     // Set new source and wait for it to be ready
-    this.audioElement.src = audioPath;
+    this.audioElement.src = convertFileSrc(audioPath);
     this.audioElement.load();
 
     try {
@@ -278,9 +278,8 @@ export class Player extends EventEmitter<PlayerEventMap> {
 
     const currentParagraph = this.getCurrentParagraph();
     if (!currentParagraph) return;
-    const audioPath = await this.requestAudio(
-      currentParagraph,
-      this.getNextPriority()
+    const audioPath = convertFileSrc(
+      (await this.requestAudio(currentParagraph, this.getNextPriority())) || ""
     );
     // set the souce to the first paragraph
     this.audioElement.src = audioPath || "";
@@ -371,7 +370,6 @@ export class Player extends EventEmitter<PlayerEventMap> {
     return this.playingState;
   }
   public setPlayingState(playingState: PlayingState) {
-    console.log("🎵 Playing state", playingState);
     if (this.playingState === playingState) return;
     this.playingState = playingState;
     this.emit(PlayerEvent.PLAYING_STATE_CHANGED, playingState);
@@ -396,6 +394,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
     return await this.rendition.removeHighlight(paragraph.cfiRange);
   }
   private async requestAudio(paragraph: ParagraphWithCFI, priority: number) {
+    console.log(">>> Player: Request audio");
     if (!paragraph.text.trim()) return null;
 
     // Check Zustand cache first
@@ -405,15 +404,18 @@ export class Player extends EventEmitter<PlayerEventMap> {
     // Check disk cache via direct API call
     try {
       const diskCached = await getTTSAudioPath(this.bookId, paragraph.cfiRange);
+      console.log(">>> Player: Disk cached audio");
+      console.log({ diskCached });
       if (diskCached) {
         this.addToAudioCache(paragraph.cfiRange, diskCached);
         return diskCached;
       }
     } catch (error) {
-      console.warn("Cache check failed:", error);
+      console.log(">>> Player: Cache check failed:", error);
     }
 
     // Request new audio via React Query mutation
+    console.log(">>> Player: Request audio");
 
     const audioPath = await requestTTSAudio(
       this.bookId,
@@ -421,6 +423,9 @@ export class Player extends EventEmitter<PlayerEventMap> {
       paragraph.text,
       priority
     );
+
+    console.log(">>> Player: Requested audio");
+    console.log({ audioPath });
 
     // Update cache
     this.addToAudioCache(paragraph.cfiRange, audioPath);

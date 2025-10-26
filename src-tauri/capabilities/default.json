@@ -39,6 +39,22 @@
           "path": "$DESKTOP/**/*"
         }
       ]
+    },
+    {
+      "identifier": "http:default",
+      "allow": [
+        {
+          "url": "https://*.tauri.app"
+        },
+        {
+          "url": "http://proxy.matovu-farid.com/api/openai/**"
+        }
+      ],
+      "deny": [
+        {
+          "url": "https://private.tauri.app"
+        }
+      ]
     }
   ]
 }
