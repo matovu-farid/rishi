@@ -2,11 +2,9 @@ import { path } from "@tauri-apps/api";
 import convert from "xml-js";
 import type { ManifestAttr, OPF, Container } from "@/types";
 import { readTextFile } from "@tauri-apps/plugin-fs";
-import { getBookPath } from "./getBookPath";
+import { convertFileSrc } from "@tauri-apps/api/core";
 
 export async function getManifestFiles(bookFolder: string) {
-  debugger;
-
   const absoluteBookPath = await path.join(bookFolder);
 
   const containerPath = await path.join(
@@ -14,7 +12,6 @@ export async function getManifestFiles(bookFolder: string) {
     "META-INF",
     "container.xml"
   );
-  // debugger;
   const containerData = await readTextFile(containerPath);
   const containerObj = convert.xml2js(containerData, {
     compact: true,
@@ -25,15 +22,18 @@ export async function getManifestFiles(bookFolder: string) {
     absoluteBookPath,
     await path.dirname(opfFilePath)
   );
-  // debugger;
-  const opfFileData = await readTextFile(
-    await path.join(absoluteBookPath, opfFilePath)
-  );
+  const absoluteOpfFilePath = await path.join(absoluteBookPath, opfFilePath);
+  const opfFileData = await readTextFile(absoluteOpfFilePath);
   const opf: OPF = convert.xml2js(opfFileData, { compact: true }) as OPF;
 
   const opfFileObj = opf.package;
-  const manifest: ManifestAttr[] = opfFileObj.manifest.item.map(
-    (item) => item._attributes
+  const manifest: ManifestAttr[] = await Promise.all(
+    opfFileObj.manifest.item
+      .map((item) => item._attributes)
+      .map(async (item) => {
+        item.href = convertFileSrc(await path.join(workingFolder, item.href));
+        return item;
+      })
   );
   return { manifest, opfFileObj, opfFilePath, workingFolder };
 }

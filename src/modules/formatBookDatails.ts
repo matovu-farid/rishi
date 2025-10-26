@@ -1,5 +1,6 @@
 import { path } from "@tauri-apps/api";
 import type { ManifestAttr, OPFFileObj } from "@/types";
+import { convertFileSrc } from "@tauri-apps/api/core";
 
 export async function formatBookDatails(
   manifest: ManifestAttr[],
@@ -35,7 +36,7 @@ export async function formatBookDatails(
         );
         return {
           idref: item.idref,
-          path: route || "",
+          path: convertFileSrc(route) || "",
           mediaType: manifestItem["media-type"],
         };
       })

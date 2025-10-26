@@ -12,7 +12,7 @@ export async function getEpubCover(opfFileObj: OPFFileObj) {
     )
 
     if (coverItem) {
-      return coverItem._attributes.href
+      return  coverItem._attributes.href
     }
 
     // No cover found with specific properties or id hints, checking by file name

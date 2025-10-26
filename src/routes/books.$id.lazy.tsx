@@ -16,7 +16,7 @@ import createIReactReaderTheme from "@/themes/readerThemes";
 import { Palette } from "lucide-react";
 import { useState } from "react";
 import { TTSControls } from "@components/TTSControls";
-import { getBooks, updateCurrentBookId } from "@/modules/epub";
+import { getBook, getBooks, updateCurrentBookId } from "@/modules/epub";
 import { Rendition } from "@/epubjs/types";
 import { convertFileSrc } from "@tauri-apps/api/core";
 
@@ -53,11 +53,7 @@ function BookView(): React.JSX.Element {
   } = useQuery({
     queryKey: ["book"],
     queryFn: async () => {
-      const books = await getBooks();
-      const book = books.find((book: Book) => book.id === id);
-      if (!book) throw new Error("Book not found");
-
-      return book;
+      return await getBook(id);
     },
   });
   const handleThemeChange = (newTheme: ThemeType) => {
@@ -115,7 +111,6 @@ function BookView(): React.JSX.Element {
 
   return (
     <div className="relative">
-      Hello
       <div className="absolute right-2 top-2 z-10 flex items-center gap-2">
         <Link to="/">
           <Button

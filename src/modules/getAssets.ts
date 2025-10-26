@@ -1,6 +1,7 @@
 import { path } from "@tauri-apps/api";
 import type { ManifestAttr } from "@/types";
 import { classifyAssets } from "./classifyAssets";
+import { convertFileSrc } from "@tauri-apps/api/core";
 
 export async function getAssets(
   manifest: ManifestAttr[],
@@ -11,7 +12,7 @@ export async function getAssets(
 
   Object.entries(assets).forEach(([key, value]) => {
     value.forEach(async (file) => {
-      file.href = await path.join(workingFolder, file.href);
+      file.href = convertFileSrc(await path.join(workingFolder, file.href));
       if (!file.properties) {
         file.properties = {};
       }

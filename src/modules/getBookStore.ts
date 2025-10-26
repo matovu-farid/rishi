@@ -27,7 +27,6 @@ export async function updateBookStore(
 
 async function fetchBookStoreData(bookStorePath: string): Promise<Store> {
   try {
-    // debugger;
     const jsonString = await fs.readTextFile(bookStorePath);
     return JSON.parse(jsonString);
   } catch {
@@ -36,12 +35,10 @@ async function fetchBookStoreData(bookStorePath: string): Promise<Store> {
 }
 export async function getBookStore(bookFolder: string): Promise<Store> {
   const bookStorePath = await path.join(bookFolder, "store.json");
-  return fs
-    .exists(bookStorePath)
-    .then(() => fetchBookStoreData(bookStorePath))
-    .catch(() => {
-      return saveBookStore({ currentBookId: 0, epubPath: "" }, bookFolder).then(
-        () => fetchBookStoreData(bookStorePath)
-      );
-    });
+  if(!await fs.exists(bookStorePath)){
+    await saveBookStore({ currentBookId: 0, epubPath: "" }, bookFolder)
+
+  }
+  return await fetchBookStoreData(bookStorePath)
+ 
 }
