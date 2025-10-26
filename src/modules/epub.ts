@@ -23,12 +23,6 @@ export async function deleteBook(bookFolder: string): Promise<void> {
   const bookPath = await path.join(bookFolder);
   await fs.remove(bookPath, { recursive: true });
 }
-export async function getBook(bookId: string) {
-  const baseBookPath = await getBookPath();
-  const bookPath = await path.join(baseBookPath, bookId);
-  const book = await parseEpub(bookPath);
-  return book;
-}
 
 export async function getBooks(): Promise<Book[]> {
   const baseBookPath = await getBookPath();
@@ -75,7 +69,7 @@ async function parseEpub(bookPath: string): Promise<Book> {
       title,
       internalFolderName: bookPath,
       assets,
-      epubPath: convertFileSrc(store.epubPath),
+      epubPath: store.epubPath,
     };
     return result;
   } catch (e) {
