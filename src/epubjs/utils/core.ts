@@ -9,23 +9,25 @@ import { DOMParser as XMLDOMParser } from "@xmldom/xmldom";
  * @returns {function} requestAnimationFrame
  * @memberof Core
  */
-export const requestAnimationFrame: FrameRequestCallback | false =
+export const requestAnimationFrame:
+  | ((callback: FrameRequestCallback) => number)
+  | false =
   typeof window != "undefined"
     ? window.requestAnimationFrame ||
-      window.mozRequestAnimationFrame ||
-      window.webkitRequestAnimationFrame ||
-      window.msRequestAnimationFrame
+      (window as any).mozRequestAnimationFrame ||
+      (window as any).webkitRequestAnimationFrame ||
+      (window as any).msRequestAnimationFrame
     : false;
 
 const ELEMENT_NODE: number = 1;
 const TEXT_NODE: number = 3;
-const COMMENT_NODE: number = 8;
-const DOCUMENT_NODE: number = 9;
 const _URL: typeof URL | undefined =
   typeof URL != "undefined"
     ? URL
     : typeof window != "undefined"
-      ? window.URL || window.webkitURL || window.mozURL
+      ? (window as any).URL ||
+        (window as any).webkitURL ||
+        (window as any).mozURL
       : undefined;
 
 /**
@@ -114,13 +116,15 @@ export function prefixed(unprefixed: string): string {
 
   if (
     typeof document === "undefined" ||
-    typeof document.body.style[lower] != "undefined"
+    typeof (document.body.style as any)[lower] != "undefined"
   ) {
     return unprefixed;
   }
 
   for (var i = 0; i < length; i++) {
-    if (typeof document.body.style[prefixes[i] + lower] != "undefined") {
+    if (
+      typeof (document.body.style as any)[prefixes[i] + lower] != "undefined"
+    ) {
       return prefixes[i] + lower;
     }
   }
@@ -134,7 +138,7 @@ export function prefixed(unprefixed: string): string {
  * @returns {object}
  * @memberof Core
  */
-export function defaults(obj: any, ...sources: any[]): any {
+export function defaults(obj: any, ..._args: any[]): any {
   for (var i = 1, length = arguments.length; i < length; i++) {
     var source = arguments[i];
     for (var prop in source) {
@@ -150,16 +154,15 @@ export function defaults(obj: any, ...sources: any[]): any {
  * @returns {object}
  * @memberof Core
  */
-export function extend(target: any, ...sources: any[]): any {
+export function extend(target: any, ..._sources: any[]): any {
   var sourceArray = [].slice.call(arguments, 1);
-  sourceArray.forEach(function (source) {
+  sourceArray.forEach(function (source: any) {
     if (!source) return;
-    Object.getOwnPropertyNames(source).forEach(function (propName) {
-      Object.defineProperty(
-        target,
-        propName,
-        Object.getOwnPropertyDescriptor(source, propName),
-      );
+    Object.getOwnPropertyNames(source).forEach(function (propName: string) {
+      const descriptor = Object.getOwnPropertyDescriptor(source, propName);
+      if (descriptor) {
+        Object.defineProperty(target, propName, descriptor);
+      }
     });
   });
   return target;
@@ -204,14 +207,15 @@ export function locationOf(
 ): number {
   var start = _start || 0;
   var end = _end || array.length;
-  var pivot = parseInt(start + (end - start) / 2);
-  var compared;
+  var pivot = Math.floor(start + (end - start) / 2);
+  var compared: number;
 
   if (!compareFunction) {
     compareFunction = function (a, b) {
       if (a > b) return 1;
       if (a < b) return -1;
       if (a == b) return 0;
+      return 0;
     };
   }
 
@@ -253,14 +257,15 @@ export function indexOfSorted(
 ): number {
   var start = _start || 0;
   var end = _end || array.length;
-  var pivot = parseInt(start + (end - start) / 2);
-  var compared;
+  var pivot = Math.floor(start + (end - start) / 2);
+  var compared: number;
 
   if (!compareFunction) {
     compareFunction = function (a, b) {
       if (a > b) return 1;
       if (a < b) return -1;
       if (a == b) return 0;
+      return 0;
     };
   }
 
@@ -314,11 +319,11 @@ export function bounds(el: Element): { width: number; height: number } {
   var height = 0;
 
   widthProps.forEach(function (prop) {
-    width += parseFloat(style[prop]) || 0;
+    width += parseFloat(style.getPropertyValue(prop)) || 0;
   });
 
   heightProps.forEach(function (prop) {
-    height += parseFloat(style[prop]) || 0;
+    height += parseFloat(style.getPropertyValue(prop)) || 0;
   });
 
   return {
@@ -357,11 +362,11 @@ export function borders(el: Element): { width: number; height: number } {
   var height = 0;
 
   widthProps.forEach(function (prop) {
-    width += parseFloat(style[prop]) || 0;
+    width += parseFloat(style.getPropertyValue(prop)) || 0;
   });
 
   heightProps.forEach(function (prop) {
-    height += parseFloat(style[prop]) || 0;
+    height += parseFloat(style.getPropertyValue(prop)) || 0;
   });
 
   return {
@@ -569,7 +574,7 @@ export function parse(
     markup = markup.slice(1);
   }
 
-  doc = new Parser().parseFromString(markup, mime);
+  doc = new Parser().parseFromString(markup, mime as DOMParserSupportedType);
 
   return doc;
 }
@@ -582,8 +587,6 @@ export function parse(
  * @memberof Core
  */
 export function qs(el: Element | Document, sel: string): Element | null {
-  var elements: HTMLCollection;
-
   if (!el) {
     throw new Error("No Element Provided");
   }
@@ -591,9 +594,9 @@ export function qs(el: Element | Document, sel: string): Element | null {
   if (typeof el.querySelector != "undefined") {
     return el.querySelector(sel);
   } else {
-    elements = (el as Element).getElementsByTagName(sel);
+    var elements = (el as Element).getElementsByTagName(sel);
     if (elements.length) {
-      return elements[0] as Element;
+      return elements[0];
     }
   }
   return null;
@@ -630,7 +633,8 @@ export function qsp(
   sel: string,
   props: Record<string, string>,
 ): Element | null {
-  var q: HTMLCollection, filtered: Element[];
+  let q: HTMLCollection;
+  let filtered: Element[];
 
   if (typeof el.querySelector != "undefined") {
     sel += "[";
@@ -652,8 +656,8 @@ export function qsp(
       return false;
     });
 
-    if (filtered) {
-      return filtered[0] || null;
+    if (filtered && filtered.length > 0) {
+      return filtered[0];
     }
   }
   return null;
@@ -690,14 +694,9 @@ export function sprint(root: Node, func: (node: Node) => void): void {
 export function treeWalker(
   root: Node,
   func: (node: Node) => void,
-  filter?: number | NodeFilter | null,
+  filter?: number | null,
 ): void {
-  var tw = document.createTreeWalker(
-    root,
-    filter || NodeFilter.SHOW_ALL,
-    null,
-    false,
-  );
+  var tw = document.createTreeWalker(root, filter ?? NodeFilter.SHOW_ALL, null);
   let node: Node | null;
   while ((node = tw.nextNode())) {
     func(node);
@@ -733,7 +732,7 @@ export function walk(node: Node, callback: (node: Node) => boolean): boolean {
  * @memberof Core
  */
 export function blob2base64(blob: Blob): Promise<string | ArrayBuffer | null> {
-  return new Promise(function (resolve, reject) {
+  return new Promise(function (resolve) {
     var reader = new FileReader();
     reader.readAsDataURL(blob);
     reader.onloadend = function () {
@@ -803,26 +802,26 @@ export function querySelectorByType(
   element: string,
   type: string,
 ): Element | null {
-  var query: Element | NodeListOf<Element> | null;
+  var query: Element | NodeListOf<Element> | null = null;
   if (typeof html.querySelector != "undefined") {
     query = html.querySelector(`${element}[*|type="${type}"]`);
   }
   // Handle IE not supporting namespaced epub:type in querySelector
   if (!query || (query instanceof NodeList && query.length === 0)) {
-    query = qsa(html, element);
-    for (var i = 0; i < query.length; i++) {
+    var queryResults = qsa(html, element);
+    for (var i = 0; i < queryResults.length; i++) {
       if (
-        (query[i] as Element).getAttributeNS(
+        (queryResults[i] as Element).getAttributeNS(
           "http://www.idpf.org/2007/ops",
           "type",
         ) === type ||
-        (query[i] as Element).getAttribute("epub:type") === type
+        (queryResults[i] as Element).getAttribute("epub:type") === type
       ) {
-        return query[i] as Element;
+        return queryResults[i] as Element;
       }
     }
-  } else {
-    return query instanceof Element ? query : null;
+  } else if (query instanceof Element) {
+    return query;
   }
   return null;
 }
@@ -965,7 +964,8 @@ export class RangeObject {
     if (toStart) {
       this.endContainer = this.startContainer;
       this.endOffset = this.startOffset;
-      this.commonAncestorContainer = this.startContainer!.parentNode;
+      this.commonAncestorContainer =
+        this.startContainer!.parentNode || undefined;
     } else {
       this.startContainer = this.endContainer;
       this.startOffset = this.endOffset;
@@ -981,7 +981,6 @@ export class RangeObject {
   }
 
   selectNodeContents(referenceNode: Node): void {
-    let end = referenceNode.childNodes[referenceNode.childNodes.length - 1];
     let endIndex =
       referenceNode.nodeType === 3
         ? (referenceNode as Text).textContent!.length
