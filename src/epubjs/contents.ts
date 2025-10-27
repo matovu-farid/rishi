@@ -1,5 +1,5 @@
 import EventEmitter from "event-emitter";
-import { isNumber, prefixed, borders, defaults } from "./utils/new_core";
+import { isNumber, prefixed, borders, defaults } from "./utils/core";
 import EpubCFI from "./epubcfi";
 import Mapping from "./mapping";
 import { replaceLinks } from "./utils/replacements";

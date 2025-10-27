@@ -1,4 +1,4 @@
-import { qs, qsa, qsp, indexOfElementNode } from "./utils/new_core";
+import { qs, qsa, qsp, indexOfElementNode } from "./utils/core";
 
 /**
  * Open Packaging Format Parser

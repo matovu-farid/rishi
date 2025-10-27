@@ -1,4 +1,4 @@
-import { defer, isXml, parse } from "./utils/new_core";
+import { defer, isXml, parse } from "./utils/core";
 import httpRequest from "./utils/request";
 import mime from "./utils/mime";
 import Path from "./utils/path";

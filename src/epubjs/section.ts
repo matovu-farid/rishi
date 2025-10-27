@@ -1,7 +1,7 @@
-import { defer } from "./utils/new_core";
+import { defer } from "./utils/core";
 import EpubCFI from "./epubcfi";
 import Hook from "./utils/hook";
-import { sprint } from "./utils/new_core";
+import { sprint } from "./utils/core";
 import { replaceBase } from "./utils/replacements";
 import Request from "./utils/request";
 import { DOMParser as XMLDOMSerializer } from "@xmldom/xmldom";

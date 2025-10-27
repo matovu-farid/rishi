@@ -1,4 +1,4 @@
-import { extend, defer, requestAnimationFrame } from "../../utils/new_core";
+import { extend, defer, requestAnimationFrame } from "../../utils/core";
 import DefaultViewManager from "../default";
 import Snap from "../helpers/snap";
 import { EVENTS } from "../../utils/constants";

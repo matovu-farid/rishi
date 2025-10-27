@@ -4,7 +4,7 @@ import {
   findChildren,
   RangeObject,
   isNumber,
-} from "./utils/new_core";
+} from "./utils/core";
 
 const ELEMENT_NODE = 1;
 const TEXT_NODE = 3;

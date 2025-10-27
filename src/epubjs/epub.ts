@@ -2,7 +2,7 @@ import Book from "./book";
 import Rendition from "./rendition";
 import CFI from "./epubcfi";
 import Contents from "./contents";
-import * as utils from "./utils/new_core";
+import * as utils from "./utils/core";
 import { EPUBJS_VERSION } from "./utils/constants";
 
 import IframeView from "./managers/views/iframe";

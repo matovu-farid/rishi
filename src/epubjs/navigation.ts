@@ -4,7 +4,7 @@ import {
   querySelectorByType,
   filterChildren,
   getParentByTagName,
-} from "./utils/new_core";
+} from "./utils/core";
 export interface NavItem {
   id: string;
   href: string;

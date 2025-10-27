@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import EventEmitter from "events";
-import { extend, defer, isFloat } from "./utils/new_core";
+import { extend, defer, isFloat } from "./utils/core";
 import Hook from "./utils/hook";
 import EpubCFI from "./epubcfi";
 import Queue from "./utils/queue";

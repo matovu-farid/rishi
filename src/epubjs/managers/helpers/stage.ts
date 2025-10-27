@@ -4,7 +4,7 @@ import {
   isElement,
   windowBounds,
   extend,
-} from "../../utils/new_core";
+} from "../../utils/core";
 
 // Inline throttle implementation to replace lodash
 function throttle(func, wait) {

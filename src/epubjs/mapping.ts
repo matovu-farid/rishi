@@ -1,5 +1,5 @@
 import EpubCFI from "./epubcfi";
-import { nodeBounds } from "./utils/new_core";
+import { nodeBounds } from "./utils/core";
 
 /**
  * Map text locations to CFI ranges

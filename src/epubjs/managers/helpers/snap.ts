@@ -3,7 +3,7 @@ import {
   defer,
   requestAnimationFrame,
   prefixed,
-} from "../../utils/new_core";
+} from "../../utils/core";
 import { EVENTS, DOM_EVENTS } from "../../utils/constants";
 import EventEmitter from "event-emitter";
 
