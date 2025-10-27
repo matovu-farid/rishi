@@ -1,5 +1,16 @@
 import EpubCFI from "./epubcfi";
+import Layout from "./layout";
+import View from "./types/managers/view";
 import { nodeBounds } from "./utils/core";
+export interface EpubCFIPair {
+  start: string;
+  end: string;
+}
+
+export interface RangePair {
+  start: Range;
+  end: Range;
+}
 
 /**
  * Map text locations to CFI ranges
@@ -10,7 +21,12 @@ import { nodeBounds } from "./utils/core";
  * @param {boolean} [dev] toggle developer highlighting
  */
 class Mapping {
-  constructor(layout, direction, axis, dev = false) {
+  layout: Layout;
+  horizontal: boolean;
+  direction: string;
+  _dev: boolean;
+
+  constructor(layout: Layout, direction?: string, axis?: string, dev = false) {
     this.layout = layout;
     this.horizontal = axis === "horizontal" ? true : false;
     this.direction = direction || "ltr";
@@ -20,7 +36,7 @@ class Mapping {
   /**
    * Find CFI pairs for entire section at once
    */
-  section(view) {
+  section(view: View): EpubCFIPair[] {
     var ranges = this.findRanges(view);
     var map = this.rangeListToCfiList(view.section.cfiBase, ranges);
 
@@ -95,7 +111,7 @@ class Mapping {
       root,
       NodeFilter.SHOW_TEXT,
       safeFilter,
-      false,
+      false
     );
     var node;
     var result;

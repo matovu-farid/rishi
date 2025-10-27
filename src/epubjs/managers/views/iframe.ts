@@ -13,9 +13,28 @@ import EpubCFI from "../../epubcfi";
 import Contents from "../../contents";
 import { EVENTS } from "../../utils/constants";
 import { Pane, Highlight, Underline } from "marks-pane";
+import Section from "@/epubjs/section";
+import { ViewSettings } from "../default";
+import { Layout } from "@/epubjs/types";
 
 class IframeView {
-  constructor(section, options) {
+  settings: ViewSettings;
+  id: string;
+  section: Section;
+  index: number;
+  element: HTMLElement;
+  added: boolean;
+  displayed: boolean;
+  rendered: boolean;
+  fixedWidth: number;
+  fixedHeight: number;
+  epubcfi: EpubCFI;
+  layout: Layout;
+  pane: Pane | undefined;
+  highlights: { [key: string]: Highlight };
+  underlines: { [key: string]: Underline };
+  marks: { [key: string]: Mark };
+  constructor(section: Section, options: ViewSettings) {
     this.settings = extend(
       {
         ignoreClass: "",

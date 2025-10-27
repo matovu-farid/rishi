@@ -13,7 +13,7 @@ const DOCUMENT_NODE = 9;
 /**
  * Interface for a CFI step representing a node in the document tree
  */
-interface CFIStep {
+export interface CFIStep {
   type: "element" | "text";
   index: number;
   id: string | null;
@@ -23,7 +23,7 @@ interface CFIStep {
 /**
  * Interface for terminal offset and assertion in a CFI component
  */
-interface CFITerminal {
+export interface CFITerminal {
   offset: number | null;
   assertion: string | null;
 }
@@ -31,7 +31,7 @@ interface CFITerminal {
 /**
  * Interface for a CFI component with steps and terminal information
  */
-interface CFIComponent {
+export interface CFIComponent {
   steps: CFIStep[];
   terminal: CFITerminal;
 }
@@ -39,7 +39,7 @@ interface CFIComponent {
 /**
  * Interface for the complete CFI structure
  */
-interface CFI {
+export interface CFI {
   spinePos: number;
   range: boolean;
   base: CFIComponent;
