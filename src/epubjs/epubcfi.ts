@@ -424,21 +424,19 @@ class EpubCFI {
    * @returns {number} First is earlier = -1, Second is earlier = 1, They are equal = 0
    */
   compare(cfiOne: string | EpubCFI, cfiTwo: string | EpubCFI): number {
-    var stepsA: CFIStep[];
-    var stepsB: CFIStep[];
-    var terminalA: CFITerminal;
-    var terminalB: CFITerminal;
+    let stepsA: CFIStep[];
+    let stepsB: CFIStep[];
+    let terminalA: CFITerminal;
+    let terminalB: CFITerminal;
 
-    var rangeAStartSteps: CFIStep[], rangeAEndSteps: CFIStep[];
-    var rangeBStartSteps: CFIStep[], rangeBEndSteps: CFIStep[];
-    var rangeAStartTerminal: CFITerminal, rangeAEndTerminal: CFITerminal;
-    var rangeBStartTerminal: CFITerminal, rangeBEndTerminal: CFITerminal;
-
-    if (typeof cfiOne === "string") {
+    if (typeof cfiOne === "string" && cfiOne) {
       cfiOne = new EpubCFI(cfiOne);
     }
     if (typeof cfiTwo === "string") {
       cfiTwo = new EpubCFI(cfiTwo);
+    }
+    if (typeof cfiOne !== "object" || typeof cfiTwo !== "object") {
+      return 0;
     }
     // Compare Spine Positions
     if (cfiOne.spinePos > cfiTwo.spinePos) {
@@ -509,7 +507,7 @@ class EpubCFI {
       id: element?.id || null,
       tagName: element?.tagName || undefined,
       type: nodeType,
-      index: this.position(node),
+      index: this.position(node) ?? 0,
     };
   }
 
@@ -647,7 +645,7 @@ class EpubCFI {
     if (ignoreClass) {
       // Tell pathTo if / what to ignore
       const doc = start.ownerDocument;
-      needsIgnoring = doc && doc.querySelector("." + ignoreClass) != null;
+      needsIgnoring = !!(doc && doc.querySelector("." + ignoreClass) != null);
     }
 
     if (typeof base === "string") {
@@ -840,11 +838,11 @@ class EpubCFI {
   }
 
   normalizedMap(
-    children: NodeListOf<Node> | Node[],
+    children: NodeListOf<Node> | Node[] | HTMLCollection,
     nodeType: number,
     ignoreClass: string | undefined
   ): Record<number, number> {
-    var output = {};
+    var output: Record<number, number> = {};
     var prevIndex = -1;
     var i,
       len = children.length;
@@ -877,10 +875,10 @@ class EpubCFI {
     return output;
   }
 
-  position(anchor: Node): number {
-    var children, index;
+  position(anchor: Node): number | undefined {
+    let children, index;
     if (anchor.nodeType === ELEMENT_NODE) {
-      children = anchor.parentNode.children;
+      children = anchor.parentNode?.children || [];
       if (!children) {
         children = findChildren(anchor.parentNode as Element);
       }
@@ -895,13 +893,16 @@ class EpubCFI {
     return index;
   }
 
-  filteredPosition(anchor: Node, ignoreClass: string | undefined): number {
+  filteredPosition(
+    anchor: Node,
+    ignoreClass: string | undefined
+  ): number | undefined {
     var children, index, map;
 
     if (anchor.nodeType === ELEMENT_NODE) {
       if (anchor.parentNode) {
         children = anchor.parentNode.children;
-        map = this.normalizedMap(children as Node[], ELEMENT_NODE, ignoreClass);
+        map = this.normalizedMap(children, ELEMENT_NODE, ignoreClass);
       }
     } else {
       if (anchor.parentNode) {
@@ -920,7 +921,7 @@ class EpubCFI {
 
     index = Array.prototype.indexOf.call(children, anchor);
 
-    return map[index];
+    return map != null ? map[index] : undefined;
   }
 
   stepsToXpath(steps: CFIStep[]): string {
@@ -1060,9 +1061,9 @@ class EpubCFI {
     offset: number,
     _doc: Document | undefined,
     ignoreClass: string | undefined
-  ): { container: Node | undefined; offset: number } {
+  ): { container: Node | undefined; offset: number } | undefined {
     var container = this.findNode(steps.slice(0, -1), _doc, ignoreClass);
-    var children = container.childNodes;
+    var children = container?.childNodes || [];
     var map = this.normalizedMap(children, TEXT_NODE, ignoreClass);
     var child;
     var len;
@@ -1073,7 +1074,7 @@ class EpubCFI {
 
       if (map[childIndex] === lastStepIndex) {
         child = children[childIndex];
-        len = child.textContent.length;
+        len = child.textContent?.length || 0;
         if (offset > len) {
           offset = offset - len;
         } else {
@@ -1088,18 +1089,15 @@ class EpubCFI {
     }
 
     return {
-      container: container,
+      container: container || undefined,
       offset: offset,
     };
   }
 
   /**
    * Creates a DOM range representing a CFI
-   * @param {document} _doc document referenced in the base
-   * @param {string} [ignoreClass]
-   * @return {Range}
    */
-  toRange(_doc?: Document, ignoreClass?: string): Range | null {
+  toRange(_doc?: Document, ignoreClass?: string) {
     var doc = _doc || document;
     var range;
     var start, end, startContainer, endContainer;
@@ -1118,18 +1116,18 @@ class EpubCFI {
 
     if (cfi.range) {
       start = cfi.start;
-      startSteps = cfi.path.steps.concat(start.steps);
+      startSteps = cfi.path.steps.concat(start?.steps || []);
       startContainer = this.findNode(
         startSteps,
         doc,
-        needsIgnoring ? ignoreClass : null
+        !!needsIgnoring ? ignoreClass : undefined
       );
       end = cfi.end;
-      endSteps = cfi.path.steps.concat(end.steps);
+      endSteps = cfi.path.steps.concat(end?.steps || []);
       endContainer = this.findNode(
         endSteps,
         doc,
-        needsIgnoring ? ignoreClass : null
+        !!needsIgnoring ? ignoreClass : undefined
       );
     } else {
       start = cfi.path;
@@ -1137,13 +1135,13 @@ class EpubCFI {
       startContainer = this.findNode(
         cfi.path.steps,
         doc,
-        needsIgnoring ? ignoreClass : null
+        !!needsIgnoring ? ignoreClass : undefined
       );
     }
 
     if (startContainer) {
       try {
-        if (start.terminal.offset != null) {
+        if (start && start.terminal.offset != null) {
           range.setStart(startContainer, start.terminal.offset);
         } else {
           range.setStart(startContainer, 0);
@@ -1151,11 +1149,13 @@ class EpubCFI {
       } catch (e) {
         missed = this.fixMiss(
           startSteps,
-          start.terminal.offset,
+          start?.terminal.offset || 0,
           doc,
-          needsIgnoring ? ignoreClass : null
+          !!needsIgnoring ? ignoreClass : undefined
         );
-        range.setStart(missed.container, missed.offset);
+        if (missed && missed.container && missed.offset != null) {
+          range.setStart(missed.container, missed.offset);
+        }
       }
     } else {
       console.log("No startContainer found for", this.toString());
@@ -1165,19 +1165,23 @@ class EpubCFI {
 
     if (endContainer) {
       try {
-        if (end.terminal.offset != null) {
+        if (end && end.terminal.offset != null) {
           range.setEnd(endContainer, end.terminal.offset);
         } else {
           range.setEnd(endContainer, 0);
         }
       } catch (e) {
-        missed = this.fixMiss(
-          endSteps,
-          cfi.end.terminal.offset,
-          doc,
-          needsIgnoring ? ignoreClass : null
-        );
-        range.setEnd(missed.container, missed.offset);
+        if (endSteps && cfi.end && cfi.end.terminal.offset != null) {
+          missed = this.fixMiss(
+            endSteps,
+            cfi.end.terminal.offset,
+            doc,
+            !!needsIgnoring ? ignoreClass : undefined
+          );
+          if (missed && missed.container && missed.offset != null) {
+            range.setEnd(missed.container, missed.offset);
+          }
+        }
       }
     }
 
@@ -1231,10 +1235,10 @@ class EpubCFI {
 
     this.range = false;
 
-    if (toStart) {
+    if (toStart && this.start) {
       this.path.steps = this.path.steps.concat(this.start.steps);
       this.path.terminal = this.start.terminal;
-    } else {
+    } else if (this.end) {
       this.path.steps = this.path.steps.concat(this.end.steps);
       this.path.terminal = this.end.terminal;
     }
