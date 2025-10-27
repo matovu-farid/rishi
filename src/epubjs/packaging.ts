@@ -1,13 +1,122 @@
 import { qs, qsa, qsp, indexOfElementNode } from "./utils/core";
 
 /**
+ * Metadata object structure
+ */
+interface Metadata {
+  title?: string;
+  creator?: string;
+  description?: string;
+  pubdate?: string;
+  publisher?: string;
+  identifier?: string;
+  language?: string;
+  rights?: string;
+  modified_date?: string;
+  layout?: string;
+  orientation?: string;
+  flow?: string;
+  viewport?: string;
+  media_active_class?: string;
+  spread?: string;
+  direction?: string;
+}
+
+/**
+ * Manifest item structure
+ */
+interface ManifestItem {
+  href: string;
+  type: string;
+  overlay: string;
+  properties: string[];
+}
+
+/**
+ * Manifest object structure (key-value pairs)
+ */
+interface Manifest {
+  [id: string]: ManifestItem;
+}
+
+/**
+ * Spine item reference structure
+ */
+interface SpineItem {
+  id?: string;
+  idref: string;
+  linear: string;
+  properties: string[];
+  index: number;
+}
+
+/**
+ * Spine array structure
+ */
+type Spine = SpineItem[];
+
+/**
+ * TOC item structure for JSON-based manifests
+ */
+interface TocItem {
+  title?: string;
+  label?: string;
+  href?: string;
+  children?: TocItem[];
+  [key: string]: any;
+}
+
+/**
+ * JSON Manifest resource item
+ */
+interface JsonResource {
+  href: string;
+  rel?: string[];
+  [key: string]: any;
+}
+
+/**
+ * JSON Manifest structure (W3C Web Publication Manifest)
+ */
+interface JsonManifest {
+  metadata: Metadata;
+  readingOrder?: SpineItem[];
+  spine?: SpineItem[];
+  resources: JsonResource[];
+  toc?: TocItem[];
+}
+
+/**
+ * Package parse result structure
+ */
+interface ParseResult {
+  metadata: Metadata | undefined;
+  spine: Spine | undefined;
+  manifest: Manifest | undefined;
+  navPath: string | boolean | null | undefined;
+  ncxPath: string | boolean | null | undefined;
+  coverPath: string | boolean | null | undefined;
+  spineNodeIndex: number | undefined;
+  toc?: TocItem[];
+}
+
+/**
  * Open Packaging Format Parser
  * @class
  * @param {document} packageDocument OPF XML
  */
 class Packaging {
-  metadata: any;
-  constructor(packageDocument) {
+  manifest: Manifest | undefined;
+  navPath: string | boolean | null | undefined;
+  ncxPath: string | boolean | null | undefined;
+  coverPath: string | boolean | null | undefined;
+  spineNodeIndex: number | undefined;
+  spine: Spine | undefined;
+  metadata: Metadata | undefined;
+  uniqueIdentifier?: string;
+  toc?: TocItem[];
+
+  constructor(packageDocument?: Document) {
     this.manifest = {};
     this.navPath = "";
     this.ncxPath = "";
@@ -24,10 +133,12 @@ class Packaging {
   /**
    * Parse OPF XML
    * @param  {document} packageDocument OPF XML
-   * @return {object} parsed package parts
+   * @return {ParsedPackage} parsed package parts
    */
-  parse(packageDocument) {
-    var metadataNode, manifestNode, spineNode;
+  parse(packageDocument: Document): ParseResult {
+    var metadataNode: Element | null;
+    var manifestNode: Element | null;
+    var spineNode: Element | null;
 
     if (!packageDocument) {
       throw new Error("Package File Not Found");
@@ -60,9 +171,8 @@ class Packaging {
     this.uniqueIdentifier = this.findUniqueIdentifier(packageDocument);
     this.metadata = this.parseMetadata(metadataNode);
 
-    this.metadata.direction = spineNode.getAttribute(
-      "page-progression-direction",
-    );
+    this.metadata.direction =
+      spineNode.getAttribute("page-progression-direction") || undefined;
 
     return {
       metadata: this.metadata,
@@ -81,8 +191,8 @@ class Packaging {
    * @param  {node} xml
    * @return {object} metadata
    */
-  parseMetadata(xml) {
-    var metadata = {};
+  parseMetadata(xml: Element): Metadata {
+    var metadata: Metadata = {};
 
     metadata.title = this.getElementText(xml, "title");
     metadata.creator = this.getElementText(xml, "creator");
@@ -107,7 +217,6 @@ class Packaging {
       "media:active-class",
     );
     metadata.spread = this.getPropertyText(xml, "rendition:spread");
-    // metadata.page_prog_dir = packageXml.querySelector("spine").getAttribute("page-progression-direction");
 
     return metadata;
   }
@@ -118,29 +227,27 @@ class Packaging {
    * @param  {node} manifestXml
    * @return {object} manifest
    */
-  parseManifest(manifestXml) {
-    var manifest = {};
+  parseManifest(manifestXml: Element): Manifest {
+    var manifest: Manifest = {};
 
-    //-- Turn items into an array
-    // var selected = manifestXml.querySelectorAll("item");
     var selected = qsa(manifestXml, "item");
-    var items = Array.prototype.slice.call(selected);
+    var items = Array.prototype.slice.call(selected) as Element[];
 
-    //-- Create an object with the id as key
-    items.forEach(function (item) {
-      var id = item.getAttribute("id"),
-        href = item.getAttribute("href") || "",
-        type = item.getAttribute("media-type") || "",
-        overlay = item.getAttribute("media-overlay") || "",
-        properties = item.getAttribute("properties") || "";
+    items.forEach(function (item: Element): void {
+      var id = item.getAttribute("id");
+      var href = item.getAttribute("href") || "";
+      var type = item.getAttribute("media-type") || "";
+      var overlay = item.getAttribute("media-overlay") || "";
+      var properties = item.getAttribute("properties") || "";
 
-      manifest[id] = {
-        href: href,
-        // "url" : href,
-        type: type,
-        overlay: overlay,
-        properties: properties.length ? properties.split(" ") : [],
-      };
+      if (id) {
+        manifest[id] = {
+          href: href,
+          type: type,
+          overlay: overlay,
+          properties: properties.length ? properties.split(" ") : [],
+        };
+      }
     });
 
     return manifest;
@@ -153,32 +260,23 @@ class Packaging {
    * @param  {Packaging.manifest} manifest
    * @return {object} spine
    */
-  parseSpine(spineXml, manifest) {
-    var spine = [];
+  parseSpine(spineXml: Element, _manifest: Manifest): Spine {
+    var spine: Spine = [];
 
     var selected = qsa(spineXml, "itemref");
-    var items = Array.prototype.slice.call(selected);
+    var items = Array.prototype.slice.call(selected) as Element[];
 
-    // var epubcfi = new EpubCFI();
-
-    //-- Add to array to maintain ordering and cross reference with manifest
-    items.forEach(function (item, index) {
+    items.forEach(function (item: Element, index: number): void {
       var idref = item.getAttribute("idref");
-      // var cfiBase = epubcfi.generateChapterComponent(spineNodeIndex, index, Id);
       var props = item.getAttribute("properties") || "";
       var propArray = props.length ? props.split(" ") : [];
-      // var manifestProps = manifest[Id].properties;
-      // var manifestPropArray = manifestProps.length ? manifestProps.split(" ") : [];
 
-      var itemref = {
-        id: item.getAttribute("id"),
-        idref: idref,
+      var itemref: SpineItem = {
+        id: item.getAttribute("id") || undefined,
+        idref: idref || "",
         linear: item.getAttribute("linear") || "yes",
         properties: propArray,
-        // "href" : manifest[Id].href,
-        // "url" :  manifest[Id].url,
         index: index,
-        // "cfiBase" : cfiBase
       };
       spine.push(itemref);
     });
@@ -192,9 +290,9 @@ class Packaging {
    * @param  {node} packageXml
    * @return {string} Unique Identifier text
    */
-  findUniqueIdentifier(packageXml) {
+  findUniqueIdentifier(packageXml: Document): string {
     var uniqueIdentifierId =
-      packageXml.documentElement.getAttribute("unique-identifier");
+      packageXml.documentElement?.getAttribute("unique-identifier");
     if (!uniqueIdentifierId) {
       return "";
     }
@@ -208,7 +306,7 @@ class Packaging {
       identifier.namespaceURI === "http://purl.org/dc/elements/1.1/"
     ) {
       return identifier.childNodes.length > 0
-        ? identifier.childNodes[0].nodeValue.trim()
+        ? (identifier.childNodes[0].nodeValue || "").trim()
         : "";
     }
 
@@ -219,12 +317,9 @@ class Packaging {
    * Find TOC NAV
    * @private
    * @param {element} manifestNode
-   * @return {string}
+   * @return {string|boolean}
    */
-  findNavPath(manifestNode) {
-    // Find item with property "nav"
-    // Should catch nav regardless of order
-    // var node = manifestNode.querySelector("item[properties$='nav'], item[properties^='nav '], item[properties*=' nav ']");
+  findNavPath(manifestNode: Element): string | boolean | null {
     var node = qsp(manifestNode, "item", { properties: "nav" });
     return node ? node.getAttribute("href") : false;
   }
@@ -235,22 +330,20 @@ class Packaging {
    * @private
    * @param {element} manifestNode
    * @param {element} spineNode
-   * @return {string}
+   * @return {string|boolean}
    */
-  findNcxPath(manifestNode, spineNode) {
-    // var node = manifestNode.querySelector("item[media-type='application/x-dtbncx+xml']");
+  findNcxPath(
+    manifestNode: Element,
+    spineNode: Element,
+  ): string | boolean | null {
     var node = qsp(manifestNode, "item", {
       "media-type": "application/x-dtbncx+xml",
     });
-    var tocId;
+    var tocId: string | null;
 
-    // If we can't find the toc by media-type then try to look for id of the item in the spine attributes as
-    // according to http://www.idpf.org/epub/20/spec/OPF_2.0.1_draft.htm#Section2.4.1.2,
-    // "The item that describes the NCX must be referenced by the spine toc attribute."
     if (!node) {
       tocId = spineNode.getAttribute("toc");
       if (tocId) {
-        // node = manifestNode.querySelector("item[id='" + tocId + "']");
         node = manifestNode.querySelector(`#${tocId}`);
       }
     }
@@ -264,25 +357,27 @@ class Packaging {
    * Fallback for Epub 2.0
    * @private
    * @param  {node} packageXml
-   * @return {string} href
+   * @return {string|boolean} href
    */
-  findCoverPath(packageXml) {
+  findCoverPath(packageXml: Document): string | boolean | null {
     var pkg = qs(packageXml, "package");
-    var epubVersion = pkg.getAttribute("version");
+    if (!pkg) {
+      return false;
+    }
 
-    // Try parsing cover with epub 3.
-    // var node = packageXml.querySelector("item[properties='cover-image']");
     var node = qsp(packageXml, "item", { properties: "cover-image" });
     if (node) return node.getAttribute("href");
 
-    // Fallback to epub 2.
     var metaCover = qsp(packageXml, "meta", { name: "cover" });
 
     if (metaCover) {
       var coverId = metaCover.getAttribute("content");
-      // var cover = packageXml.querySelector("item[id='" + coverId + "']");
-      var cover = packageXml.getElementById(coverId);
-      return cover ? cover.getAttribute("href") : "";
+      if (coverId) {
+        var cover = packageXml.getElementById(coverId);
+        return cover ? cover.getAttribute("href") : "";
+      } else {
+        return false;
+      }
     } else {
       return false;
     }
@@ -295,19 +390,18 @@ class Packaging {
    * @param  {string} tag
    * @return {string} text
    */
-  getElementText(xml, tag) {
+  getElementText(xml: Element, tag: string): string {
     var found = xml.getElementsByTagNameNS(
       "http://purl.org/dc/elements/1.1/",
       tag,
     );
-    var el;
 
     if (!found || found.length === 0) return "";
 
-    el = found[0];
+    var el = found[0];
 
     if (el.childNodes.length) {
-      return el.childNodes[0].nodeValue;
+      return el.childNodes[0].nodeValue || "";
     }
 
     return "";
@@ -320,11 +414,11 @@ class Packaging {
    * @param  {string} property
    * @return {string} text
    */
-  getPropertyText(xml, property) {
+  getPropertyText(xml: Element, property: string): string {
     var el = qsp(xml, "meta", { property: property });
 
     if (el && el.childNodes.length) {
-      return el.childNodes[0].nodeValue;
+      return el.childNodes[0].nodeValue || "";
     }
 
     return "";
@@ -332,30 +426,39 @@ class Packaging {
 
   /**
    * Load JSON Manifest
-   * @param  {document} packageDocument OPF XML
+   * @param  {object} json JSON manifest object
    * @return {object} parsed package parts
    */
-  load(json) {
+  load(json: JsonManifest): ParseResult {
     this.metadata = json.metadata;
 
-    let spine = json.readingOrder || json.spine;
-    this.spine = spine.map((item, index) => {
+    let spine = json.readingOrder || json.spine || [];
+    this.spine = spine.map((item: SpineItem, index: number): SpineItem => {
       item.index = index;
       item.linear = item.linear || "yes";
       return item;
     });
 
-    json.resources.forEach((item, index) => {
-      this.manifest[index] = item;
+    if (json.resources) {
+      json.resources.forEach((item: JsonResource, index: number): void => {
+        if (this.manifest) {
+          this.manifest[String(index)] = {
+            href: item.href,
+            type: item.type || "",
+            overlay: item.overlay || "",
+            properties: item.properties || [],
+          };
+        }
 
-      if (item.rel && item.rel[0] === "cover") {
-        this.coverPath = item.href;
-      }
-    });
+        if (item.rel && item.rel[0] === "cover") {
+          this.coverPath = item.href;
+        }
+      });
+    }
 
     this.spineNodeIndex = 0;
 
-    this.toc = json.toc.map((item, index) => {
+    this.toc = json.toc?.map((item: TocItem, _index: number): TocItem => {
       item.label = item.title;
       return item;
     });
@@ -372,7 +475,7 @@ class Packaging {
     };
   }
 
-  destroy() {
+  destroy(): void {
     this.manifest = undefined;
     this.navPath = undefined;
     this.ncxPath = undefined;
@@ -380,6 +483,7 @@ class Packaging {
     this.spineNodeIndex = undefined;
     this.spine = undefined;
     this.metadata = undefined;
+    this.toc = undefined;
   }
 }
 
