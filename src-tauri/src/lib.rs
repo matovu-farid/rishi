@@ -11,7 +11,6 @@ fn greet(name: &str) -> String {
 
 #[tauri::command]
 fn is_dev() -> bool {
-    println!("is_dev called");
     tauri::is_dev()
 }
 

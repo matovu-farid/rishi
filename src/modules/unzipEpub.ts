@@ -19,7 +19,7 @@ export async function unzipEpub(
   await invoke("unzip", { filePath, outDir: outputDirUrl });
   const epubPath = await path.join(outputDirUrl, await path.basename(filePath));
 
-  updateBookStore({ epubPath: convertFileSrc(epubPath) }, outputDirUrl);
+  await updateBookStore({ epubPath: convertFileSrc(epubPath) }, outputDirUrl);
 
   return outputDirUrl;
 }
