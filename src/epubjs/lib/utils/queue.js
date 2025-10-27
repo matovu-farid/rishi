@@ -1,11 +1,11 @@
-'use strict'
+"use strict";
 
-Object.defineProperty(exports, '__esModule', {
-  value: true
-})
-exports.default = exports.Task = void 0
+Object.defineProperty(exports, "__esModule", {
+  value: true,
+});
+exports.default = exports.Task = void 0;
 
-var _core = require('./core')
+var _core = require("./new_core");
 
 /**
  * Queue for handling tasks one at a time
@@ -14,11 +14,11 @@ var _core = require('./core')
  */
 class Queue {
   constructor(context) {
-    this._q = []
-    this.context = context
-    this.tick = _core.requestAnimationFrame
-    this.running = false
-    this.paused = false
+    this._q = [];
+    this.context = context;
+    this.tick = _core.requestAnimationFrame;
+    this.running = false;
+    this.paused = false;
   }
   /**
    * Add an item to the queue
@@ -26,44 +26,44 @@ class Queue {
    */
 
   enqueue() {
-    var deferred, promise
-    var queued
-    var task = [].shift.call(arguments)
-    var args = arguments // Handle single args without context
+    var deferred, promise;
+    var queued;
+    var task = [].shift.call(arguments);
+    var args = arguments; // Handle single args without context
     // if(args && !Array.isArray(args)) {
     //   args = [args];
     // }
 
     if (!task) {
-      throw new Error('No Task Provided')
+      throw new Error("No Task Provided");
     }
 
-    if (typeof task === 'function') {
-      deferred = new _core.defer()
-      promise = deferred.promise
+    if (typeof task === "function") {
+      deferred = new _core.defer();
+      promise = deferred.promise;
       queued = {
         task: task,
         args: args,
         //"context"  : context,
         deferred: deferred,
-        promise: promise
-      }
+        promise: promise,
+      };
     } else {
       // Task is a promise
       queued = {
-        promise: task
-      }
+        promise: task,
+      };
     }
 
-    this._q.push(queued) // Wait to start queue flush
+    this._q.push(queued); // Wait to start queue flush
 
     if (this.paused == false && !this.running) {
       // setTimeout(this.flush.bind(this), 0);
       // this.tick.call(window, this.run.bind(this));
-      this.run()
+      this.run();
     }
 
-    return queued.promise
+    return queued.promise;
   }
   /**
    * Run one item
@@ -71,45 +71,45 @@ class Queue {
    */
 
   dequeue() {
-    var inwait, task, result
+    var inwait, task, result;
 
     if (this._q.length && !this.paused) {
-      inwait = this._q.shift()
-      task = inwait.task
+      inwait = this._q.shift();
+      task = inwait.task;
 
       if (task) {
         // console.log(task)
-        result = task.apply(this.context, inwait.args)
+        result = task.apply(this.context, inwait.args);
 
-        if (result && typeof result['then'] === 'function') {
+        if (result && typeof result["then"] === "function") {
           // Task is a function that returns a promise
           return result.then(
             function () {
-              inwait.deferred.resolve.apply(this.context, arguments)
+              inwait.deferred.resolve.apply(this.context, arguments);
             }.bind(this),
             function () {
-              inwait.deferred.reject.apply(this.context, arguments)
-            }.bind(this)
-          )
+              inwait.deferred.reject.apply(this.context, arguments);
+            }.bind(this),
+          );
         } else {
           // Task resolves immediately
-          inwait.deferred.resolve.apply(this.context, result)
-          return inwait.promise
+          inwait.deferred.resolve.apply(this.context, result);
+          return inwait.promise;
         }
       } else if (inwait.promise) {
         // Task is a promise
-        return inwait.promise
+        return inwait.promise;
       }
     } else {
-      inwait = new _core.defer()
-      inwait.deferred.resolve()
-      return inwait.promise
+      inwait = new _core.defer();
+      inwait.deferred.resolve();
+      return inwait.promise;
     }
   } // Run All Immediately
 
   dump() {
     while (this._q.length) {
-      this.dequeue()
+      this.dequeue();
     }
   }
   /**
@@ -119,28 +119,28 @@ class Queue {
 
   run() {
     if (!this.running) {
-      this.running = true
-      this.defered = new _core.defer()
+      this.running = true;
+      this.defered = new _core.defer();
     }
 
     this.tick.call(window, () => {
       if (this._q.length) {
         this.dequeue().then(
           function () {
-            this.run()
-          }.bind(this)
-        )
+            this.run();
+          }.bind(this),
+        );
       } else {
-        this.defered.resolve()
-        this.running = undefined
+        this.defered.resolve();
+        this.running = undefined;
       }
-    }) // Unpause
+    }); // Unpause
 
     if (this.paused == true) {
-      this.paused = false
+      this.paused = false;
     }
 
-    return this.defered.promise
+    return this.defered.promise;
   }
   /**
    * Flush all, as quickly as possible
@@ -149,17 +149,17 @@ class Queue {
 
   flush() {
     if (this.running) {
-      return this.running
+      return this.running;
     }
 
     if (this._q.length) {
       this.running = this.dequeue().then(
         function () {
-          this.running = undefined
-          return this.flush()
-        }.bind(this)
-      )
-      return this.running
+          this.running = undefined;
+          return this.flush();
+        }.bind(this),
+      );
+      return this.running;
     }
   }
   /**
@@ -167,7 +167,7 @@ class Queue {
    */
 
   clear() {
-    this._q = []
+    this._q = [];
   }
   /**
    * Get the number of tasks in the queue
@@ -175,23 +175,23 @@ class Queue {
    */
 
   length() {
-    return this._q.length
+    return this._q.length;
   }
   /**
    * Pause a running queue
    */
 
   pause() {
-    this.paused = true
+    this.paused = true;
   }
   /**
    * End the queue
    */
 
   stop() {
-    this._q = []
-    this.running = false
-    this.paused = true
+    this._q = [];
+    this.running = false;
+    this.paused = true;
   }
 }
 /**
@@ -207,24 +207,24 @@ class Queue {
 class Task {
   constructor(task, args, context) {
     return function () {
-      var toApply = arguments || []
+      var toApply = arguments || [];
       return new Promise((resolve, reject) => {
         var callback = function (value, err) {
           if (!value && err) {
-            reject(err)
+            reject(err);
           } else {
-            resolve(value)
+            resolve(value);
           }
-        } // Add the callback to the arguments list
+        }; // Add the callback to the arguments list
 
-        toApply.push(callback) // Apply all arguments to the functions
+        toApply.push(callback); // Apply all arguments to the functions
 
-        task.apply(context || this, toApply)
-      })
-    }
+        task.apply(context || this, toApply);
+      });
+    };
   }
 }
 
-exports.Task = Task
-var _default = Queue
-exports.default = _default
+exports.Task = Task;
+var _default = Queue;
+exports.default = _default;

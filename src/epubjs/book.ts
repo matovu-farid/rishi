@@ -40,7 +40,7 @@ export interface BookOptions {
     url: string,
     type: string,
     withCredentials: object,
-    headers: object
+    headers: object,
   ) => Promise<object>;
   requestCredentials?: object;
   requestHeaders?: object;
@@ -316,7 +316,7 @@ export class Book {
         input,
         "binary",
         this.settings.requestCredentials,
-        this.settings.requestHeaders
+        this.settings.requestHeaders,
       ).then(this.openEpub.bind(this));
     } else if (type == INPUT_TYPE.OPF) {
       this.url = new Url(input);
@@ -327,7 +327,7 @@ export class Book {
     } else {
       this.url = new Url(input);
       opening = this.openContainer(CONTAINER_PATH).then(
-        this.openPackaging.bind(this)
+        this.openPackaging.bind(this),
       );
     }
 
@@ -407,7 +407,7 @@ export class Book {
         resolved,
         null,
         this.settings.requestCredentials,
-        this.settings.requestHeaders
+        this.settings.requestHeaders,
       );
     }
   }
@@ -533,7 +533,7 @@ export class Book {
     this.spine.unpack(
       this.packaging,
       this.resolve.bind(this),
-      this.canonical.bind(this)
+      this.canonical.bind(this),
     );
 
     this.resources = new Resources(this.packaging.manifest, {

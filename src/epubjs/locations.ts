@@ -3,19 +3,25 @@ import Queue from "./utils/queue";
 import EpubCFI from "./epubcfi";
 import { EVENTS } from "./utils/constants";
 import EventEmitter from "event-emitter";
-/**
- * @typedef {import('epubjs/types/spine').default} Spine
- * @typedef {import('epubjs/types/section').default} Section
- */
+import Spine from "./spine";
+import Section from "./section";
 
-/**
- * Find Locations for a Book
- * @param {Spine} spine
- * @param {Request} request
- * @param {number} [pause=100]
- */
 class Locations {
-  constructor(spine, request, pause) {
+  spine: Spine;
+  request: Request;
+  pause: number;
+  q: Queue;
+  epubcfi: EpubCFI;
+  _locations: string[];
+  _locationsWords: number[];
+  total: number;
+  break: number;
+  _current: number;
+  _wordCounter: number;
+  _currentCfi: string;
+  processingTimeout: any;
+
+  constructor(spine: Spine, request: Request, pause: number) {
     this.spine = spine;
     this.request = request;
     this.pause = pause || 100;
@@ -33,7 +39,7 @@ class Locations {
 
     this._wordCounter = 0;
 
-    this.currentLocation = "";
+    //this.currentLocation = "";
     this._currentCfi = "";
     this.processingTimeout = undefined;
   }
@@ -43,20 +49,18 @@ class Locations {
    * @param  {int} chars how many chars to split on
    * @return {Promise<Array<string>>} locations
    */
-  generate(chars) {
+  generate(chars: number): Promise<Array<string>> {
     if (chars) {
       this.break = chars;
     }
 
     this.q.pause();
 
-    this.spine.each(
-      function (section) {
-        if (section.linear) {
-          this.q.enqueue(this.process.bind(this), section);
-        }
-      }.bind(this)
-    );
+    this.spine.each((section) => {
+      if (section.linear) {
+        this.q.enqueue(this.process.bind(this), section);
+      }
+    });
 
     return this.q.run().then(
       function () {
@@ -68,7 +72,7 @@ class Locations {
 
         return this._locations;
         // console.log(this.percentage(this.book.rendition.location.start), this.percentage(this.book.rendition.location.end));
-      }.bind(this)
+      }.bind(this),
     );
   }
 
@@ -92,10 +96,10 @@ class Locations {
 
         this.processingTimeout = setTimeout(
           () => completed.resolve(locations),
-          this.pause
+          this.pause,
         );
         return completed.promise;
-      }.bind(this)
+      }.bind(this),
     );
   }
 
@@ -184,12 +188,8 @@ class Locations {
 
   /**
    * Load all of sections in the book to generate locations
-   * @param  {string} startCfi start position
-   * @param  {int} wordCount how many words to split on
-   * @param  {int} count result count
-   * @return {object} locations
    */
-  generateFromWords(startCfi, wordCount, count) {
+  generateFromWords(startCfi: string, wordCount: number, count: number) {
     var start = startCfi ? new EpubCFI(startCfi) : undefined;
     this.q.pause();
     this._locationsWords = [];
@@ -205,7 +205,7 @@ class Locations {
                 section,
                 wordCount,
                 start,
-                count
+                count,
               );
             }
           } else {
@@ -214,11 +214,11 @@ class Locations {
               section,
               wordCount,
               start,
-              count
+              count,
             );
           }
         }
-      }.bind(this)
+      }.bind(this),
     );
 
     return this.q.run().then(
@@ -228,7 +228,7 @@ class Locations {
         }
 
         return this._locationsWords;
-      }.bind(this)
+      }.bind(this),
     );
   }
 
@@ -245,17 +245,17 @@ class Locations {
         this._locationsWords = this._locationsWords.concat(
           locations.length >= count
             ? locations.slice(0, remainingCount)
-            : locations
+            : locations,
         );
 
         section.unload();
 
         this.processingTimeout = setTimeout(
           () => completed.resolve(locations),
-          this.pause
+          this.pause,
         );
         return completed.promise;
-      }.bind(this)
+      }.bind(this),
     );
   }
 
@@ -281,7 +281,7 @@ class Locations {
         startCfi.range
           ? startCfi.path.steps.concat(startCfi.start.steps)
           : startCfi.path.steps,
-        contents.ownerDocument
+        contents.ownerDocument,
       );
     }
     var parser = function (node) {

@@ -1,57 +1,60 @@
 /* eslint-disable @typescript-eslint/ban-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import EventEmitter from 'events'
-import { extend, defer, isFloat } from './utils/core'
-import Hook from './utils/hook'
-import EpubCFI from './epubcfi'
-import Queue from './utils/queue'
-import Layout from './layout'
+import EventEmitter from "events";
+import { extend, defer, isFloat } from "./utils/new_core";
+import Hook from "./utils/hook";
+import EpubCFI from "./epubcfi";
+import Queue from "./utils/queue";
+import Layout from "./layout";
 // import Mapping from "./mapping";
-import Themes from './themes'
-import Contents from './contents'
-import Annotations from './annotations'
-import { EVENTS, DOM_EVENTS } from './utils/constants'
+import Themes from "./themes";
+import Contents from "./contents";
+import Annotations from "./annotations";
+import { EVENTS, DOM_EVENTS } from "./utils/constants";
 
 // Default Views
-import IframeView from './managers/views/iframe'
+import IframeView from "./managers/views/iframe";
 
 // Default View Managers
-import DefaultViewManager from './managers/default/index'
-import ContinuousViewManager from './managers/continuous/index'
+import DefaultViewManager from "./managers/default/index";
+import ContinuousViewManager from "./managers/continuous/index";
 
-import Book from './book'
-import Section from './section'
+import Book from "./book";
+import Section from "./section";
 
 export type ParagraphWithCFI = {
-  text: string
-  cfiRange: string
-}
+  text: string;
+  cfiRange: string;
+};
 
 export interface DisplayedLocation {
-  index: number
-  href: string
-  cfi: string
-  location: number
-  percentage: number
+  index: number;
+  href: string;
+  cfi: string;
+  location: number;
+  percentage: number;
   displayed: {
-    page: number
-    total: number
-  }
+    page: number;
+    total: number;
+  };
 }
 
 export interface Location {
-  start: DisplayedLocation
-  end: DisplayedLocation
-  atStart: boolean
-  atEnd: boolean
+  start: DisplayedLocation;
+  end: DisplayedLocation;
+  atStart: boolean;
+  atEnd: boolean;
 }
 
 export interface View {
-  on(MARK_CLICKED: any, arg1: (cfiRange: string, data: unknown) => void): unknown
-  index: number
-  section: Section
-  contents: Contents
+  on(
+    MARK_CLICKED: any,
+    arg1: (cfiRange: string, data: unknown) => void,
+  ): unknown;
+  index: number;
+  section: Section;
+  contents: Contents;
 }
 
 // type Section = {
@@ -62,74 +65,74 @@ export interface View {
 // }
 
 type EpubCFIPair = {
-  start: string
-  end: string
-}
+  start: string;
+  end: string;
+};
 
 export interface RenditionOptions {
   globalLayoutProperties: {
-    layout: any
-    spread: any
-    orientation: any
-    flow: any
-    viewport: any
-    minSpreadWidth: any
-    direction: any
-  }
-  orientation: any
-  direction: any
-  width?: number | string
-  height?: number | string
-  ignoreClass?: string
-  manager?: string | Function | object
-  view?: string | Function | object
-  flow?: string
-  layout?: string
-  spread?: string | boolean
-  minSpreadWidth?: number
-  stylesheet?: string
-  resizeOnOrientationChange?: boolean
-  script?: string
-  infinite?: boolean
-  overflow?: string
-  snap?: boolean | object
-  defaultDirection?: string
-  allowScriptedContent?: boolean
-  allowPopups?: boolean
+    layout: any;
+    spread: any;
+    orientation: any;
+    flow: any;
+    viewport: any;
+    minSpreadWidth: any;
+    direction: any;
+  };
+  orientation: any;
+  direction: any;
+  width?: number | string;
+  height?: number | string;
+  ignoreClass?: string;
+  manager?: string | Function | object;
+  view?: string | Function | object;
+  flow?: string;
+  layout?: string;
+  spread?: string | boolean;
+  minSpreadWidth?: number;
+  stylesheet?: string;
+  resizeOnOrientationChange?: boolean;
+  script?: string;
+  infinite?: boolean;
+  overflow?: string;
+  snap?: boolean | object;
+  defaultDirection?: string;
+  allowScriptedContent?: boolean;
+  allowPopups?: boolean;
 }
 
 export class Rendition extends EventEmitter {
-  settings: RenditionOptions
-  book: Book
+  settings: RenditionOptions;
+  book: Book;
   hooks: {
-    display: Hook
-    serialize: Hook
-    content: Hook
-    unloaded: Hook
-    layout: Hook
-    render: Hook
-    show: Hook
-  }
-  themes: Themes
-  annotations: Annotations
-  epubcfi: EpubCFI
-  q: Queue
-  location: Location
-  started: Promise<void>
-  private manager: DefaultViewManager | ContinuousViewManager
-  displaying: any
-  starting: any
-  ViewManager: any
-  View: any
-  _layout: any
+    display: Hook;
+    serialize: Hook;
+    content: Hook;
+    unloaded: Hook;
+    layout: Hook;
+    render: Hook;
+    show: Hook;
+  };
+  themes: Themes;
+  annotations: Annotations;
+  epubcfi: EpubCFI;
+  q: Queue;
+  location: Location;
+  started: Promise<void>;
+  private manager: DefaultViewManager | ContinuousViewManager;
+  displaying: any;
+  starting: any;
+  ViewManager: any;
+  View: any;
+  _layout: any;
   constructor(book: Book, options: RenditionOptions) {
-    super()
+    super();
     this.settings = extend(this.settings || {}, {
       width: null,
       height: null,
-      ignoreClass: '',
-      manager: 'default',
-      view: 'iframe',
+      ignoreClass: "",
+      manager: "default",
+      view: "iframe",
       flow: null,
       layout: null,
       spread: null,
@@ -138,18 +141,18 @@ export class Rendition extends EventEmitter {
       resizeOnOrientationChange: true,
       script: null,
       snap: false,
-      defaultDirection: 'ltr',
+      defaultDirection: "ltr",
       allowScriptedContent: false,
-      allowPopups: false
-    })
+      allowPopups: false,
+    });
 
-    extend(this.settings, options)
+    extend(this.settings, options);
 
-    if (typeof this.settings.manager === 'object') {
-      this.manager = this.settings.manager
+    if (typeof this.settings.manager === "object") {
+      this.manager = this.settings.manager;
     }
 
-    this.book = book
+    this.book = book;
 
     /**
      * Adds Hook methods to the Rendition prototype
@@ -164,8 +167,8 @@ export class Rendition extends EventEmitter {
       unloaded: new Hook(this),
       layout: new Hook(this),
       render: new Hook(this),
-      show: new Hook(this)
-    }
+      show: new Hook(this),
+    };
     // this.hooks.display = new Hook(this)
     // this.hooks.serialize = new Hook(this)
     // this.hooks.content = new Hook(this)
@@ -174,35 +177,35 @@ export class Rendition extends EventEmitter {
     // this.hooks.render = new Hook(this)
     // this.hooks.show = new Hook(this)
 
-    this.hooks.content.register(this.handleLinks.bind(this))
-    this.hooks.content.register(this.passEvents.bind(this))
-    this.hooks.content.register(this.adjustImages.bind(this))
+    this.hooks.content.register(this.handleLinks.bind(this));
+    this.hooks.content.register(this.passEvents.bind(this));
+    this.hooks.content.register(this.adjustImages.bind(this));
 
-    this.book.spine.hooks.content.register(this.injectIdentifier.bind(this))
+    this.book.spine.hooks.content.register(this.injectIdentifier.bind(this));
 
     if (this.settings.stylesheet) {
-      this.book.spine.hooks.content.register(this.injectStylesheet.bind(this))
+      this.book.spine.hooks.content.register(this.injectStylesheet.bind(this));
     }
 
     if (this.settings.script) {
-      this.book.spine.hooks.content.register(this.injectScript.bind(this))
+      this.book.spine.hooks.content.register(this.injectScript.bind(this));
     }
 
     /**
      * @member {Themes} themes
      * @memberof Rendition
      */
-    this.themes = new Themes(this)
+    this.themes = new Themes(this);
 
     /**
      * @member {Annotations} annotations
      * @memberof Rendition
      */
-    this.annotations = new Annotations(this)
+    this.annotations = new Annotations(this);
 
-    this.epubcfi = new EpubCFI()
+    this.epubcfi = new EpubCFI();
 
-    this.q = new Queue(this)
+    this.q = new Queue(this);
 
     /**
      * A Rendered Location Range
@@ -230,20 +233,20 @@ export class Rendition extends EventEmitter {
      * @property {boolean} atEnd
      * @memberof Rendition
      */
-    this.location = undefined
+    this.location = undefined;
 
     // Hold queue until book is opened
-    this.q.enqueue(this.book.opened)
+    this.q.enqueue(this.book.opened);
 
-    this.starting = new defer()
+    this.starting = new defer();
     /**
      * @member {promise} started returns after the rendition has started
      * @memberof Rendition
      */
-    this.started = this.starting.promise
+    this.started = this.starting.promise;
 
     // Block the queue until rendering is started
-    this.q.enqueue(this.start)
+    this.q.enqueue(this.start);
   }
 
   /**
@@ -251,7 +254,7 @@ export class Rendition extends EventEmitter {
    * @param {function} manager
    */
   setManager(manager: any) {
-    this.manager = manager
+    this.manager = manager;
   }
 
   /**
@@ -260,19 +263,19 @@ export class Rendition extends EventEmitter {
    * @return {method}
    */
   requireManager(manager: string) {
-    let viewManager: any
+    let viewManager: any;
 
     // If manager is a string, try to load from imported managers
-    if (typeof manager === 'string' && manager === 'default') {
-      viewManager = DefaultViewManager
-    } else if (typeof manager === 'string' && manager === 'continuous') {
-      viewManager = ContinuousViewManager
+    if (typeof manager === "string" && manager === "default") {
+      viewManager = DefaultViewManager;
+    } else if (typeof manager === "string" && manager === "continuous") {
+      viewManager = ContinuousViewManager;
     } else {
       // otherwise, assume we were passed a class function
-      viewManager = manager
+      viewManager = manager;
     }
 
-    return viewManager
+    return viewManager;
   }
 
   /**
@@ -281,17 +284,17 @@ export class Rendition extends EventEmitter {
    * @return {view}
    */
   requireView(view: string) {
-    var View: any
+    var View: any;
 
     // If view is a string, try to load from imported views,
-    if (typeof view == 'string' && view === 'iframe') {
-      View = IframeView
+    if (typeof view == "string" && view === "iframe") {
+      View = IframeView;
     } else {
       // otherwise, assume we were passed a class function
-      View = view
+      View = view;
     }
 
-    return View
+    return View;
   }
 
   /**
@@ -301,65 +304,70 @@ export class Rendition extends EventEmitter {
   start() {
     if (
       !this.settings.layout &&
-      (this.book.package.metadata.layout === 'pre-paginated' ||
-        this.book.displayOptions.fixedLayout === 'true')
+      (this.book.package.metadata.layout === "pre-paginated" ||
+        this.book.displayOptions.fixedLayout === "true")
     ) {
-      this.settings.layout = 'pre-paginated'
+      this.settings.layout = "pre-paginated";
     }
     switch (this.book.package.metadata.spread) {
-      case 'none':
-        this.settings.spread = 'none'
-        break
-      case 'both':
-        this.settings.spread = true
-        break
+      case "none":
+        this.settings.spread = "none";
+        break;
+      case "both":
+        this.settings.spread = true;
+        break;
     }
 
     if (!this.manager) {
-      this.ViewManager = this.requireManager(this.settings.manager)
-      this.View = this.requireView(this.settings.view)
+      this.ViewManager = this.requireManager(this.settings.manager);
+      this.View = this.requireView(this.settings.view);
 
       this.manager = new this.ViewManager({
         view: this.View,
         queue: this.q,
         request: this.book.load.bind(this.book),
-        settings: this.settings
-      })
+        settings: this.settings,
+      });
     }
 
-    this.direction(this.book.package.metadata.direction || this.settings.defaultDirection)
+    this.direction(
+      this.book.package.metadata.direction || this.settings.defaultDirection,
+    );
 
     // Parse metadata to get layout props
     this.settings.globalLayoutProperties = this.determineLayoutProperties(
-      this.book.package.metadata
-    )
+      this.book.package.metadata,
+    );
 
-    this.flow(this.settings.globalLayoutProperties.flow)
+    this.flow(this.settings.globalLayoutProperties.flow);
 
-    this.layout(this.settings.globalLayoutProperties)
+    this.layout(this.settings.globalLayoutProperties);
 
     // Listen for displayed views
-    this.manager.on(EVENTS.MANAGERS.ADDED, this.afterDisplayed.bind(this))
-    this.manager.on(EVENTS.MANAGERS.REMOVED, this.afterRemoved.bind(this))
+    this.manager.on(EVENTS.MANAGERS.ADDED, this.afterDisplayed.bind(this));
+    this.manager.on(EVENTS.MANAGERS.REMOVED, this.afterRemoved.bind(this));
 
     // Listen for resizing
-    this.manager.on(EVENTS.MANAGERS.RESIZED, this.onResized.bind(this))
+    this.manager.on(EVENTS.MANAGERS.RESIZED, this.onResized.bind(this));
 
     // Listen for rotation
-    this.manager.on(EVENTS.MANAGERS.ORIENTATION_CHANGE, this.onOrientationChange.bind(this))
+    this.manager.on(
+      EVENTS.MANAGERS.ORIENTATION_CHANGE,
+      this.onOrientationChange.bind(this),
+    );
 
     // Listen for scroll changes
-    this.manager.on(EVENTS.MANAGERS.SCROLLED, this.reportLocation.bind(this))
+    this.manager.on(EVENTS.MANAGERS.SCROLLED, this.reportLocation.bind(this));
 
     /**
      * Emit that rendering has started
      * @event started
      * @memberof Rendition
      */
-    this.emit(EVENTS.RENDITION.STARTED)
+    this.emit(EVENTS.RENDITION.STARTED);
 
     // Start processing queue
-    this.starting.resolve()
+    this.starting.resolve();
   }
 
   /**
@@ -373,16 +381,16 @@ export class Rendition extends EventEmitter {
       // Start rendering
       this.manager.render(element, {
         width: this.settings.width,
-        height: this.settings.height
-      })
+        height: this.settings.height,
+      });
 
       /**
        * Emit that rendering has attached to an element
        * @event attached
        * @memberof Rendition
        */
-      this.emit(EVENTS.RENDITION.ATTACHED)
-    })
+      this.emit(EVENTS.RENDITION.ATTACHED);
+    });
   }
 
   /**
@@ -395,9 +403,9 @@ export class Rendition extends EventEmitter {
    */
   display(target: string): Promise<any> {
     if (this.displaying) {
-      this.displaying.resolve()
+      this.displaying.resolve();
     }
-    return this.q.enqueue(this._display, target)
+    return this.q.enqueue(this._display, target);
   }
 
   /**
@@ -408,32 +416,32 @@ export class Rendition extends EventEmitter {
    */
   _display(target: string) {
     if (!this.book) {
-      return
+      return;
     }
     // const isCfiString = this.epubcfi.isCfiString(target)
-    const displaying = new defer()
-    const displayed = displaying.promise
-    let section: any
+    const displaying = new defer();
+    const displayed = displaying.promise;
+    let section: any;
     // let moveTo: any
 
-    this.displaying = displaying
+    this.displaying = displaying;
 
     // Check if this is a book percentage
     if (this.book.locations.length() && isFloat(target)) {
-      target = this.book.locations.cfiFromPercentage(parseFloat(target))
+      target = this.book.locations.cfiFromPercentage(parseFloat(target));
     }
 
-    section = this.book.spine.get(target)
+    section = this.book.spine.get(target);
 
     if (!section) {
-      displaying.reject(new Error('No Section Found'))
-      return displayed
+      displaying.reject(new Error("No Section Found"));
+      return displayed;
     }
 
     this.manager.display(section, target).then(
       () => {
-        displaying.resolve(section)
-        this.displaying = undefined
+        displaying.resolve(section);
+        this.displaying = undefined;
 
         /**
          * Emit that a section has been displayed
@@ -441,8 +449,8 @@ export class Rendition extends EventEmitter {
          * @param {Section} section
          * @memberof Rendition
          */
-        this.emit(EVENTS.RENDITION.DISPLAYED, section)
-        this.reportLocation()
+        this.emit(EVENTS.RENDITION.DISPLAYED, section);
+        this.reportLocation();
       },
       (err: any) => {
         /**
@@ -451,11 +459,11 @@ export class Rendition extends EventEmitter {
          * @param {Section} section
          * @memberof Rendition
          */
-        this.emit(EVENTS.RENDITION.DISPLAY_ERROR, err)
-      }
-    )
+        this.emit(EVENTS.RENDITION.DISPLAY_ERROR, err);
+      },
+    );
 
-    return displayed
+    return displayed;
   }
 
   /*
@@ -510,8 +518,8 @@ export class Rendition extends EventEmitter {
    */
   afterDisplayed(view: View) {
     view.on(EVENTS.VIEWS.MARK_CLICKED, (cfiRange: string, data: unknown) =>
-      this.triggerMarkEvent(cfiRange, data, view.contents)
-    )
+      this.triggerMarkEvent(cfiRange, data, view.contents),
+    );
 
     this.hooks.render.trigger(view, this).then(() => {
       if (view.contents) {
@@ -523,12 +531,12 @@ export class Rendition extends EventEmitter {
            * @param {View} view
            * @memberof Rendition
            */
-          this.emit(EVENTS.RENDITION.RENDERED, view.section, view)
-        })
+          this.emit(EVENTS.RENDITION.RENDERED, view.section, view);
+        });
       } else {
-        this.emit(EVENTS.RENDITION.RENDERED, view.section, view)
+        this.emit(EVENTS.RENDITION.RENDERED, view.section, view);
       }
-    })
+    });
   }
 
   /**
@@ -545,8 +553,8 @@ export class Rendition extends EventEmitter {
        * @param {View} view
        * @memberof Rendition
        */
-      this.emit(EVENTS.RENDITION.REMOVED, view.section, view)
-    })
+      this.emit(EVENTS.RENDITION.REMOVED, view.section, view);
+    });
   }
 
   /**
@@ -566,13 +574,13 @@ export class Rendition extends EventEmitter {
       EVENTS.RENDITION.RESIZED,
       {
         width: size.width,
-        height: size.height
+        height: size.height,
       },
-      epubcfi
-    )
+      epubcfi,
+    );
 
     if (this.location && this.location.start) {
-      this.display(epubcfi || this.location.start.cfi)
+      this.display(epubcfi || this.location.start.cfi);
     }
   }
 
@@ -587,7 +595,7 @@ export class Rendition extends EventEmitter {
      * @param {string} orientation
      * @memberof Rendition
      */
-    this.emit(EVENTS.RENDITION.ORIENTATION_CHANGE, orientation)
+    this.emit(EVENTS.RENDITION.ORIENTATION_CHANGE, orientation);
   }
 
   /**
@@ -596,7 +604,7 @@ export class Rendition extends EventEmitter {
    * @param {object} offset
    */
   moveTo(offset: any) {
-    this.manager.moveTo(offset)
+    this.manager.moveTo(offset);
   }
 
   /**
@@ -607,19 +615,19 @@ export class Rendition extends EventEmitter {
    */
   resize(width: number, height: number, epubcfi: string) {
     if (width) {
-      this.settings.width = width
+      this.settings.width = width;
     }
     if (height) {
-      this.settings.height = height
+      this.settings.height = height;
     }
-    this.manager.resize(width, height, epubcfi)
+    this.manager.resize(width, height, epubcfi);
   }
 
   /**
    * Clear all rendered views
    */
   clear() {
-    this.manager.clear()
+    this.manager.clear();
   }
 
   /**
@@ -627,7 +635,9 @@ export class Rendition extends EventEmitter {
    * @return {Promise}
    */
   next() {
-    return this.q.enqueue(this.manager.next.bind(this.manager)).then(this.reportLocation.bind(this))
+    return this.q
+      .enqueue(this.manager.next.bind(this.manager))
+      .then(this.reportLocation.bind(this));
   }
 
   /**
@@ -635,7 +645,9 @@ export class Rendition extends EventEmitter {
    * @return {Promise}
    */
   prev() {
-    return this.q.enqueue(this.manager.prev.bind(this.manager)).then(this.reportLocation.bind(this))
+    return this.q
+      .enqueue(this.manager.prev.bind(this.manager))
+      .then(this.reportLocation.bind(this));
   }
 
   //-- http://www.idpf.org/epub/301/spec/epub-publications.html#meta-properties-rendering
@@ -647,21 +659,23 @@ export class Rendition extends EventEmitter {
    */
   determineLayoutProperties(metadata: unknown) {
     var properties: {
-      layout: any
-      spread: any
-      orientation: any
-      flow: any
-      viewport: any
-      minSpreadWidth: any
-      direction: any
-    }
-    var layout = this.settings.layout || metadata.layout || 'reflowable'
-    var spread = this.settings.spread || metadata.spread || 'auto'
-    var orientation = this.settings.orientation || metadata.orientation || 'auto'
-    var flow = this.settings.flow || metadata.flow || 'auto'
-    var viewport = metadata.viewport || ''
-    var minSpreadWidth = this.settings.minSpreadWidth || metadata.minSpreadWidth || 800
-    var direction = this.settings.direction || metadata.direction || 'ltr'
+      layout: any;
+      spread: any;
+      orientation: any;
+      flow: any;
+      viewport: any;
+      minSpreadWidth: any;
+      direction: any;
+    };
+    var layout = this.settings.layout || metadata.layout || "reflowable";
+    var spread = this.settings.spread || metadata.spread || "auto";
+    var orientation =
+      this.settings.orientation || metadata.orientation || "auto";
+    var flow = this.settings.flow || metadata.flow || "auto";
+    var viewport = metadata.viewport || "";
+    var minSpreadWidth =
+      this.settings.minSpreadWidth || metadata.minSpreadWidth || 800;
+    var direction = this.settings.direction || metadata.direction || "ltr";
 
     if (
       (this.settings.width === 0 || this.settings.width > 0) &&
@@ -677,10 +691,10 @@ export class Rendition extends EventEmitter {
       flow: flow,
       viewport: viewport,
       minSpreadWidth: minSpreadWidth,
-      direction: direction
-    }
+      direction: direction,
+    };
 
-    return properties
+    return properties;
   }
 
   /**
@@ -689,32 +703,36 @@ export class Rendition extends EventEmitter {
    * @param  {string} flow
    */
   flow(flow: string) {
-    var _flow = flow
-    if (flow === 'scrolled' || flow === 'scrolled-doc' || flow === 'scrolled-continuous') {
-      _flow = 'scrolled'
+    var _flow = flow;
+    if (
+      flow === "scrolled" ||
+      flow === "scrolled-doc" ||
+      flow === "scrolled-continuous"
+    ) {
+      _flow = "scrolled";
     }
 
-    if (flow === 'auto' || flow === 'paginated') {
-      _flow = 'paginated'
+    if (flow === "auto" || flow === "paginated") {
+      _flow = "paginated";
     }
 
-    this.settings.flow = flow
+    this.settings.flow = flow;
 
     if (this._layout) {
-      this._layout.flow(_flow)
+      this._layout.flow(_flow);
     }
 
     if (this.manager && this._layout) {
-      this.manager.applyLayout(this._layout)
+      this.manager.applyLayout(this._layout);
     }
 
     if (this.manager) {
-      this.manager.updateFlow(_flow)
+      this.manager.updateFlow(_flow);
     }
 
     if (this.manager && this.manager.isRendered() && this.location) {
-      this.manager.clear()
-      this.display(this.location.start.cfi)
+      this.manager.clear();
+      this.display(this.location.start.cfi);
     }
   }
 
@@ -724,21 +742,21 @@ export class Rendition extends EventEmitter {
    */
   layout(settings: { spread: any }) {
     if (settings) {
-      this._layout = new Layout(settings)
-      this._layout.spread(settings.spread, this.settings.minSpreadWidth)
+      this._layout = new Layout(settings);
+      this._layout.spread(settings.spread, this.settings.minSpreadWidth);
 
       // this.mapping = new Mapping(this._layout.props);
 
       this._layout.on(EVENTS.LAYOUT.UPDATED, (props: any, changed: any) => {
-        this.emit(EVENTS.RENDITION.LAYOUT, props, changed)
-      })
+        this.emit(EVENTS.RENDITION.LAYOUT, props, changed);
+      });
     }
 
     if (this.manager && this._layout) {
-      this.manager.applyLayout(this._layout)
+      this.manager.applyLayout(this._layout);
     }
 
-    return this._layout
+    return this._layout;
   }
 
   /**
@@ -747,18 +765,18 @@ export class Rendition extends EventEmitter {
    * @param  {int} [min] min width to use spreads at
    */
   spread(spread: string, min: number) {
-    this.settings.spread = spread
+    this.settings.spread = spread;
 
     if (min) {
-      this.settings.minSpreadWidth = min
+      this.settings.minSpreadWidth = min;
     }
 
     if (this._layout) {
-      this._layout.spread(spread, min)
+      this._layout.spread(spread, min);
     }
 
     if (this.manager && this.manager.isRendered()) {
-      this.manager.updateLayout()
+      this.manager.updateLayout();
     }
   }
 
@@ -767,15 +785,15 @@ export class Rendition extends EventEmitter {
    * @param  {string} dir
    */
   direction(dir: string) {
-    this.settings.direction = dir || 'ltr'
+    this.settings.direction = dir || "ltr";
 
     if (this.manager) {
-      this.manager.direction(this.settings.direction)
+      this.manager.direction(this.settings.direction);
     }
 
     if (this.manager && this.manager.isRendered() && this.location) {
-      this.manager.clear()
-      this.display(this.location.start.cfi)
+      this.manager.clear();
+      this.display(this.location.start.cfi);
     }
   }
 
@@ -789,37 +807,41 @@ export class Rendition extends EventEmitter {
       function reportedLocation(this: any) {
         requestAnimationFrame(
           function reportedLocationAfterRAF(this: any) {
-            var location = this.manager.currentLocation()
-            if (location && location.then && typeof location.then === 'function') {
+            var location = this.manager.currentLocation();
+            if (
+              location &&
+              location.then &&
+              typeof location.then === "function"
+            ) {
               location.then(
                 function (result) {
-                  let located = this.located(result)
+                  let located = this.located(result);
 
                   if (!located || !located.start || !located.end) {
-                    return
+                    return;
                   }
 
-                  this.location = located
+                  this.location = located;
 
                   this.emit(EVENTS.RENDITION.LOCATION_CHANGED, {
                     index: this.location.start.index,
                     href: this.location.start.href,
                     start: this.location.start.cfi,
                     end: this.location.end.cfi,
-                    percentage: this.location.start.percentage
-                  })
+                    percentage: this.location.start.percentage,
+                  });
 
-                  this.emit(EVENTS.RENDITION.RELOCATED, this.location)
-                }.bind(this)
-              )
+                  this.emit(EVENTS.RENDITION.RELOCATED, this.location);
+                }.bind(this),
+              );
             } else if (location) {
-              let located = this.located(location)
+              let located = this.located(location);
 
               if (!located || !located.start || !located.end) {
-                return
+                return;
               }
 
-              this.location = located
+              this.location = located;
 
               /**
                * @event locationChanged
@@ -837,20 +859,20 @@ export class Rendition extends EventEmitter {
                 href: this.location.start.href,
                 start: this.location.start.cfi,
                 end: this.location.end.cfi,
-                percentage: this.location.start.percentage
-              })
+                percentage: this.location.start.percentage,
+              });
 
               /**
                * @event relocated
                * @type {displayedLocation}
                * @memberof Rendition
                */
-              this.emit(EVENTS.RENDITION.RELOCATED, this.location)
+              this.emit(EVENTS.RENDITION.RELOCATED, this.location);
             }
-          }.bind(this)
-        )
-      }.bind(this)
-    )
+          }.bind(this),
+        );
+      }.bind(this),
+    );
   }
 
   /**
@@ -858,17 +880,17 @@ export class Rendition extends EventEmitter {
    * @return {displayedLocation | promise} location (may be a promise)
    */
   currentLocation() {
-    var location = this.manager.currentLocation()
-    if (location && location.then && typeof location.then === 'function') {
+    var location = this.manager.currentLocation();
+    if (location && location.then && typeof location.then === "function") {
       location.then(
         function (result) {
-          let located = this.located(result)
-          return located
-        }.bind(this)
-      )
+          let located = this.located(result);
+          return located;
+        }.bind(this),
+      );
     } else if (location) {
-      let located = this.located(location)
-      return located
+      let located = this.located(location);
+      return located;
     }
   }
 
@@ -880,10 +902,10 @@ export class Rendition extends EventEmitter {
    */
   located(location: string | any[]) {
     if (!location.length) {
-      return {}
+      return {};
     }
-    let start = location[0]
-    let end = location[location.length - 1]
+    let start = location[0];
+    let end = location[location.length - 1];
 
     let located = {
       start: {
@@ -892,8 +914,8 @@ export class Rendition extends EventEmitter {
         cfi: start.mapping.start,
         displayed: {
           page: start.pages[0] || 1,
-          total: start.totalPages
-        }
+          total: start.totalPages,
+        },
       },
       end: {
         index: end.index,
@@ -901,45 +923,52 @@ export class Rendition extends EventEmitter {
         cfi: end.mapping.end,
         displayed: {
           page: end.pages[end.pages.length - 1] || 1,
-          total: end.totalPages
-        }
-      }
-    }
+          total: end.totalPages,
+        },
+      },
+    };
 
-    let locationStart = this.book.locations.locationFromCfi(start.mapping.start)
-    let locationEnd = this.book.locations.locationFromCfi(end.mapping.end)
+    let locationStart = this.book.locations.locationFromCfi(
+      start.mapping.start,
+    );
+    let locationEnd = this.book.locations.locationFromCfi(end.mapping.end);
 
     if (locationStart != null) {
-      located.start.location = locationStart
-      located.start.percentage = this.book.locations.percentageFromLocation(locationStart)
+      located.start.location = locationStart;
+      located.start.percentage =
+        this.book.locations.percentageFromLocation(locationStart);
     }
     if (locationEnd != null) {
-      located.end.location = locationEnd
-      located.end.percentage = this.book.locations.percentageFromLocation(locationEnd)
+      located.end.location = locationEnd;
+      located.end.percentage =
+        this.book.locations.percentageFromLocation(locationEnd);
     }
 
-    let pageStart = this.book.pageList.pageFromCfi(start.mapping.start)
-    let pageEnd = this.book.pageList.pageFromCfi(end.mapping.end)
+    let pageStart = this.book.pageList.pageFromCfi(start.mapping.start);
+    let pageEnd = this.book.pageList.pageFromCfi(end.mapping.end);
 
     if (pageStart != -1) {
-      located.start.page = pageStart
+      located.start.page = pageStart;
     }
     if (pageEnd != -1) {
-      located.end.page = pageEnd
+      located.end.page = pageEnd;
     }
 
     if (
       end.index === this.book.spine.last().index &&
       located.end.displayed.page >= located.end.displayed.total
     ) {
-      located.atEnd = true
+      located.atEnd = true;
     }
 
-    if (start.index === this.book.spine.first().index && located.start.displayed.page === 1) {
-      located.atStart = true
+    if (
+      start.index === this.book.spine.first().index &&
+      located.start.displayed.page === 1
+    ) {
+      located.atStart = true;
     }
 
-    return located
+    return located;
   }
 
   /**
@@ -950,9 +979,9 @@ export class Rendition extends EventEmitter {
     // this.q.clear();
     // this.q = undefined;
 
-    this.manager && this.manager.destroy()
+    this.manager && this.manager.destroy();
 
-    this.book = undefined
+    this.book = undefined;
 
     // this.views = null;
 
@@ -980,10 +1009,12 @@ export class Rendition extends EventEmitter {
    */
   passEvents(contents: Contents) {
     DOM_EVENTS.forEach((e: any) => {
-      contents.on(e, (ev: Event) => this.triggerViewEvent(ev, contents))
-    })
+      contents.on(e, (ev: Event) => this.triggerViewEvent(ev, contents));
+    });
 
-    contents.on(EVENTS.CONTENTS.SELECTED, (e: string) => this.triggerSelectedEvent(e, contents))
+    contents.on(EVENTS.CONTENTS.SELECTED, (e: string) =>
+      this.triggerSelectedEvent(e, contents),
+    );
   }
 
   /**
@@ -992,7 +1023,7 @@ export class Rendition extends EventEmitter {
    * @param  {event} e
    */
   triggerViewEvent(e: Event, contents: Contents) {
-    this.emit(e.type, e, contents)
+    this.emit(e.type, e, contents);
   }
 
   /**
@@ -1008,7 +1039,7 @@ export class Rendition extends EventEmitter {
      * @param {Contents} contents
      * @memberof Rendition
      */
-    this.emit(EVENTS.RENDITION.SELECTED, cfirange, contents)
+    this.emit(EVENTS.RENDITION.SELECTED, cfirange, contents);
   }
 
   /**
@@ -1025,7 +1056,7 @@ export class Rendition extends EventEmitter {
      * @param {Contents} contents
      * @memberof Rendition
      */
-    this.emit(EVENTS.RENDITION.MARK_CLICKED, cfiRange, data, contents)
+    this.emit(EVENTS.RENDITION.MARK_CLICKED, cfiRange, data, contents);
   }
 
   /**
@@ -1035,14 +1066,14 @@ export class Rendition extends EventEmitter {
    * @return {range}
    */
   getRange(cfi: string, ignoreClass: string) {
-    var _cfi = new EpubCFI(cfi)
+    var _cfi = new EpubCFI(cfi);
     var found = this.manager.visible().filter(function (view: { index: any }) {
-      if (_cfi.spinePos === view.index) return true
-    })
+      if (_cfi.spinePos === view.index) return true;
+    });
 
     // Should only every return 1 item
     if (found.length) {
-      return found[0].contents.range(_cfi, ignoreClass)
+      return found[0].contents.range(_cfi, ignoreClass);
     }
   }
 
@@ -1059,50 +1090,61 @@ export class Rendition extends EventEmitter {
     cfiRange: string,
     data = {},
     cb?: () => void,
-    className = 'epubjs-hl',
-    styles = {}
+    className = "epubjs-hl",
+    styles = {},
   ) {
     if (!this.manager) {
-      return Promise.reject(new Error('Rendition manager not available'))
+      return Promise.reject(new Error("Rendition manager not available"));
     }
 
     try {
       // Parse the CFI range to validate it
-      const rangeCfi = new EpubCFI(cfiRange)
+      const rangeCfi = new EpubCFI(cfiRange);
 
       // Check if this is a range CFI (should have start and end)
       if (!rangeCfi.range) {
-        return Promise.reject(new Error('CFI string is not a range: ' + cfiRange))
+        return Promise.reject(
+          new Error("CFI string is not a range: " + cfiRange),
+        );
       }
 
       // Find the view that contains this CFI range
-      const found = this.manager.visible().filter(function (view: { index: any }) {
-        return rangeCfi.spinePos === view.index
-      })
+      const found = this.manager.visible().filter(function (view: {
+        index: any;
+      }) {
+        return rangeCfi.spinePos === view.index;
+      });
 
       if (!found.length) {
-        return Promise.reject(new Error('No view found for CFI range: ' + cfiRange))
+        return Promise.reject(
+          new Error("No view found for CFI range: " + cfiRange),
+        );
       }
 
-      const view = found[0]
+      const view = found[0];
       if (!view.contents) {
-        return Promise.reject(new Error('View contents not available'))
+        return Promise.reject(new Error("View contents not available"));
       }
 
       // Verify the CFI range can be converted to a DOM range
-      const domRange = rangeCfi.toRange(view.contents.document, this.settings.ignoreClass)
+      const domRange = rangeCfi.toRange(
+        view.contents.document,
+        this.settings.ignoreClass,
+      );
 
       if (!domRange) {
-        return Promise.reject(new Error('Could not convert CFI range to DOM range'))
+        return Promise.reject(
+          new Error("Could not convert CFI range to DOM range"),
+        );
       }
 
       // Apply default yellow highlight styles if no custom styles provided
       const defaultStyles = {
-        fill: 'yellow',
-        'fill-opacity': '0.3',
-        'mix-blend-mode': 'multiply'
-      }
-      const mergedStyles = Object.assign(defaultStyles, styles)
+        fill: "yellow",
+        "fill-opacity": "0.3",
+        "mix-blend-mode": "multiply",
+      };
+      const mergedStyles = Object.assign(defaultStyles, styles);
 
       // Use the existing highlight method with the CFI range
       // Pass the parsed EpubCFI instance as expected by the API
@@ -1111,13 +1153,15 @@ export class Rendition extends EventEmitter {
         data,
         cb || (() => {}),
         className,
-        mergedStyles
-      )
+        mergedStyles,
+      );
 
       // Return a resolved promise since highlight is synchronous
-      return Promise.resolve(annotation)
+      return Promise.resolve(annotation);
     } catch (error) {
-      return Promise.reject(new Error('Error highlighting range: ' + error.message))
+      return Promise.reject(
+        new Error("Error highlighting range: " + error.message),
+      );
     }
   }
 
@@ -1128,43 +1172,50 @@ export class Rendition extends EventEmitter {
    */
   removeHighlight(cfiRange: string) {
     if (!this.manager) {
-      return Promise.reject(new Error('Rendition manager not available'))
+      return Promise.reject(new Error("Rendition manager not available"));
     }
 
     try {
       // Parse the CFI range to validate it
-      const rangeCfi = new EpubCFI(cfiRange)
+      const rangeCfi = new EpubCFI(cfiRange);
 
       // Check if this is a range CFI (should have start and end)
       if (!rangeCfi.range) {
-        return Promise.reject(new Error('CFI string is not a range: ' + cfiRange))
+        return Promise.reject(
+          new Error("CFI string is not a range: " + cfiRange),
+        );
       }
 
       // Find the view that contains this CFI range
-      const found = this.manager.visible().filter(function (view: { index: any }) {
-        return rangeCfi.spinePos === view.index
-      })
+      const found = this.manager.visible().filter(function (view: {
+        index: any;
+      }) {
+        return rangeCfi.spinePos === view.index;
+      });
 
       if (!found.length) {
         // If no view is found, the highlight might still exist in the store
         // but not be visible, so we can still try to remove it
         console.warn(
-          'No visible view found for CFI range, attempting to remove from store: ' + cfiRange
-        )
+          "No visible view found for CFI range, attempting to remove from store: " +
+            cfiRange,
+        );
       }
 
       // Check if the annotation exists before removal
-      const hash = encodeURI(cfiRange + 'highlight')
-      const annotationExists = hash in this.annotations._annotations
+      const hash = encodeURI(cfiRange + "highlight");
+      const annotationExists = hash in this.annotations._annotations;
 
       // Remove the highlight annotation
       // Pass the parsed EpubCFI instance as expected by the API
-      this.annotations.remove(rangeCfi, 'highlight')
+      this.annotations.remove(rangeCfi, "highlight");
 
       // Return a resolved promise with the result
-      return Promise.resolve(annotationExists)
+      return Promise.resolve(annotationExists);
     } catch (error) {
-      return Promise.reject(new Error('Error removing highlight: ' + error.message))
+      return Promise.reject(
+        new Error("Error removing highlight: " + error.message),
+      );
     }
   }
 
@@ -1174,48 +1225,50 @@ export class Rendition extends EventEmitter {
    * @private
    */
   adjustImages(contents: Contents) {
-    if (this._layout.name === 'pre-paginated') {
+    if (this._layout.name === "pre-paginated") {
       return new Promise(function (resolve) {
-        resolve()
-      })
+        resolve();
+      });
     }
 
-    let computed = contents.window.getComputedStyle(contents.content, null)
+    let computed = contents.window.getComputedStyle(contents.content, null);
     let height =
       (contents.content.offsetHeight -
-        (parseFloat(computed.paddingTop) + parseFloat(computed.paddingBottom))) *
-      0.95
-    let horizontalPadding = parseFloat(computed.paddingLeft) + parseFloat(computed.paddingRight)
+        (parseFloat(computed.paddingTop) +
+          parseFloat(computed.paddingBottom))) *
+      0.95;
+    let horizontalPadding =
+      parseFloat(computed.paddingLeft) + parseFloat(computed.paddingRight);
 
     contents.addStylesheetRules({
       img: {
-        'max-width':
+        "max-width":
           (this._layout.columnWidth
-            ? this._layout.columnWidth - horizontalPadding + 'px'
-            : '100%') + '!important',
-        'max-height': height + 'px' + '!important',
-        'object-fit': 'contain',
-        'page-break-inside': 'avoid',
-        'break-inside': 'avoid',
-        'box-sizing': 'border-box'
+            ? this._layout.columnWidth - horizontalPadding + "px"
+            : "100%") + "!important",
+        "max-height": height + "px" + "!important",
+        "object-fit": "contain",
+        "page-break-inside": "avoid",
+        "break-inside": "avoid",
+        "box-sizing": "border-box",
       },
       svg: {
-        'max-width':
+        "max-width":
           (this._layout.columnWidth
-            ? this._layout.columnWidth - horizontalPadding + 'px'
-            : '100%') + '!important',
-        'max-height': height + 'px' + '!important',
-        'page-break-inside': 'avoid',
-        'break-inside': 'avoid'
-      }
-    })
+            ? this._layout.columnWidth - horizontalPadding + "px"
+            : "100%") + "!important",
+        "max-height": height + "px" + "!important",
+        "page-break-inside": "avoid",
+        "break-inside": "avoid",
+      },
+    });
 
     return new Promise(function (resolve, reject) {
       // Wait to apply
       setTimeout(function () {
-        resolve()
-      }, 1)
-    })
+        resolve();
+      }, 1);
+    });
   }
 
   /**
@@ -1223,7 +1276,7 @@ export class Rendition extends EventEmitter {
    * @returns {Contents[]}
    */
   getContents() {
-    return this.manager ? this.manager.getContents() : []
+    return this.manager ? this.manager.getContents() : [];
   }
 
   /**
@@ -1231,8 +1284,8 @@ export class Rendition extends EventEmitter {
    * @returns {Views}
    */
   views() {
-    let views = this.manager ? this.manager.views : undefined
-    return views || []
+    let views = this.manager ? this.manager.views : undefined;
+    return views || [];
   }
 
   /**
@@ -1241,59 +1294,63 @@ export class Rendition extends EventEmitter {
    */
   getCurrentViewText() {
     if (!this.manager) {
-      return null
+      return null;
     }
 
     // Get the current location which includes the visible range
-    const location = this.manager.currentLocation()
+    const location = this.manager.currentLocation();
 
     if (!location || !location.length || !location[0]) {
-      return null
+      return null;
     }
 
     // Get the first visible section's mapping which contains the CFI range
-    const visibleSection = location[0]
+    const visibleSection = location[0];
 
-    if (!visibleSection.mapping || !visibleSection.mapping.start || !visibleSection.mapping.end) {
-      return null
+    if (
+      !visibleSection.mapping ||
+      !visibleSection.mapping.start ||
+      !visibleSection.mapping.end
+    ) {
+      return null;
     }
 
     // Find the view for this section
-    const view = this.manager.views.find({ index: visibleSection.index })
+    const view = this.manager.views.find({ index: visibleSection.index });
 
     if (!view || !view.contents || !view.contents.document) {
-      return null
+      return null;
     }
 
     try {
       // Create CFI ranges for the visible page
-      const startCfi = new EpubCFI(visibleSection.mapping.start)
-      const endCfi = new EpubCFI(visibleSection.mapping.end)
+      const startCfi = new EpubCFI(visibleSection.mapping.start);
+      const endCfi = new EpubCFI(visibleSection.mapping.end);
 
       // Convert CFIs to DOM ranges
-      const startRange = startCfi.toRange(view.contents.document)
-      const endRange = endCfi.toRange(view.contents.document)
+      const startRange = startCfi.toRange(view.contents.document);
+      const endRange = endCfi.toRange(view.contents.document);
 
       if (!startRange || !endRange) {
-        return null
+        return null;
       }
 
       // Create a range that encompasses the visible content
-      const range = view.contents.document.createRange()
-      range.setStart(startRange.startContainer, startRange.startOffset)
-      range.setEnd(endRange.endContainer, endRange.endOffset)
+      const range = view.contents.document.createRange();
+      range.setStart(startRange.startContainer, startRange.startOffset);
+      range.setEnd(endRange.endContainer, endRange.endOffset);
 
       // Extract text from the range
-      const text = range.toString()
+      const text = range.toString();
 
       return {
         text: text,
         startCfi: visibleSection.mapping.start,
-        endCfi: visibleSection.mapping.end
-      }
+        endCfi: visibleSection.mapping.end,
+      };
     } catch (e) {
-      console.error('Error extracting visible text:', e)
-      return null
+      console.error("Error extracting visible text:", e);
+      return null;
     }
   }
 
@@ -1303,53 +1360,57 @@ export class Rendition extends EventEmitter {
    */
   getCurrentViewParagraphs(): ParagraphWithCFI[] | null {
     if (!this.manager) {
-      return null
+      return null;
     }
 
     // Get the current location which includes the visible range
-    const location = this.manager.currentLocation()
+    const location = this.manager.currentLocation();
 
     if (!location || !location.length || !location[0]) {
-      return null
+      return null;
     }
 
-    const visibleSection = location[0]
+    const visibleSection = location[0];
 
-    if (!visibleSection.mapping || !visibleSection.mapping.start || !visibleSection.mapping.end) {
-      return null
+    if (
+      !visibleSection.mapping ||
+      !visibleSection.mapping.start ||
+      !visibleSection.mapping.end
+    ) {
+      return null;
     }
 
     // Find the view for this section
-    const view = this.manager.views.find({ index: visibleSection.index })
+    const view = this.manager.views.find({ index: visibleSection.index });
 
     if (!view || !view.contents || !view.contents.document) {
-      return null
+      return null;
     }
 
     try {
       // Create CFI ranges for the visible page
-      const startCfi = new EpubCFI(visibleSection.mapping.start)
-      const endCfi = new EpubCFI(visibleSection.mapping.end)
+      const startCfi = new EpubCFI(visibleSection.mapping.start);
+      const endCfi = new EpubCFI(visibleSection.mapping.end);
 
       // Convert CFIs to DOM ranges
-      const startRange = startCfi.toRange(view.contents.document)
-      const endRange = endCfi.toRange(view.contents.document)
+      const startRange = startCfi.toRange(view.contents.document);
+      const endRange = endCfi.toRange(view.contents.document);
 
       if (!startRange || !endRange) {
-        return null
+        return null;
       }
 
       // Create a range that encompasses the visible content
-      const range = view.contents.document.createRange()
-      range.setStart(startRange.startContainer, startRange.startOffset)
-      range.setEnd(endRange.endContainer, endRange.endOffset)
+      const range = view.contents.document.createRange();
+      range.setStart(startRange.startContainer, startRange.startOffset);
+      range.setEnd(endRange.endContainer, endRange.endOffset);
 
       // Extract paragraphs from the range
-      const paragraphs = this._getParagraphsFromRange(range, view.contents)
-      return paragraphs
+      const paragraphs = this._getParagraphsFromRange(range, view.contents);
+      return paragraphs;
     } catch (e) {
-      console.error('Error extracting paragraphs:', e)
-      return null
+      console.error("Error extracting paragraphs:", e);
+      return null;
     }
   }
   //   interface Paragraph {
@@ -1378,48 +1439,66 @@ export class Rendition extends EventEmitter {
    * @returns {Promise<Array<{text: string, cfiRange: string}>|null>} Promise that resolves to array of paragraph objects containing text content and CFI range, or null if no next view exists
    */
   async getNextViewParagraphs(options = { minLength: 50 }) {
-    const { minLength = 50 } = options
+    const { minLength = 50 } = options;
     if (!this.manager) {
-      return []
+      return [];
     }
 
-    const location = this.manager.currentLocation()
+    const location = this.manager.currentLocation();
 
-    if (!location || !Array.isArray(location) || !location.length || !location[0]) {
-      return []
+    if (
+      !location ||
+      !Array.isArray(location) ||
+      !location.length ||
+      !location[0]
+    ) {
+      return [];
     }
 
-    const currentSection = location[0]
-    if (!currentSection.mapping || !currentSection.mapping.start || !currentSection.mapping.end) {
-      return []
+    const currentSection = location[0];
+    if (
+      !currentSection.mapping ||
+      !currentSection.mapping.start ||
+      !currentSection.mapping.end
+    ) {
+      return [];
     }
 
     const currentView = this.manager.views.find({
-      index: currentSection.index
-    })
+      index: currentSection.index,
+    });
 
     if (!currentView || !currentView.section || !currentView.contents) {
-      return []
+      return [];
     }
 
-    const hasNextPageInSection = this._hasNextPageInCurrentSection(currentView, currentSection)
+    const hasNextPageInSection = this._hasNextPageInCurrentSection(
+      currentView,
+      currentSection,
+    );
     /**
      * Paragraphs array
      * @type {Paragraph[]}
      */
-    let paragraphs: any[]
+    let paragraphs: any[];
     if (hasNextPageInSection) {
-      paragraphs = await this._getNextPageParagraphsInSectionAsync(currentView, currentSection)
+      paragraphs = await this._getNextPageParagraphsInSectionAsync(
+        currentView,
+        currentSection,
+      );
     } else {
-      const nextSectionParagraphs = await this._getFirstPageParagraphsInNextSection(currentView)
-      paragraphs = nextSectionParagraphs
+      const nextSectionParagraphs =
+        await this._getFirstPageParagraphsInNextSection(currentView);
+      paragraphs = nextSectionParagraphs;
     }
 
     if (minLength > 0) {
-      paragraphs = paragraphs.filter((p: { text: string | any[] }) => p.text.length >= minLength)
+      paragraphs = paragraphs.filter(
+        (p: { text: string | any[] }) => p.text.length >= minLength,
+      );
     }
 
-    return paragraphs
+    return paragraphs;
   }
 
   /**
@@ -1431,57 +1510,63 @@ export class Rendition extends EventEmitter {
    */
   async _getNextPageParagraphsInSectionAsync(
     currentView: { contents: Contents; section: { cfiBase: any } },
-    currentSection: { pages: string | any[] }
+    currentSection: { pages: string | any[] },
   ) {
     try {
-      const layout = this.manager.layout
-      const currentPage = currentSection.pages[currentSection.pages.length - 1]
+      const layout = this.manager.layout;
+      const currentPage = currentSection.pages[currentSection.pages.length - 1];
 
-      const nextPageStart = currentPage * layout.pageWidth
-      const nextPageEnd = nextPageStart + layout.pageWidth
+      const nextPageStart = currentPage * layout.pageWidth;
+      const nextPageEnd = nextPageStart + layout.pageWidth;
 
       const nextPageMapping = this.manager.mapping.page(
         currentView.contents,
         currentView.section.cfiBase,
         nextPageStart,
-        nextPageEnd
-      )
+        nextPageEnd,
+      );
 
       if (!nextPageMapping || !nextPageMapping.start || !nextPageMapping.end) {
-        return []
+        return [];
       }
 
-      const startCfi = new EpubCFI(nextPageMapping.start)
-      const endCfi = new EpubCFI(nextPageMapping.end)
+      const startCfi = new EpubCFI(nextPageMapping.start);
+      const endCfi = new EpubCFI(nextPageMapping.end);
 
-      let startRange = startCfi.toRange(currentView.contents.document)
-      let endRange = endCfi.toRange(currentView.contents.document)
+      let startRange = startCfi.toRange(currentView.contents.document);
+      let endRange = endCfi.toRange(currentView.contents.document);
 
       if (!startRange || !endRange) {
-        return []
+        return [];
       }
 
       try {
-        const comparison = startRange.compareBoundaryPoints(Range.START_TO_START, endRange)
+        const comparison = startRange.compareBoundaryPoints(
+          Range.START_TO_START,
+          endRange,
+        );
         if (comparison > 0) {
-          const temp = startRange
-          startRange = endRange
-          endRange = temp
+          const temp = startRange;
+          startRange = endRange;
+          endRange = temp;
         }
       } catch (e) {
-        console.error('Error comparing range boundaries:', e)
+        console.error("Error comparing range boundaries:", e);
       }
 
-      const range = currentView.contents.document.createRange()
-      range.setStart(startRange.startContainer, startRange.startOffset)
-      range.setEnd(endRange.endContainer, endRange.endOffset)
+      const range = currentView.contents.document.createRange();
+      range.setStart(startRange.startContainer, startRange.startOffset);
+      range.setEnd(endRange.endContainer, endRange.endOffset);
 
-      const paragraphs = this._getParagraphsFromRange(range, currentView.contents)
+      const paragraphs = this._getParagraphsFromRange(
+        range,
+        currentView.contents,
+      );
 
-      return paragraphs
+      return paragraphs;
     } catch (e) {
-      console.error('Error extracting next page paragraphs:', e)
-      return []
+      console.error("Error extracting next page paragraphs:", e);
+      return [];
     }
   }
 
@@ -1495,14 +1580,14 @@ export class Rendition extends EventEmitter {
   _hasNextPageInCurrentSection(currentView: View, currentSection: Section) {
     // Use page numbers from location data
     if (!currentSection.pages || !currentSection.totalPages) {
-      return false
+      return false;
     }
 
     // Check if current page is less than total pages
-    const currentPage = currentSection.pages[currentSection.pages.length - 1]
-    const hasNext = currentPage < currentSection.totalPages
+    const currentPage = currentSection.pages[currentSection.pages.length - 1];
+    const hasNext = currentPage < currentSection.totalPages;
 
-    return hasNext
+    return hasNext;
   }
 
   /**
@@ -1512,110 +1597,129 @@ export class Rendition extends EventEmitter {
    * @private
    */
   async _getFirstPageParagraphsInNextSection(currentView: View) {
-    const nextSection = currentView.section.next()
+    const nextSection = currentView.section.next();
 
     if (!nextSection) {
-      return [] // No next section available
+      return []; // No next section available
     }
 
     // Try to find if the next section is already loaded as a view
-    let nextView = this.manager.views.find({ index: nextSection.index })
+    let nextView = this.manager.views.find({ index: nextSection.index });
 
     if (!nextView) {
       // The next section is not loaded as a view yet
       // Load the section content directly without creating a view
       try {
         // Load the section content directly using the book's load method with timeout
-        const loadPromise = nextSection.load(this.book.load.bind(this.book))
+        const loadPromise = nextSection.load(this.book.load.bind(this.book));
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Section load timeout')), 10000)
-        )
+          setTimeout(() => reject(new Error("Section load timeout")), 10000),
+        );
 
-        const loadedContent = await Promise.race([loadPromise, timeoutPromise])
+        const loadedContent = await Promise.race([loadPromise, timeoutPromise]);
 
         if (!loadedContent || !loadedContent.document) {
-          return []
+          return [];
         }
 
-        const document = loadedContent.document
-        const body = document.body
+        const document = loadedContent.document;
+        const body = document.body;
 
         if (!body) {
-          return []
+          return [];
         }
 
         // Create a Contents object from the loaded section
-        const contents = new Contents(document, body, nextSection.cfiBase, nextSection.index)
+        const contents = new Contents(
+          document,
+          body,
+          nextSection.cfiBase,
+          nextSection.index,
+        );
 
         // Get the first page mapping instead of the entire section
-        const firstPageMapping = this._getFirstPageMapping(contents, nextSection)
+        const firstPageMapping = this._getFirstPageMapping(
+          contents,
+          nextSection,
+        );
 
-        if (!firstPageMapping || !firstPageMapping.start || !firstPageMapping.end) {
-          return []
+        if (
+          !firstPageMapping ||
+          !firstPageMapping.start ||
+          !firstPageMapping.end
+        ) {
+          return [];
         }
 
         // Convert CFIs to DOM ranges
-        const startCfi = new EpubCFI(firstPageMapping.start)
-        const endCfi = new EpubCFI(firstPageMapping.end)
+        const startCfi = new EpubCFI(firstPageMapping.start);
+        const endCfi = new EpubCFI(firstPageMapping.end);
 
-        const startRange = startCfi.toRange(document)
-        const endRange = endCfi.toRange(document)
+        const startRange = startCfi.toRange(document);
+        const endRange = endCfi.toRange(document);
 
         if (!startRange || !endRange) {
-          return []
+          return [];
         }
 
         // Create a range that encompasses the first page content
-        const range = document.createRange()
-        range.setStart(startRange.startContainer, startRange.startOffset)
-        range.setEnd(endRange.endContainer, endRange.endOffset)
+        const range = document.createRange();
+        range.setStart(startRange.startContainer, startRange.startOffset);
+        range.setEnd(endRange.endContainer, endRange.endOffset);
 
         // Extract paragraphs from the range
-        const paragraphs = this._getParagraphsFromRange(range, contents)
+        const paragraphs = this._getParagraphsFromRange(range, contents);
 
-        return paragraphs
+        return paragraphs;
       } catch (e) {
-        console.error('Error loading next section content:', e)
-        return []
+        console.error("Error loading next section content:", e);
+        return [];
       }
     }
 
     // If the view is already loaded, use it
     if (!nextView.contents || !nextView.contents.document) {
-      return []
+      return [];
     }
 
     try {
       // Get the first page mapping instead of the entire section
-      const firstPageMapping = this._getFirstPageMapping(nextView.contents, nextView.section)
+      const firstPageMapping = this._getFirstPageMapping(
+        nextView.contents,
+        nextView.section,
+      );
 
-      if (!firstPageMapping || !firstPageMapping.start || !firstPageMapping.end) {
-        return []
+      if (
+        !firstPageMapping ||
+        !firstPageMapping.start ||
+        !firstPageMapping.end
+      ) {
+        return [];
       }
 
       // Convert CFIs to DOM ranges
-      const startCfi = new EpubCFI(firstPageMapping.start)
-      const endCfi = new EpubCFI(firstPageMapping.end)
+      const startCfi = new EpubCFI(firstPageMapping.start);
+      const endCfi = new EpubCFI(firstPageMapping.end);
 
-      const startRange = startCfi.toRange(nextView.contents.document)
-      const endRange = endCfi.toRange(nextView.contents.document)
+      const startRange = startCfi.toRange(nextView.contents.document);
+      const endRange = endCfi.toRange(nextView.contents.document);
 
       if (!startRange || !endRange) {
-        return []
+        return [];
       }
 
       // Create a range that encompasses the first page content
-      const range = nextView.contents.document.createRange()
-      range.setStart(startRange.startContainer, startRange.startOffset)
-      range.setEnd(endRange.endContainer, endRange.endOffset)
+      const range = nextView.contents.document.createRange();
+      range.setStart(startRange.startContainer, startRange.startOffset);
+      range.setEnd(endRange.endContainer, endRange.endOffset);
 
       // Extract paragraphs from the range
-      const paragraphs = this._getParagraphsFromRange(range, nextView.contents)
+      const paragraphs = this._getParagraphsFromRange(range, nextView.contents);
 
-      return paragraphs
+      return paragraphs;
     } catch (e) {
-      console.error('Error extracting paragraphs from next view:', e)
-      return []
+      console.error("Error extracting paragraphs from next view:", e);
+      return [];
     }
   }
 
@@ -1627,19 +1731,19 @@ export class Rendition extends EventEmitter {
    * @private
    */
   _getFirstPageMapping(contents: Contents, section: Section) {
-    const layout = this.manager.layout
+    const layout = this.manager.layout;
 
     // For the first page, start at 0 and use page width/height
-    let start = 0
-    let end: any
+    let start = 0;
+    let end: any;
 
-    if (this.manager.settings.axis === 'horizontal') {
-      end = layout.pageWidth
+    if (this.manager.settings.axis === "horizontal") {
+      end = layout.pageWidth;
     } else {
-      end = layout.height
+      end = layout.height;
     }
 
-    return this.manager.mapping.page(contents, section.cfiBase, start, end)
+    return this.manager.mapping.page(contents, section.cfiBase, start, end);
   }
 
   /**
@@ -1649,52 +1753,66 @@ export class Rendition extends EventEmitter {
    * @returns {Promise<Array<{text: string, cfiRange: string}>|null>} Promise that resolves to array of paragraph objects containing text content and CFI range, or null if no previous view exists
    */
   async getPreviousViewParagraphs(options = { minLength: 50 }) {
-    const { minLength = 50 } = options
+    const { minLength = 50 } = options;
     if (!this.manager) {
-      return []
+      return [];
     }
 
-    const location = this.manager.currentLocation()
+    const location = this.manager.currentLocation();
 
-    if (!location || !Array.isArray(location) || !location.length || !location[0]) {
-      return []
+    if (
+      !location ||
+      !Array.isArray(location) ||
+      !location.length ||
+      !location[0]
+    ) {
+      return [];
     }
 
-    const currentSection = location[0]
-    if (!currentSection.mapping || !currentSection.mapping.start || !currentSection.mapping.end) {
-      return []
+    const currentSection = location[0];
+    if (
+      !currentSection.mapping ||
+      !currentSection.mapping.start ||
+      !currentSection.mapping.end
+    ) {
+      return [];
     }
 
     const currentView = this.manager.views.find({
-      index: currentSection.index
-    })
+      index: currentSection.index,
+    });
 
     if (!currentView || !currentView.section || !currentView.contents) {
-      return []
+      return [];
     }
 
     const hasPreviousPageInSection = this._hasPreviousPageInCurrentSection(
       currentView,
-      currentSection
-    )
+      currentSection,
+    );
     /**
      * Paragraphs array
      * @type {Paragraph[]}
      */
-    let paragraphs: any[]
+    let paragraphs: any[];
     if (hasPreviousPageInSection) {
-      paragraphs = await this._getPreviousPageParagraphsInSectionAsync(currentView, currentSection)
+      paragraphs = await this._getPreviousPageParagraphsInSectionAsync(
+        currentView,
+        currentSection,
+      );
     } else {
       const previousSectionParagraphs =
-        await this._getLastPageParagraphsInPreviousSection(currentView)
-      paragraphs = previousSectionParagraphs
+        await this._getLastPageParagraphsInPreviousSection(currentView);
+      paragraphs = previousSectionParagraphs;
     }
 
     if (minLength > 0) {
-      paragraphs = paragraphs.filter((p: { text: string | any[] }) => p.text.length >= minLength)
+      paragraphs = paragraphs.filter(
+        (p: { text: string | any[] }) => p.text.length >= minLength,
+      );
     }
 
-    return paragraphs
+    return paragraphs;
   }
 
   /**
@@ -1703,56 +1821,69 @@ export class Rendition extends EventEmitter {
    * @param {Section} currentSection - The current section location data
    * @returns {Promise<Paragraph[]>} Promise that resolves to array of paragraph objects containing text content and CFI range, or null if no previous page exists
    */
-  async _getPreviousPageParagraphsInSectionAsync(currentView: View, currentSection: Section) {
+  async _getPreviousPageParagraphsInSectionAsync(
+    currentView: View,
+    currentSection: Section,
+  ) {
     try {
-      const layout = this.manager.layout
-      const currentPage = currentSection.pages[0] // First page in the current view
+      const layout = this.manager.layout;
+      const currentPage = currentSection.pages[0]; // First page in the current view
 
-      const previousPageEnd = (currentPage - 1) * layout.pageWidth
-      const previousPageStart = Math.max(0, previousPageEnd - layout.pageWidth)
+      const previousPageEnd = (currentPage - 1) * layout.pageWidth;
+      const previousPageStart = Math.max(0, previousPageEnd - layout.pageWidth);
 
       const previousPageMapping = this.manager.mapping.page(
         currentView.contents,
         currentView.section.cfiBase,
         previousPageStart,
-        previousPageEnd
-      )
+        previousPageEnd,
+      );
 
-      if (!previousPageMapping || !previousPageMapping.start || !previousPageMapping.end) {
-        return []
+      if (
+        !previousPageMapping ||
+        !previousPageMapping.start ||
+        !previousPageMapping.end
+      ) {
+        return [];
       }
 
-      const startCfi = new EpubCFI(previousPageMapping.start)
-      const endCfi = new EpubCFI(previousPageMapping.end)
+      const startCfi = new EpubCFI(previousPageMapping.start);
+      const endCfi = new EpubCFI(previousPageMapping.end);
 
-      let startRange = startCfi.toRange(currentView.contents.document)
-      let endRange = endCfi.toRange(currentView.contents.document)
+      let startRange = startCfi.toRange(currentView.contents.document);
+      let endRange = endCfi.toRange(currentView.contents.document);
 
       if (!startRange || !endRange) {
-        return []
+        return [];
       }
 
       try {
-        const comparison = startRange.compareBoundaryPoints(Range.START_TO_START, endRange)
+        const comparison = startRange.compareBoundaryPoints(
+          Range.START_TO_START,
+          endRange,
+        );
         if (comparison > 0) {
-          const temp = startRange
-          startRange = endRange
-          endRange = temp
+          const temp = startRange;
+          startRange = endRange;
+          endRange = temp;
         }
       } catch (e) {
-        console.error('Error comparing range boundaries:', e)
+        console.error("Error comparing range boundaries:", e);
       }
 
-      const range = currentView.contents.document.createRange()
-      range.setStart(startRange.startContainer, startRange.startOffset)
-      range.setEnd(endRange.endContainer, endRange.endOffset)
+      const range = currentView.contents.document.createRange();
+      range.setStart(startRange.startContainer, startRange.startOffset);
+      range.setEnd(endRange.endContainer, endRange.endOffset);
 
-      const paragraphs = this._getParagraphsFromRange(range, currentView.contents)
+      const paragraphs = this._getParagraphsFromRange(
+        range,
+        currentView.contents,
+      );
 
-      return paragraphs
+      return paragraphs;
     } catch (e) {
-      console.error('Error extracting previous page paragraphs:', e)
-      return []
+      console.error("Error extracting previous page paragraphs:", e);
+      return [];
     }
   }
 
@@ -1766,14 +1897,14 @@ export class Rendition extends EventEmitter {
   _hasPreviousPageInCurrentSection(currentView: View, currentSection: Section) {
     // Use page numbers from location data
     if (!currentSection.pages || !currentSection.totalPages) {
-      return false
+      return false;
     }
 
     // Check if current page is greater than 1
-    const currentPage = currentSection.pages[0] // First page in the current view
-    const hasPrevious = currentPage > 1
+    const currentPage = currentSection.pages[0]; // First page in the current view
+    const hasPrevious = currentPage > 1;
 
-    return hasPrevious
+    return hasPrevious;
   }
 
   /**
@@ -1783,36 +1914,40 @@ export class Rendition extends EventEmitter {
    * @private
    */
   async _getLastPageParagraphsInPreviousSection(currentView: View) {
-    const previousSection = currentView.section.prev()
+    const previousSection = currentView.section.prev();
 
     if (!previousSection) {
-      return [] // No previous section available
+      return []; // No previous section available
     }
 
     // Try to find if the previous section is already loaded as a view
-    let previousView = this.manager.views.find({ index: previousSection.index })
+    let previousView = this.manager.views.find({
+      index: previousSection.index,
+    });
 
     if (!previousView) {
       // The previous section is not loaded as a view yet
       // Load the section content directly without creating a view
       try {
         // Load the section content directly using the book's load method with timeout
-        const loadPromise = previousSection.load(this.book.load.bind(this.book))
+        const loadPromise = previousSection.load(
+          this.book.load.bind(this.book),
+        );
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Section load timeout')), 10000)
-        )
+          setTimeout(() => reject(new Error("Section load timeout")), 10000),
+        );
 
-        const loadedContent = await Promise.race([loadPromise, timeoutPromise])
+        const loadedContent = await Promise.race([loadPromise, timeoutPromise]);
 
         if (!loadedContent || !loadedContent.document) {
-          return []
+          return [];
         }
 
-        const document = loadedContent.document
-        const body = document.body
+        const document = loadedContent.document;
+        const body = document.body;
 
         if (!body) {
-          return []
+          return [];
         }
 
         // Create a Contents object from the loaded section
@@ -1820,78 +1955,91 @@ export class Rendition extends EventEmitter {
           document,
           body,
           previousSection.cfiBase,
-          previousSection.index
-        )
+          previousSection.index,
+        );
 
         // Get the last page mapping instead of the entire section
-        const lastPageMapping = this._getLastPageMapping(contents, previousSection)
+        const lastPageMapping = this._getLastPageMapping(
+          contents,
+          previousSection,
+        );
 
-        if (!lastPageMapping || !lastPageMapping.start || !lastPageMapping.end) {
-          return []
+        if (
+          !lastPageMapping ||
+          !lastPageMapping.start ||
+          !lastPageMapping.end
+        ) {
+          return [];
         }
 
         // Convert CFIs to DOM ranges
-        const startCfi = new EpubCFI(lastPageMapping.start)
-        const endCfi = new EpubCFI(lastPageMapping.end)
+        const startCfi = new EpubCFI(lastPageMapping.start);
+        const endCfi = new EpubCFI(lastPageMapping.end);
 
-        const startRange = startCfi.toRange(document)
-        const endRange = endCfi.toRange(document)
+        const startRange = startCfi.toRange(document);
+        const endRange = endCfi.toRange(document);
 
         if (!startRange || !endRange) {
-          return []
+          return [];
         }
 
         // Create a range that encompasses the last page content
-        const range = document.createRange()
-        range.setStart(startRange.startContainer, startRange.startOffset)
-        range.setEnd(endRange.endContainer, endRange.endOffset)
+        const range = document.createRange();
+        range.setStart(startRange.startContainer, startRange.startOffset);
+        range.setEnd(endRange.endContainer, endRange.endOffset);
 
         // Extract paragraphs from the range
-        const paragraphs = this._getParagraphsFromRange(range, contents)
+        const paragraphs = this._getParagraphsFromRange(range, contents);
 
-        return paragraphs
+        return paragraphs;
       } catch (e) {
-        console.error('Error loading previous section content:', e)
-        return []
+        console.error("Error loading previous section content:", e);
+        return [];
       }
     }
 
     // If the view is already loaded, use it
     if (!previousView.contents || !previousView.contents.document) {
-      return []
+      return [];
     }
 
     try {
       // Get the last page mapping instead of the entire section
-      const lastPageMapping = this._getLastPageMapping(previousView.contents, previousView.section)
+      const lastPageMapping = this._getLastPageMapping(
+        previousView.contents,
+        previousView.section,
+      );
 
       if (!lastPageMapping || !lastPageMapping.start || !lastPageMapping.end) {
-        return []
+        return [];
       }
 
       // Convert CFIs to DOM ranges
-      const startCfi = new EpubCFI(lastPageMapping.start)
-      const endCfi = new EpubCFI(lastPageMapping.end)
+      const startCfi = new EpubCFI(lastPageMapping.start);
+      const endCfi = new EpubCFI(lastPageMapping.end);
 
-      const startRange = startCfi.toRange(previousView.contents.document)
-      const endRange = endCfi.toRange(previousView.contents.document)
+      const startRange = startCfi.toRange(previousView.contents.document);
+      const endRange = endCfi.toRange(previousView.contents.document);
 
       if (!startRange || !endRange) {
-        return []
+        return [];
       }
 
       // Create a range that encompasses the last page content
-      const range = previousView.contents.document.createRange()
-      range.setStart(startRange.startContainer, startRange.startOffset)
-      range.setEnd(endRange.endContainer, endRange.endOffset)
+      const range = previousView.contents.document.createRange();
+      range.setStart(startRange.startContainer, startRange.startOffset);
+      range.setEnd(endRange.endContainer, endRange.endOffset);
 
       // Extract paragraphs from the range
-      const paragraphs = this._getParagraphsFromRange(range, previousView.contents)
+      const paragraphs = this._getParagraphsFromRange(
+        range,
+        previousView.contents,
+      );
 
-      return paragraphs
+      return paragraphs;
     } catch (e) {
-      console.error('Error extracting paragraphs from previous view:', e)
-      return []
+      console.error("Error extracting paragraphs from previous view:", e);
+      return [];
     }
   }
 
@@ -1903,24 +2051,24 @@ export class Rendition extends EventEmitter {
    * @private
    */
   _getLastPageMapping(contents: Contents, section: Section) {
-    const layout = this.manager.layout
+    const layout = this.manager.layout;
 
     // For the last page, calculate based on total content height
-    let start: number, end: number
+    let start: number, end: number;
 
-    if (this.manager.settings.axis === 'horizontal') {
+    if (this.manager.settings.axis === "horizontal") {
       // For horizontal layout, get the last page width
-      const totalWidth = contents.content.scrollWidth
-      start = Math.max(0, totalWidth - layout.pageWidth)
-      end = totalWidth
+      const totalWidth = contents.content.scrollWidth;
+      start = Math.max(0, totalWidth - layout.pageWidth);
+      end = totalWidth;
     } else {
       // For vertical layout, get the last page height
-      const totalHeight = contents.content.scrollHeight
-      start = Math.max(0, totalHeight - layout.height)
-      end = totalHeight
+      const totalHeight = contents.content.scrollHeight;
+      start = Math.max(0, totalHeight - layout.height);
+      end = totalHeight;
     }
 
-    return this.manager.mapping.page(contents, section.cfiBase, start, end)
+    return this.manager.mapping.page(contents, section.cfiBase, start, end);
   }
 
   /**
@@ -1930,40 +2078,43 @@ export class Rendition extends EventEmitter {
    * @returns {Array<{text: string, cfiRange: string}>} Array of paragraph objects
    * @private
    */
-  _getParagraphsFromRange(range: Range, contents: Contents): ParagraphWithCFI[] {
-    const paragraphs: ParagraphWithCFI[] = []
+  _getParagraphsFromRange(
+    range: Range,
+    contents: Contents,
+  ): ParagraphWithCFI[] {
+    const paragraphs: ParagraphWithCFI[] = [];
 
     try {
       // Get the full text from the range (same as getCurrentViewText)
-      const fullText = range.toString()
+      const fullText = range.toString();
 
       if (!fullText.trim()) {
-        return []
+        return [];
       }
 
       // Get the document from the range
-      const document = range.commonAncestorContainer.ownerDocument
+      const document = range.commonAncestorContainer.ownerDocument;
       if (!document) {
-        return []
+        return [];
       }
 
       // Find all text nodes within the range
-      const textNodes = this._getTextNodesInRange(range)
+      const textNodes = this._getTextNodesInRange(range);
 
       if (textNodes.length === 0) {
-        return []
+        return [];
       }
 
       // Group text nodes by their containing block elements
-      const blockElementToTextNodes = new Map()
+      const blockElementToTextNodes = new Map();
 
       for (const textNode of textNodes) {
-        const blockElement = this._findContainingBlockElement(textNode)
+        const blockElement = this._findContainingBlockElement(textNode);
         if (blockElement) {
           if (!blockElementToTextNodes.has(blockElement)) {
-            blockElementToTextNodes.set(blockElement, [])
+            blockElementToTextNodes.set(blockElement, []);
           }
-          blockElementToTextNodes.get(blockElement).push(textNode)
+          blockElementToTextNodes.get(blockElement).push(textNode);
         }
       }
 
@@ -1971,153 +2122,177 @@ export class Rendition extends EventEmitter {
       for (const [blockElement, textNodes] of blockElementToTextNodes) {
         try {
           // Extract text from these specific text nodes
-          let elementText = ''
-          let firstTextNode = null
-          let lastTextNode = null
-          let firstTextOffset = 0
-          let lastTextOffset = 0
+          let elementText = "";
+          let firstTextNode = null;
+          let lastTextNode = null;
+          let firstTextOffset = 0;
+          let lastTextOffset = 0;
 
           for (const textNode of textNodes) {
-            const nodeText = textNode.textContent || ''
+            const nodeText = textNode.textContent || "";
 
             // Track first and last text nodes for range creation
             if (!firstTextNode) {
-              firstTextNode = textNode
+              firstTextNode = textNode;
             }
-            lastTextNode = textNode
+            lastTextNode = textNode;
 
             // Check if this is the same node as both start and end container
-            if (textNode === range.startContainer && textNode === range.endContainer) {
-              elementText += nodeText.substring(range.startOffset, range.endOffset)
-              firstTextOffset = range.startOffset
-              lastTextOffset = range.endOffset
+            if (
+              textNode === range.startContainer &&
+              textNode === range.endContainer
+            ) {
+              elementText += nodeText.substring(
+                range.startOffset,
+                range.endOffset,
+              );
+              firstTextOffset = range.startOffset;
+              lastTextOffset = range.endOffset;
             }
             // If this is the start node, trim from the beginning
             else if (textNode === range.startContainer) {
-              elementText += nodeText.substring(range.startOffset)
-              firstTextOffset = range.startOffset
+              elementText += nodeText.substring(range.startOffset);
+              firstTextOffset = range.startOffset;
               // If this is also the last node, set lastTextOffset
               if (textNode === lastTextNode) {
-                lastTextOffset = nodeText.length
+                lastTextOffset = nodeText.length;
               }
             }
             // If this is the end node, trim from the end
             else if (textNode === range.endContainer) {
-              elementText += nodeText.substring(0, range.endOffset)
-              lastTextOffset = range.endOffset
+              elementText += nodeText.substring(0, range.endOffset);
+              lastTextOffset = range.endOffset;
               // If this is also the first node, set firstTextOffset
               if (textNode === firstTextNode) {
-                firstTextOffset = 0
+                firstTextOffset = 0;
               }
             }
             // Otherwise, include the full text (middle node)
             else {
-              elementText += nodeText
+              elementText += nodeText;
               // If this is the first node, set firstTextOffset
               if (textNode === firstTextNode) {
-                firstTextOffset = 0
+                firstTextOffset = 0;
               }
               // If this is the last node, set lastTextOffset
               if (textNode === lastTextNode) {
-                lastTextOffset = nodeText.length
+                lastTextOffset = nodeText.length;
               }
             }
           }
 
           // Don't normalize whitespace here - preserve original spacing
           // The normalization should happen at the test level for comparison
-          elementText = elementText.trim()
+          elementText = elementText.trim();
 
           // Skip empty paragraphs
           if (!elementText || !firstTextNode || !lastTextNode) {
-            continue
+            continue;
           }
 
           // Create a DOM Range for the paragraph's actual text content
-          const paragraphRange = document.createRange()
+          const paragraphRange = document.createRange();
 
           // Validate offsets before setting range boundaries
-          const maxStartOffset = firstTextNode.textContent ? firstTextNode.textContent.length : 0
-          const maxEndOffset = lastTextNode.textContent ? lastTextNode.textContent.length : 0
+          const maxStartOffset = firstTextNode.textContent
+            ? firstTextNode.textContent.length
+            : 0;
+          const maxEndOffset = lastTextNode.textContent
+            ? lastTextNode.textContent.length
+            : 0;
 
           // Ensure offsets are within valid bounds
-          const validFirstOffset = Math.min(Math.max(firstTextOffset, 0), maxStartOffset)
-          const validLastOffset = Math.min(Math.max(lastTextOffset, 0), maxEndOffset)
+          const validFirstOffset = Math.min(
+            Math.max(firstTextOffset, 0),
+            maxStartOffset,
+          );
+          const validLastOffset = Math.min(
+            Math.max(lastTextOffset, 0),
+            maxEndOffset,
+          );
 
           // Set start to the beginning of the first text node (accounting for trimming)
-          paragraphRange.setStart(firstTextNode, validFirstOffset)
+          paragraphRange.setStart(firstTextNode, validFirstOffset);
 
           // Set end to the end of the last text node (accounting for trimming)
-          paragraphRange.setEnd(lastTextNode, validLastOffset)
+          paragraphRange.setEnd(lastTextNode, validLastOffset);
 
           // Generate CFI for the block element itself to ensure uniqueness
           // This creates a single-point CFI that uniquely identifies this paragraph element
-          const elementCfi = new EpubCFI(blockElement, contents.cfiBase, this.settings.ignoreClass)
+          const elementCfi = new EpubCFI(
+            blockElement,
+            contents.cfiBase,
+            this.settings.ignoreClass,
+          );
 
-          let startCfi: string, endCfi: string, cfiRange: string
+          let startCfi: string, endCfi: string, cfiRange: string;
 
           // For paragraphs, we treat each as a single element with the same start and end CFI
           // This matches the test expectation that startCfi === endCfi for single paragraphs
-          const mainCfi = elementCfi.toString()
-          startCfi = mainCfi
-          endCfi = mainCfi
+          const mainCfi = elementCfi.toString();
+          startCfi = mainCfi;
+          endCfi = mainCfi;
 
           // For highlighting, we can use the range CFI that spans the text content
           const rangeCfiObj = new EpubCFI(
             paragraphRange,
             contents.cfiBase,
-            this.settings.ignoreClass
-          )
-          cfiRange = rangeCfiObj.toString()
+            this.settings.ignoreClass,
+          );
+          cfiRange = rangeCfiObj.toString();
 
           // Verify CFI can be parsed
           try {
-            const testCfi = new EpubCFI(mainCfi)
+            const testCfi = new EpubCFI(mainCfi);
             if (!testCfi.path || !testCfi.base) {
-              continue
+              continue;
             }
 
             // Also verify the range CFI
-            const testRangeCfi = new EpubCFI(cfiRange)
+            const testRangeCfi = new EpubCFI(cfiRange);
             if (!testRangeCfi.path || !testRangeCfi.base) {
-              cfiRange = mainCfi // Fallback to element CFI
+              cfiRange = mainCfi; // Fallback to element CFI
             }
           } catch (e) {
-            continue
+            continue;
           }
 
           paragraphs.push({
             text: elementText,
             startCfi: startCfi,
             endCfi: endCfi,
-            cfiRange: cfiRange // Add full range CFI for highlighting
-          })
+            cfiRange: cfiRange, // Add full range CFI for highlighting
+          });
         } catch (e) {
-          console.error('❌ Error processing block element:', e)
-          continue
+          console.error("❌ Error processing block element:", e);
+          continue;
         }
       }
 
       // Fallback: if no paragraphs found but we have text, create one paragraph from entire range
       if (paragraphs.length === 0 && fullText.trim()) {
         try {
-          const cfi = new EpubCFI(range, contents.cfiBase, this.settings.ignoreClass)
-          const cfiString = cfi.toString()
+          const cfi = new EpubCFI(
+            range,
+            contents.cfiBase,
+            this.settings.ignoreClass,
+          );
+          const cfiString = cfi.toString();
           paragraphs.push({
             text: fullText.trim(),
             cfiRange: cfiString,
             startCfi: cfiString,
-            endCfi: cfiString
-          })
+            endCfi: cfiString,
+          });
         } catch (e) {
-          console.error('Error creating fallback paragraph:', e)
+          console.error("Error creating fallback paragraph:", e);
         }
       }
 
-      return paragraphs
+      return paragraphs;
     } catch (e) {
-      console.error('Error getting paragraphs from range:', e)
-      return []
+      console.error("Error getting paragraphs from range:", e);
+      return [];
     }
   }
 
@@ -2128,44 +2303,45 @@ export class Rendition extends EventEmitter {
    * @private
    */
   _getTextNodesInRange(range: Range) {
-    const textNodes = []
+    const textNodes = [];
 
     try {
       // Validate range first
       if (!range || !range.commonAncestorContainer) {
-        console.error('_getTextNodesInRange: Invalid range provided')
-        return textNodes
+        console.error("_getTextNodesInRange: Invalid range provided");
+        return textNodes;
       }
 
-      const walker = range.commonAncestorContainer.ownerDocument.createTreeWalker(
-        range.commonAncestorContainer,
-        NodeFilter.SHOW_TEXT,
-        {
-          acceptNode: function (node) {
-            try {
-              // Skip empty or whitespace-only text nodes
-              if (!node.textContent || !node.textContent.trim()) {
-                return NodeFilter.FILTER_REJECT
+      const walker =
+        range.commonAncestorContainer.ownerDocument.createTreeWalker(
+          range.commonAncestorContainer,
+          NodeFilter.SHOW_TEXT,
+          {
+            acceptNode: function (node) {
+              try {
+                // Skip empty or whitespace-only text nodes
+                if (!node.textContent || !node.textContent.trim()) {
+                  return NodeFilter.FILTER_REJECT;
+                }
+                return range.intersectsNode(node)
+                  ? NodeFilter.FILTER_ACCEPT
+                  : NodeFilter.FILTER_REJECT;
+              } catch (e) {
+                return NodeFilter.FILTER_REJECT;
               }
-              return range.intersectsNode(node)
-                ? NodeFilter.FILTER_ACCEPT
-                : NodeFilter.FILTER_REJECT
-            } catch (e) {
-              return NodeFilter.FILTER_REJECT
-            }
-          }
-        }
-      )
+            },
+          },
+        );
 
-      let node: Node | null
+      let node: Node | null;
       while ((node = walker.nextNode())) {
-        textNodes.push(node)
+        textNodes.push(node);
       }
     } catch (e) {
-      console.error('Error getting text nodes in range:', e)
+      console.error("Error getting text nodes in range:", e);
     }
 
-    return textNodes
+    return textNodes;
   }
 
   /**
@@ -2176,32 +2352,32 @@ export class Rendition extends EventEmitter {
    */
   _findContainingBlockElement(textNode: Text) {
     const blockSelectors =
-      'p, div, h1, h2, h3, h4, h5, h6, li, blockquote, pre, article, section, aside, header, footer, main, nav, figure, figcaption, dd, dt'
+      "p, div, h1, h2, h3, h4, h5, h6, li, blockquote, pre, article, section, aside, header, footer, main, nav, figure, figcaption, dd, dt";
 
-    let element = textNode.parentElement
+    let element = textNode.parentElement;
 
     while (element) {
       try {
         if (element.matches && element.matches(blockSelectors)) {
-          return element
+          return element;
         }
       } catch (e) {
         // Fallback for older browsers
-        const selectors = blockSelectors.split(', ')
+        const selectors = blockSelectors.split(", ");
         for (const selector of selectors) {
           try {
             if (element.matches && element.matches(selector)) {
-              return element
+              return element;
             }
           } catch (e2) {
-            continue
+            continue;
           }
         }
       }
-      element = element.parentElement
+      element = element.parentElement;
     }
 
-    return null
+    return null;
   }
 
   /**
@@ -2212,9 +2388,9 @@ export class Rendition extends EventEmitter {
   handleLinks(contents: Contents) {
     if (contents) {
       contents.on(EVENTS.CONTENTS.LINK_CLICKED, (href: any) => {
-        let relative = this.book.path.relative(href)
-        this.display(relative)
-      })
+        let relative = this.book.path.relative(href);
+        this.display(relative);
+      });
     }
   }
 
@@ -2226,11 +2402,11 @@ export class Rendition extends EventEmitter {
    * @private
    */
   injectStylesheet(doc: Document, section: Section) {
-    let style = doc.createElement('link')
-    style.setAttribute('type', 'text/css')
-    style.setAttribute('rel', 'stylesheet')
-    style.setAttribute('href', this.settings.stylesheet)
-    doc.getElementsByTagName('head')[0].appendChild(style)
+    let style = doc.createElement("link");
+    style.setAttribute("type", "text/css");
+    style.setAttribute("rel", "stylesheet");
+    style.setAttribute("href", this.settings.stylesheet);
+    doc.getElementsByTagName("head")[0].appendChild(style);
   }
 
   /**
@@ -2242,16 +2418,18 @@ export class Rendition extends EventEmitter {
    */
   injectScript(
     doc: {
-      createElement: (arg0: string) => any
-      getElementsByTagName: (arg0: string) => { appendChild: (arg0: any) => void }[]
+      createElement: (arg0: string) => any;
+      getElementsByTagName: (
+        arg0: string,
+      ) => { appendChild: (arg0: any) => void }[];
     },
-    section: any
+    section: any,
   ) {
-    let script = doc.createElement('script')
-    script.setAttribute('type', 'text/javascript')
-    script.setAttribute('src', this.settings.script)
-    script.textContent = ' ' // Needed to prevent self closing tag
-    doc.getElementsByTagName('head')[0].appendChild(script)
+    let script = doc.createElement("script");
+    script.setAttribute("type", "text/javascript");
+    script.setAttribute("src", this.settings.script);
+    script.textContent = " "; // Needed to prevent self closing tag
+    doc.getElementsByTagName("head")[0].appendChild(script);
   }
 
   /**
@@ -2263,24 +2441,26 @@ export class Rendition extends EventEmitter {
    */
   injectIdentifier(
     doc: {
-      createElement: (arg0: string) => any
-      getElementsByTagName: (arg0: string) => { appendChild: (arg0: any) => void }[]
+      createElement: (arg0: string) => any;
+      getElementsByTagName: (
+        arg0: string,
+      ) => { appendChild: (arg0: any) => void }[];
     },
-    section: any
+    section: any,
   ) {
-    let ident = this.book.packaging.metadata.identifier
-    let meta = doc.createElement('meta')
-    meta.setAttribute('name', 'dc.relation.ispartof')
+    let ident = this.book.packaging.metadata.identifier;
+    let meta = doc.createElement("meta");
+    meta.setAttribute("name", "dc.relation.ispartof");
     if (ident) {
-      meta.setAttribute('content', ident)
+      meta.setAttribute("content", ident);
     }
-    doc.getElementsByTagName('head')[0].appendChild(meta)
+    doc.getElementsByTagName("head")[0].appendChild(meta);
   }
 }
 
 //-- Enable binding events to Renderer
 //EventEmitter(Rendition.prototype)
 
-export default Rendition
+export default Rendition;
 
 // export type { Rendition }

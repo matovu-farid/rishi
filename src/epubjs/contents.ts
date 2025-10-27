@@ -1,25 +1,26 @@
-import EventEmitter from 'event-emitter'
-import { isNumber, prefixed, borders, defaults } from './utils/core'
-import EpubCFI from './epubcfi'
-import Mapping from './mapping'
-import { replaceLinks } from './utils/replacements'
-import { EPUBJS_VERSION, EVENTS, DOM_EVENTS } from './utils/constants'
+import EventEmitter from "event-emitter";
+import { isNumber, prefixed, borders, defaults } from "./utils/new_core";
+import EpubCFI from "./epubcfi";
+import Mapping from "./mapping";
+import { replaceLinks } from "./utils/replacements";
+import { EPUBJS_VERSION, EVENTS, DOM_EVENTS } from "./utils/constants";
 
-const hasNavigator = typeof navigator !== 'undefined'
+const hasNavigator = typeof navigator !== "undefined";
 
-const isChrome = hasNavigator && /Chrome/.test(navigator.userAgent)
-const isWebkit = hasNavigator && !isChrome && /AppleWebKit/.test(navigator.userAgent)
+const isChrome = hasNavigator && /Chrome/.test(navigator.userAgent);
+const isWebkit =
+  hasNavigator && !isChrome && /AppleWebKit/.test(navigator.userAgent);
 
-const ELEMENT_NODE = 1
-const TEXT_NODE = 3
+const ELEMENT_NODE = 1;
+const TEXT_NODE = 3;
 
 export interface ViewportSettings {
-  width: string
-  height: string
-  scale: string
-  scalable: string
-  minimum: string
-  maximum: string
+  width: string;
+  height: string;
+  scale: string;
+  scalable: string;
+  minimum: string;
+  maximum: string;
 }
 
 /**
@@ -31,63 +32,68 @@ export interface ViewportSettings {
  * @param {number} sectionIndex Index in Spine of Conntent's Section
  */
 export class Contents {
-  epubcfi: EpubCFI
-  document: Document
-  documentElement: Element
-  content: Element
-  window: Window
-  sectionIndex: number
-  cfiBase: string
+  epubcfi: EpubCFI;
+  document: Document;
+  documentElement: Element;
+  content: Element;
+  window: Window;
+  sectionIndex: number;
+  cfiBase: string;
   //static listenedEvents: string[]
-  constructor(doc: Document, content: Element, cfiBase: string, sectionIndex: number) {
+  constructor(
+    doc: Document,
+    content: Element,
+    cfiBase: string,
+    sectionIndex: number,
+  ) {
     // Blank Cfi for Parsing
-    this.epubcfi = new EpubCFI()
+    this.epubcfi = new EpubCFI();
 
-    this.document = doc
-    this.documentElement = this.document.documentElement
-    this.content = content || this.document.body
-    this.window = this.document.defaultView
+    this.document = doc;
+    this.documentElement = this.document.documentElement;
+    this.content = content || this.document.body;
+    this.window = this.document.defaultView;
 
     this._size = {
       width: 0,
-      height: 0
-    }
+      height: 0,
+    };
 
-    this.sectionIndex = sectionIndex || 0
-    this.cfiBase = cfiBase || ''
+    this.sectionIndex = sectionIndex || 0;
+    this.cfiBase = cfiBase || "";
 
-    this.epubReadingSystem('epub.js', EPUBJS_VERSION)
-    this.called = 0
-    this.active = true
-    this.listeners()
+    this.epubReadingSystem("epub.js", EPUBJS_VERSION);
+    this.called = 0;
+    this.active = true;
+    this.listeners();
 
     // Blank Cfi for Parsing
-    this.epubcfi = new EpubCFI()
+    this.epubcfi = new EpubCFI();
 
-    this.document = doc
-    this.documentElement = this.document.documentElement
-    this.content = content || this.document.body
-    this.window = this.document.defaultView
+    this.document = doc;
+    this.documentElement = this.document.documentElement;
+    this.content = content || this.document.body;
+    this.window = this.document.defaultView;
 
     this._size = {
       width: 0,
-      height: 0
-    }
+      height: 0,
+    };
 
-    this.sectionIndex = sectionIndex || 0
-    this.cfiBase = cfiBase || ''
+    this.sectionIndex = sectionIndex || 0;
+    this.cfiBase = cfiBase || "";
 
-    this.epubReadingSystem('epub.js', EPUBJS_VERSION)
-    this.called = 0
-    this.active = true
-    this.listeners()
+    this.epubReadingSystem("epub.js", EPUBJS_VERSION);
+    this.called = 0;
+    this.active = true;
+    this.listeners();
   }
 
   /**
    * Get DOM events that are listened for and passed along
    */
   static get listenedEvents() {
-    return DOM_EVENTS
+    return DOM_EVENTS;
   }
 
   /**
@@ -97,18 +103,18 @@ export class Contents {
    */
   width(w) {
     // var frame = this.documentElement;
-    var frame = this.content
+    var frame = this.content;
 
     if (w && isNumber(w)) {
-      w = w + 'px'
+      w = w + "px";
     }
 
     if (w) {
-      frame.style.width = w
+      frame.style.width = w;
       // this.content.style.width = w;
     }
 
-    return parseInt(this.window.getComputedStyle(frame)['width'])
+    return parseInt(this.window.getComputedStyle(frame)["width"]);
   }
 
   /**
@@ -118,18 +124,18 @@ export class Contents {
    */
   height(h) {
     // var frame = this.documentElement;
-    var frame = this.content
+    var frame = this.content;
 
     if (h && isNumber(h)) {
-      h = h + 'px'
+      h = h + "px";
     }
 
     if (h) {
-      frame.style.height = h
+      frame.style.height = h;
       // this.content.style.height = h;
     }
 
-    return parseInt(this.window.getComputedStyle(frame)['height'])
+    return parseInt(this.window.getComputedStyle(frame)["height"]);
   }
 
   /**
@@ -138,17 +144,17 @@ export class Contents {
    * @returns {number} width
    */
   contentWidth(w) {
-    var content = this.content || this.document.body
+    var content = this.content || this.document.body;
 
     if (w && isNumber(w)) {
-      w = w + 'px'
+      w = w + "px";
     }
 
     if (w) {
-      content.style.width = w
+      content.style.width = w;
     }
 
-    return parseInt(this.window.getComputedStyle(content)['width'])
+    return parseInt(this.window.getComputedStyle(content)["width"]);
   }
 
   /**
@@ -157,17 +163,17 @@ export class Contents {
    * @returns {number} height
    */
   contentHeight(h) {
-    var content = this.content || this.document.body
+    var content = this.content || this.document.body;
 
     if (h && isNumber(h)) {
-      h = h + 'px'
+      h = h + "px";
     }
 
     if (h) {
-      content.style.height = h
+      content.style.height = h;
     }
 
-    return parseInt(this.window.getComputedStyle(content)['height'])
+    return parseInt(this.window.getComputedStyle(content)["height"]);
   }
 
   /**
@@ -175,24 +181,24 @@ export class Contents {
    * @returns {number} width
    */
   textWidth() {
-    let rect
-    let width
-    let range = this.document.createRange()
-    let content = this.content || this.document.body
-    let border = borders(content)
+    let rect;
+    let width;
+    let range = this.document.createRange();
+    let content = this.content || this.document.body;
+    let border = borders(content);
 
     // Select the contents of frame
-    range.selectNodeContents(content)
+    range.selectNodeContents(content);
 
     // get the width of the text content
-    rect = range.getBoundingClientRect()
-    width = rect.width
+    rect = range.getBoundingClientRect();
+    width = rect.width;
 
     if (border && border.width) {
-      width += border.width
+      width += border.width;
     }
 
-    return Math.round(width)
+    return Math.round(width);
   }
 
   /**
@@ -200,17 +206,17 @@ export class Contents {
    * @returns {number} height
    */
   textHeight() {
-    let rect
-    let height
-    let range = this.document.createRange()
-    let content = this.content || this.document.body
+    let rect;
+    let height;
+    let range = this.document.createRange();
+    let content = this.content || this.document.body;
 
-    range.selectNodeContents(content)
+    range.selectNodeContents(content);
 
-    rect = range.getBoundingClientRect()
-    height = rect.bottom
+    rect = range.getBoundingClientRect();
+    height = rect.bottom;
 
-    return Math.round(height)
+    return Math.round(height);
   }
 
   /**
@@ -218,9 +224,9 @@ export class Contents {
    * @returns {number} width
    */
   scrollWidth() {
-    var width = this.documentElement.scrollWidth
+    var width = this.documentElement.scrollWidth;
 
-    return width
+    return width;
   }
 
   /**
@@ -228,9 +234,9 @@ export class Contents {
    * @returns {number} height
    */
   scrollHeight() {
-    var height = this.documentElement.scrollHeight
+    var height = this.documentElement.scrollHeight;
 
-    return height
+    return height;
   }
 
   /**
@@ -239,10 +245,10 @@ export class Contents {
    */
   overflow(overflow) {
     if (overflow) {
-      this.documentElement.style.overflow = overflow
+      this.documentElement.style.overflow = overflow;
     }
 
-    return this.window.getComputedStyle(this.documentElement)['overflow']
+    return this.window.getComputedStyle(this.documentElement)["overflow"];
   }
 
   /**
@@ -251,10 +257,10 @@ export class Contents {
    */
   overflowX(overflow) {
     if (overflow) {
-      this.documentElement.style.overflowX = overflow
+      this.documentElement.style.overflowX = overflow;
     }
 
-    return this.window.getComputedStyle(this.documentElement)['overflowX']
+    return this.window.getComputedStyle(this.documentElement)["overflowX"];
   }
 
   /**
@@ -263,10 +269,10 @@ export class Contents {
    */
   overflowY(overflow) {
     if (overflow) {
-      this.documentElement.style.overflowY = overflow
+      this.documentElement.style.overflowY = overflow;
     }
 
-    return this.window.getComputedStyle(this.documentElement)['overflowY']
+    return this.window.getComputedStyle(this.documentElement)["overflowY"];
   }
 
   /**
@@ -276,15 +282,15 @@ export class Contents {
    * @param {boolean} [priority] set as "important"
    */
   css(property, value, priority) {
-    var content = this.content || this.document.body
+    var content = this.content || this.document.body;
 
     if (value) {
-      content.style.setProperty(property, value, priority ? 'important' : '')
+      content.style.setProperty(property, value, priority ? "important" : "");
     } else {
-      content.style.removeProperty(property)
+      content.style.removeProperty(property);
     }
 
-    return this.window.getComputedStyle(content)[property]
+    return this.window.getComputedStyle(content)[property];
   }
 
   /**
@@ -298,98 +304,102 @@ export class Contents {
    * @param {string} [options.scalable]
    */
   viewport(options) {
-    var _width, _height, _scale, _minimum, _maximum, _scalable
+    var _width, _height, _scale, _minimum, _maximum, _scalable;
     // var width, height, scale, minimum, maximum, scalable;
-    var $viewport = this.document.querySelector("meta[name='viewport']")
+    var $viewport = this.document.querySelector("meta[name='viewport']");
     var parsed = {
       width: undefined,
       height: undefined,
       scale: undefined,
       minimum: undefined,
       maximum: undefined,
-      scalable: undefined
-    }
-    var newContent = []
-    var settings = {}
+      scalable: undefined,
+    };
+    var newContent = [];
+    var settings = {};
 
     /*
      * check for the viewport size
      * <meta name="viewport" content="width=1024,height=697" />
      */
-    if ($viewport && $viewport.hasAttribute('content')) {
-      let content = $viewport.getAttribute('content')
-      let _width = content.match(/width\s*=\s*([^,]*)/)
-      let _height = content.match(/height\s*=\s*([^,]*)/)
-      let _scale = content.match(/initial-scale\s*=\s*([^,]*)/)
-      let _minimum = content.match(/minimum-scale\s*=\s*([^,]*)/)
-      let _maximum = content.match(/maximum-scale\s*=\s*([^,]*)/)
-      let _scalable = content.match(/user-scalable\s*=\s*([^,]*)/)
+    if ($viewport && $viewport.hasAttribute("content")) {
+      let content = $viewport.getAttribute("content");
+      let _width = content.match(/width\s*=\s*([^,]*)/);
+      let _height = content.match(/height\s*=\s*([^,]*)/);
+      let _scale = content.match(/initial-scale\s*=\s*([^,]*)/);
+      let _minimum = content.match(/minimum-scale\s*=\s*([^,]*)/);
+      let _maximum = content.match(/maximum-scale\s*=\s*([^,]*)/);
+      let _scalable = content.match(/user-scalable\s*=\s*([^,]*)/);
 
-      if (_width && _width.length && typeof _width[1] !== 'undefined') {
-        parsed.width = _width[1]
+      if (_width && _width.length && typeof _width[1] !== "undefined") {
+        parsed.width = _width[1];
       }
-      if (_height && _height.length && typeof _height[1] !== 'undefined') {
-        parsed.height = _height[1]
+      if (_height && _height.length && typeof _height[1] !== "undefined") {
+        parsed.height = _height[1];
       }
-      if (_scale && _scale.length && typeof _scale[1] !== 'undefined') {
-        parsed.scale = _scale[1]
+      if (_scale && _scale.length && typeof _scale[1] !== "undefined") {
+        parsed.scale = _scale[1];
       }
-      if (_minimum && _minimum.length && typeof _minimum[1] !== 'undefined') {
-        parsed.minimum = _minimum[1]
+      if (_minimum && _minimum.length && typeof _minimum[1] !== "undefined") {
+        parsed.minimum = _minimum[1];
       }
-      if (_maximum && _maximum.length && typeof _maximum[1] !== 'undefined') {
-        parsed.maximum = _maximum[1]
+      if (_maximum && _maximum.length && typeof _maximum[1] !== "undefined") {
+        parsed.maximum = _maximum[1];
       }
-      if (_scalable && _scalable.length && typeof _scalable[1] !== 'undefined') {
-        parsed.scalable = _scalable[1]
+      if (
+        _scalable &&
+        _scalable.length &&
+        typeof _scalable[1] !== "undefined"
+      ) {
+        parsed.scalable = _scalable[1];
       }
     }
 
-    settings = defaults(options || {}, parsed)
+    settings = defaults(options || {}, parsed);
 
     if (options) {
       if (settings.width) {
-        newContent.push('width=' + settings.width)
+        newContent.push("width=" + settings.width);
       }
 
       if (settings.height) {
-        newContent.push('height=' + settings.height)
+        newContent.push("height=" + settings.height);
       }
 
       if (settings.scale) {
-        newContent.push('initial-scale=' + settings.scale)
+        newContent.push("initial-scale=" + settings.scale);
       }
 
-      if (settings.scalable === 'no') {
-        newContent.push('minimum-scale=' + settings.scale)
-        newContent.push('maximum-scale=' + settings.scale)
-        newContent.push('user-scalable=' + settings.scalable)
+      if (settings.scalable === "no") {
+        newContent.push("minimum-scale=" + settings.scale);
+        newContent.push("maximum-scale=" + settings.scale);
+        newContent.push("user-scalable=" + settings.scalable);
       } else {
         if (settings.scalable) {
-          newContent.push('user-scalable=' + settings.scalable)
+          newContent.push("user-scalable=" + settings.scalable);
         }
 
         if (settings.minimum) {
-          newContent.push('minimum-scale=' + settings.minimum)
+          newContent.push("minimum-scale=" + settings.minimum);
         }
 
         if (settings.maximum) {
-          newContent.push('minimum-scale=' + settings.maximum)
+          newContent.push("minimum-scale=" + settings.maximum);
         }
       }
 
       if (!$viewport) {
-        $viewport = this.document.createElement('meta')
-        $viewport.setAttribute('name', 'viewport')
-        this.document.querySelector('head').appendChild($viewport)
+        $viewport = this.document.createElement("meta");
+        $viewport.setAttribute("name", "viewport");
+        this.document.querySelector("head").appendChild($viewport);
       }
 
-      $viewport.setAttribute('content', newContent.join(', '))
+      $viewport.setAttribute("content", newContent.join(", "));
 
-      this.window.scrollTo(0, 0)
+      this.window.scrollTo(0, 0);
     }
 
-    return settings
+    return settings;
   }
 
   /**
@@ -397,7 +407,7 @@ export class Contents {
    * @private
    */
   expand() {
-    this.emit(EVENTS.CONTENTS.EXPAND)
+    this.emit(EVENTS.CONTENTS.EXPAND);
   }
 
   /**
@@ -405,28 +415,28 @@ export class Contents {
    * @private
    */
   listeners() {
-    this.imageLoadListeners()
+    this.imageLoadListeners();
 
-    this.mediaQueryListeners()
+    this.mediaQueryListeners();
 
     // this.fontLoadListeners();
 
-    this.addEventListeners()
+    this.addEventListeners();
 
-    this.addSelectionListeners()
+    this.addSelectionListeners();
 
     // this.transitionListeners();
 
-    if (typeof ResizeObserver === 'undefined') {
-      this.resizeListeners()
-      this.visibilityListeners()
+    if (typeof ResizeObserver === "undefined") {
+      this.resizeListeners();
+      this.visibilityListeners();
     } else {
-      this.resizeObservers()
+      this.resizeObservers();
     }
 
     // this.mutationObservers();
 
-    this.linksHandler()
+    this.linksHandler();
   }
 
   /**
@@ -434,15 +444,15 @@ export class Contents {
    * @private
    */
   removeListeners() {
-    this.removeEventListeners()
+    this.removeEventListeners();
 
-    this.removeSelectionListeners()
+    this.removeSelectionListeners();
 
     if (this.observer) {
-      this.observer.disconnect()
+      this.observer.disconnect();
     }
 
-    clearTimeout(this.expanding)
+    clearTimeout(this.expanding);
   }
 
   /**
@@ -451,17 +461,17 @@ export class Contents {
    * @private
    */
   resizeCheck() {
-    let width = this.textWidth()
-    let height = this.textHeight()
+    let width = this.textWidth();
+    let height = this.textHeight();
 
     if (width != this._size.width || height != this._size.height) {
       this._size = {
         width: width,
-        height: height
-      }
+        height: height,
+      };
 
-      this.onResize && this.onResize(this._size)
-      this.emit(EVENTS.CONTENTS.RESIZE, this._size)
+      this.onResize && this.onResize(this._size);
+      this.emit(EVENTS.CONTENTS.RESIZE, this._size);
     }
   }
 
@@ -470,11 +480,11 @@ export class Contents {
    * @private
    */
   resizeListeners() {
-    var width, height
+    var width, height;
     // Test size again
-    clearTimeout(this.expanding)
-    requestAnimationFrame(this.resizeCheck.bind(this))
-    this.expanding = setTimeout(this.resizeListeners.bind(this), 350)
+    clearTimeout(this.expanding);
+    requestAnimationFrame(this.resizeCheck.bind(this));
+    this.expanding = setTimeout(this.resizeListeners.bind(this), 350);
   }
 
   /**
@@ -482,15 +492,15 @@ export class Contents {
    * @private
    */
   visibilityListeners() {
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible' && this.active === false) {
-        this.active = true
-        this.resizeListeners()
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && this.active === false) {
+        this.active = true;
+        this.resizeListeners();
       } else {
-        this.active = false
-        clearTimeout(this.expanding)
+        this.active = false;
+        clearTimeout(this.expanding);
       }
-    })
+    });
   }
 
   /**
@@ -498,16 +508,16 @@ export class Contents {
    * @private
    */
   transitionListeners() {
-    let body = this.content
+    let body = this.content;
 
-    body.style['transitionProperty'] =
-      'font, font-size, font-size-adjust, font-stretch, font-variation-settings, font-weight, width, height'
-    body.style['transitionDuration'] = '0.001ms'
-    body.style['transitionTimingFunction'] = 'linear'
-    body.style['transitionDelay'] = '0'
+    body.style["transitionProperty"] =
+      "font, font-size, font-size-adjust, font-stretch, font-variation-settings, font-weight, width, height";
+    body.style["transitionDuration"] = "0.001ms";
+    body.style["transitionTimingFunction"] = "linear";
+    body.style["transitionDelay"] = "0";
 
-    this._resizeCheck = this.resizeCheck.bind(this)
-    this.document.addEventListener('transitionend', this._resizeCheck)
+    this._resizeCheck = this.resizeCheck.bind(this);
+    this.document.addEventListener("transitionend", this._resizeCheck);
   }
 
   /**
@@ -516,27 +526,27 @@ export class Contents {
    * @private
    */
   mediaQueryListeners() {
-    var sheets = this.document.styleSheets
+    var sheets = this.document.styleSheets;
     var mediaChangeHandler = function (m) {
       if (m.matches && !this._expanding) {
-        setTimeout(this.expand.bind(this), 1)
+        setTimeout(this.expand.bind(this), 1);
       }
-    }.bind(this)
+    }.bind(this);
 
     for (var i = 0; i < sheets.length; i += 1) {
-      var rules
+      var rules;
       // Firefox errors if we access cssRules cross-domain
       try {
-        rules = sheets[i].cssRules
+        rules = sheets[i].cssRules;
       } catch (e) {
-        return
+        return;
       }
-      if (!rules) return // Stylesheets changed
+      if (!rules) return; // Stylesheets changed
       for (var j = 0; j < rules.length; j += 1) {
         //if (rules[j].constructor === CSSMediaRule) {
         if (rules[j].media) {
-          var mql = this.window.matchMedia(rules[j].media.mediaText)
-          mql.addListener(mediaChangeHandler)
+          var mql = this.window.matchMedia(rules[j].media.mediaText);
+          mql.addListener(mediaChangeHandler);
           //mql.onchange = mediaChangeHandler;
         }
       }
@@ -550,11 +560,11 @@ export class Contents {
   resizeObservers() {
     // create an observer instance
     this.observer = new ResizeObserver((e) => {
-      requestAnimationFrame(this.resizeCheck.bind(this))
-    })
+      requestAnimationFrame(this.resizeCheck.bind(this));
+    });
 
     // pass in the target node
-    this.observer.observe(this.document.documentElement)
+    this.observer.observe(this.document.documentElement);
   }
 
   /**
@@ -564,14 +574,19 @@ export class Contents {
   mutationObservers() {
     // create an observer instance
     this.observer = new MutationObserver((mutations) => {
-      this.resizeCheck()
-    })
+      this.resizeCheck();
+    });
 
     // configuration of the observer:
-    let config = { attributes: true, childList: true, characterData: true, subtree: true }
+    let config = {
+      attributes: true,
+      childList: true,
+      characterData: true,
+      subtree: true,
+    };
 
     // pass in the target node, as well as the observer options
-    this.observer.observe(this.document, config)
+    this.observer.observe(this.document, config);
   }
 
   /**
@@ -579,13 +594,13 @@ export class Contents {
    * @private
    */
   imageLoadListeners() {
-    var images = this.document.querySelectorAll('img')
-    var img
+    var images = this.document.querySelectorAll("img");
+    var img;
     for (var i = 0; i < images.length; i++) {
-      img = images[i]
+      img = images[i];
 
-      if (typeof img.naturalWidth !== 'undefined' && img.naturalWidth === 0) {
-        img.onload = this.expand.bind(this)
+      if (typeof img.naturalWidth !== "undefined" && img.naturalWidth === 0) {
+        img.onload = this.expand.bind(this);
       }
     }
   }
@@ -596,14 +611,14 @@ export class Contents {
    */
   fontLoadListeners() {
     if (!this.document || !this.document.fonts) {
-      return
+      return;
     }
 
     this.document.fonts.ready.then(
       function () {
-        this.resizeCheck()
-      }.bind(this)
-    )
+        this.resizeCheck();
+      }.bind(this),
+    );
   }
 
   /**
@@ -611,8 +626,8 @@ export class Contents {
    * @returns {element} documentElement
    */
   root() {
-    if (!this.document) return null
-    return this.document.documentElement
+    if (!this.document) return null;
+    return this.document.documentElement;
   }
 
   /**
@@ -622,90 +637,97 @@ export class Contents {
    * @returns { {left: Number, top: Number }
    */
   locationOf(target, ignoreClass) {
-    var position
-    var targetPos = { left: 0, top: 0 }
+    var position;
+    var targetPos = { left: 0, top: 0 };
 
-    if (!this.document) return targetPos
+    if (!this.document) return targetPos;
 
     if (this.epubcfi.isCfiString(target)) {
-      let range = new EpubCFI(target).toRange(this.document, ignoreClass)
+      let range = new EpubCFI(target).toRange(this.document, ignoreClass);
 
       if (range) {
         try {
           if (
             !range.endContainer ||
-            (range.startContainer == range.endContainer && range.startOffset == range.endOffset)
+            (range.startContainer == range.endContainer &&
+              range.startOffset == range.endOffset)
           ) {
             // If the end for the range is not set, it results in collapsed becoming
             // true. This in turn leads to inconsistent behaviour when calling
             // getBoundingRect. Wrong bounds lead to the wrong page being displayed.
             // https://developer.microsoft.com/en-us/microsoft-edge/platform/issues/15684911/
-            let pos = range.startContainer.textContent.indexOf(' ', range.startOffset)
+            let pos = range.startContainer.textContent.indexOf(
+              " ",
+              range.startOffset,
+            );
             if (pos == -1) {
-              pos = range.startContainer.textContent.length
+              pos = range.startContainer.textContent.length;
             }
-            range.setEnd(range.startContainer, pos)
+            range.setEnd(range.startContainer, pos);
           }
         } catch (e) {
-          console.error('setting end offset to start container length failed', e)
+          console.error(
+            "setting end offset to start container length failed",
+            e,
+          );
         }
 
         if (range.startContainer.nodeType === Node.ELEMENT_NODE) {
-          position = range.startContainer.getBoundingClientRect()
-          targetPos.left = position.left
-          targetPos.top = position.top
+          position = range.startContainer.getBoundingClientRect();
+          targetPos.left = position.left;
+          targetPos.top = position.top;
         } else {
           // Webkit does not handle collapsed range bounds correctly
           // https://bugs.webkit.org/show_bug.cgi?id=138949
 
           // Construct a new non-collapsed range
           if (isWebkit) {
-            let container = range.startContainer
-            let newRange = new Range()
+            let container = range.startContainer;
+            let newRange = new Range();
             try {
               if (container.nodeType === ELEMENT_NODE) {
-                position = container.getBoundingClientRect()
+                position = container.getBoundingClientRect();
               } else if (range.startOffset + 2 < container.length) {
-                newRange.setStart(container, range.startOffset)
-                newRange.setEnd(container, range.startOffset + 2)
-                position = newRange.getBoundingClientRect()
+                newRange.setStart(container, range.startOffset);
+                newRange.setEnd(container, range.startOffset + 2);
+                position = newRange.getBoundingClientRect();
               } else if (range.startOffset - 2 > 0) {
-                newRange.setStart(container, range.startOffset - 2)
-                newRange.setEnd(container, range.startOffset)
-                position = newRange.getBoundingClientRect()
+                newRange.setStart(container, range.startOffset - 2);
+                newRange.setEnd(container, range.startOffset);
+                position = newRange.getBoundingClientRect();
               } else {
                 // empty, return the parent element
-                position = container.parentNode.getBoundingClientRect()
+                position = container.parentNode.getBoundingClientRect();
               }
             } catch (e) {
-              console.error(e, e.stack)
+              console.error(e, e.stack);
             }
           } else {
-            position = range.getBoundingClientRect()
+            position = range.getBoundingClientRect();
           }
         }
       }
-    } else if (typeof target === 'string' && target.indexOf('#') > -1) {
-      let id = target.substring(target.indexOf('#') + 1)
-      let el = this.document.getElementById(id)
+    } else if (typeof target === "string" && target.indexOf("#") > -1) {
+      let id = target.substring(target.indexOf("#") + 1);
+      let el = this.document.getElementById(id);
       if (el) {
         if (isWebkit) {
           // Webkit reports incorrect bounding rects in Columns
-          let newRange = new Range()
-          newRange.selectNode(el)
-          position = newRange.getBoundingClientRect()
+          let newRange = new Range();
+          newRange.selectNode(el);
+          position = newRange.getBoundingClientRect();
         } else {
-          position = el.getBoundingClientRect()
+          position = el.getBoundingClientRect();
         }
       }
     }
 
     if (position) {
-      targetPos.left = position.left
-      targetPos.top = position.top
+      targetPos.left = position.left;
+      targetPos.top = position.top;
     }
 
-    return targetPos
+    return targetPos;
   }
 
   /**
@@ -715,55 +737,55 @@ export class Contents {
   addStylesheet(src) {
     return new Promise(
       function (resolve, reject) {
-        var $stylesheet
-        var ready = false
+        var $stylesheet;
+        var ready = false;
 
         if (!this.document) {
-          resolve(false)
-          return
+          resolve(false);
+          return;
         }
 
         // Check if link already exists
-        $stylesheet = this.document.querySelector("link[href='" + src + "']")
+        $stylesheet = this.document.querySelector("link[href='" + src + "']");
         if ($stylesheet) {
-          resolve(true)
-          return // already present
+          resolve(true);
+          return; // already present
         }
 
-        $stylesheet = this.document.createElement('link')
-        $stylesheet.type = 'text/css'
-        $stylesheet.rel = 'stylesheet'
-        $stylesheet.href = src
+        $stylesheet = this.document.createElement("link");
+        $stylesheet.type = "text/css";
+        $stylesheet.rel = "stylesheet";
+        $stylesheet.href = src;
         $stylesheet.onload = $stylesheet.onreadystatechange = function () {
-          if (!ready && (!this.readyState || this.readyState == 'complete')) {
-            ready = true
+          if (!ready && (!this.readyState || this.readyState == "complete")) {
+            ready = true;
             // Let apply
             setTimeout(() => {
-              resolve(true)
-            }, 1)
+              resolve(true);
+            }, 1);
           }
-        }
+        };
 
-        this.document.head.appendChild($stylesheet)
-      }.bind(this)
-    )
+        this.document.head.appendChild($stylesheet);
+      }.bind(this),
+    );
   }
 
   _getStylesheetNode(key) {
-    var styleEl
-    key = 'epubjs-inserted-css-' + (key || '')
+    var styleEl;
+    key = "epubjs-inserted-css-" + (key || "");
 
-    if (!this.document) return false
+    if (!this.document) return false;
 
     // Check if link already exists
-    styleEl = this.document.getElementById(key)
+    styleEl = this.document.getElementById(key);
     if (!styleEl) {
-      styleEl = this.document.createElement('style')
-      styleEl.id = key
+      styleEl = this.document.createElement("style");
+      styleEl.id = key;
       // Append style element to head
-      this.document.head.appendChild(styleEl)
+      this.document.head.appendChild(styleEl);
     }
-    return styleEl
+    return styleEl;
   }
 
   /**
@@ -772,13 +794,13 @@ export class Contents {
    * @param {string} key If the key is the same, the CSS will be replaced instead of inserted
    */
   addStylesheetCss(serializedCss, key) {
-    if (!this.document || !serializedCss) return false
+    if (!this.document || !serializedCss) return false;
 
-    var styleEl
-    styleEl = this._getStylesheetNode(key)
-    styleEl.innerHTML = serializedCss
+    var styleEl;
+    styleEl = this._getStylesheetNode(key);
+    styleEl.innerHTML = serializedCss;
 
-    return true
+    return true;
   }
 
   /**
@@ -789,57 +811,67 @@ export class Contents {
    * @param {string} key If the key is the same, the CSS will be replaced instead of inserted
    */
   addStylesheetRules(rules, key) {
-    var styleSheet
+    var styleSheet;
 
-    if (!this.document || !rules || rules.length === 0) return
+    if (!this.document || !rules || rules.length === 0) return;
 
     // Grab style sheet
-    styleSheet = this._getStylesheetNode(key).sheet
+    styleSheet = this._getStylesheetNode(key).sheet;
 
-    if (Object.prototype.toString.call(rules) === '[object Array]') {
+    if (Object.prototype.toString.call(rules) === "[object Array]") {
       for (var i = 0, rl = rules.length; i < rl; i++) {
         var j = 1,
           rule = rules[i],
           selector = rules[i][0],
-          propStr = ''
+          propStr = "";
         // If the second argument of a rule is an array of arrays, correct our variables.
-        if (Object.prototype.toString.call(rule[1][0]) === '[object Array]') {
-          rule = rule[1]
-          j = 0
+        if (Object.prototype.toString.call(rule[1][0]) === "[object Array]") {
+          rule = rule[1];
+          j = 0;
         }
 
         for (var pl = rule.length; j < pl; j++) {
-          var prop = rule[j]
-          propStr += prop[0] + ':' + prop[1] + (prop[2] ? ' !important' : '') + ';\n'
+          var prop = rule[j];
+          propStr +=
+            prop[0] + ":" + prop[1] + (prop[2] ? " !important" : "") + ";\n";
         }
 
         // Insert CSS Rule
-        styleSheet.insertRule(selector + '{' + propStr + '}', styleSheet.cssRules.length)
+        styleSheet.insertRule(
+          selector + "{" + propStr + "}",
+          styleSheet.cssRules.length,
+        );
       }
     } else {
-      const selectors = Object.keys(rules)
+      const selectors = Object.keys(rules);
       selectors.forEach((selector) => {
-        const definition = rules[selector]
+        const definition = rules[selector];
         if (Array.isArray(definition)) {
           definition.forEach((item) => {
-            const _rules = Object.keys(item)
+            const _rules = Object.keys(item);
             const result = _rules
               .map((rule) => {
-                return `${rule}:${item[rule]}`
+                return `${rule}:${item[rule]}`;
               })
-              .join(';')
-            styleSheet.insertRule(`${selector}{${result}}`, styleSheet.cssRules.length)
-          })
+              .join(";");
+            styleSheet.insertRule(
+              `${selector}{${result}}`,
+              styleSheet.cssRules.length,
+            );
+          });
         } else {
-          const _rules = Object.keys(definition)
+          const _rules = Object.keys(definition);
           const result = _rules
             .map((rule) => {
-              return `${rule}:${definition[rule]}`
+              return `${rule}:${definition[rule]}`;
             })
-            .join(';')
-          styleSheet.insertRule(`${selector}{${result}}`, styleSheet.cssRules.length)
+            .join(";");
+          styleSheet.insertRule(
+            `${selector}{${result}}`,
+            styleSheet.cssRules.length,
+          );
         }
-      })
+      });
     }
   }
 
@@ -851,30 +883,30 @@ export class Contents {
   addScript(src) {
     return new Promise(
       function (resolve, reject) {
-        var $script
-        var ready = false
+        var $script;
+        var ready = false;
 
         if (!this.document) {
-          resolve(false)
-          return
+          resolve(false);
+          return;
         }
 
-        $script = this.document.createElement('script')
-        $script.type = 'text/javascript'
-        $script.async = true
-        $script.src = src
+        $script = this.document.createElement("script");
+        $script.type = "text/javascript";
+        $script.async = true;
+        $script.src = src;
         $script.onload = $script.onreadystatechange = function () {
-          if (!ready && (!this.readyState || this.readyState == 'complete')) {
-            ready = true
+          if (!ready && (!this.readyState || this.readyState == "complete")) {
+            ready = true;
             setTimeout(function () {
-              resolve(true)
-            }, 1)
+              resolve(true);
+            }, 1);
           }
-        }
+        };
 
-        this.document.head.appendChild($script)
-      }.bind(this)
-    )
+        this.document.head.appendChild($script);
+      }.bind(this),
+    );
   }
 
   /**
@@ -882,14 +914,14 @@ export class Contents {
    * @param {string} className
    */
   addClass(className) {
-    var content
+    var content;
 
-    if (!this.document) return
+    if (!this.document) return;
 
-    content = this.content || this.document.body
+    content = this.content || this.document.body;
 
     if (content) {
-      content.classList.add(className)
+      content.classList.add(className);
     }
   }
 
@@ -898,14 +930,14 @@ export class Contents {
    * @param {string} removeClass
    */
   removeClass(className) {
-    var content
+    var content;
 
-    if (!this.document) return
+    if (!this.document) return;
 
-    content = this.content || this.document.body
+    content = this.content || this.document.body;
 
     if (content) {
-      content.classList.remove(className)
+      content.classList.remove(className);
     }
   }
 
@@ -915,14 +947,16 @@ export class Contents {
    */
   addEventListeners() {
     if (!this.document) {
-      return
+      return;
     }
 
-    this._triggerEvent = this.triggerEvent.bind(this)
+    this._triggerEvent = this.triggerEvent.bind(this);
 
     DOM_EVENTS.forEach(function (eventName) {
-      this.document.addEventListener(eventName, this._triggerEvent, { passive: true })
-    }, this)
+      this.document.addEventListener(eventName, this._triggerEvent, {
+        passive: true,
+      });
+    }, this);
   }
 
   /**
@@ -931,12 +965,14 @@ export class Contents {
    */
   removeEventListeners() {
     if (!this.document) {
-      return
+      return;
     }
     DOM_EVENTS.forEach(function (eventName) {
-      this.document.removeEventListener(eventName, this._triggerEvent, { passive: true })
-    }, this)
-    this._triggerEvent = undefined
+      this.document.removeEventListener(eventName, this._triggerEvent, {
+        passive: true,
+      });
+    }, this);
+    this._triggerEvent = undefined;
   }
 
   /**
@@ -944,7 +980,7 @@ export class Contents {
    * @private
    */
   triggerEvent(e) {
-    this.emit(e.type, e)
+    this.emit(e.type, e);
   }
 
   /**
@@ -953,10 +989,12 @@ export class Contents {
    */
   addSelectionListeners() {
     if (!this.document) {
-      return
+      return;
     }
-    this._onSelectionChange = this.onSelectionChange.bind(this)
-    this.document.addEventListener('selectionchange', this._onSelectionChange, { passive: true })
+    this._onSelectionChange = this.onSelectionChange.bind(this);
+    this.document.addEventListener("selectionchange", this._onSelectionChange, {
+      passive: true,
+    });
   }
 
   /**
@@ -965,10 +1003,14 @@ export class Contents {
    */
   removeSelectionListeners() {
     if (!this.document) {
-      return
+      return;
     }
-    this.document.removeEventListener('selectionchange', this._onSelectionChange, { passive: true })
-    this._onSelectionChange = undefined
+    this.document.removeEventListener(
+      "selectionchange",
+      this._onSelectionChange,
+      { passive: true },
+    );
+    this._onSelectionChange = undefined;
   }
 
   /**
@@ -977,15 +1019,15 @@ export class Contents {
    */
   onSelectionChange(e) {
     if (this.selectionEndTimeout) {
-      clearTimeout(this.selectionEndTimeout)
+      clearTimeout(this.selectionEndTimeout);
     }
     this.selectionEndTimeout = setTimeout(
       function () {
-        var selection = this.window.getSelection()
-        this.triggerSelectedEvent(selection)
+        var selection = this.window.getSelection();
+        this.triggerSelectedEvent(selection);
       }.bind(this),
-      250
-    )
+      250,
+    );
   }
 
   /**
@@ -993,15 +1035,15 @@ export class Contents {
    * @private
    */
   triggerSelectedEvent(selection) {
-    var range, cfirange
+    var range, cfirange;
 
     if (selection && selection.rangeCount > 0) {
-      range = selection.getRangeAt(0)
+      range = selection.getRangeAt(0);
       if (!range.collapsed) {
         // cfirange = this.section.cfiFromRange(range);
-        cfirange = new EpubCFI(range, this.cfiBase).toString()
-        this.emit(EVENTS.CONTENTS.SELECTED, cfirange)
-        this.emit(EVENTS.CONTENTS.SELECTED_RANGE, range)
+        cfirange = new EpubCFI(range, this.cfiBase).toString();
+        this.emit(EVENTS.CONTENTS.SELECTED, cfirange);
+        this.emit(EVENTS.CONTENTS.SELECTED_RANGE, range);
       }
     }
   }
@@ -1013,8 +1055,8 @@ export class Contents {
    * @returns {Range} range
    */
   range(_cfi, ignoreClass) {
-    var cfi = new EpubCFI(_cfi)
-    return cfi.toRange(this.document, ignoreClass)
+    var cfi = new EpubCFI(_cfi);
+    return cfi.toRange(this.document, ignoreClass);
   }
 
   /**
@@ -1024,7 +1066,7 @@ export class Contents {
    * @returns {EpubCFI} cfi
    */
   cfiFromRange(range, ignoreClass) {
-    return new EpubCFI(range, this.cfiBase, ignoreClass).toString()
+    return new EpubCFI(range, this.cfiBase, ignoreClass).toString();
   }
 
   /**
@@ -1034,13 +1076,13 @@ export class Contents {
    * @returns {EpubCFI} cfi
    */
   cfiFromNode(node, ignoreClass) {
-    return new EpubCFI(node, this.cfiBase, ignoreClass).toString()
+    return new EpubCFI(node, this.cfiBase, ignoreClass).toString();
   }
 
   // TODO: find where this is used - remove?
   map(layout) {
-    var map = new Mapping(layout)
-    return map.section()
+    var map = new Mapping(layout);
+    return map.section();
   }
 
   /**
@@ -1049,25 +1091,25 @@ export class Contents {
    * @param {number} [height]
    */
   size(width, height) {
-    var viewport = { scale: 1.0, scalable: 'no' }
+    var viewport = { scale: 1.0, scalable: "no" };
 
-    this.layoutStyle('scrolling')
+    this.layoutStyle("scrolling");
 
     if (width >= 0) {
-      this.width(width)
-      viewport.width = width
-      this.css('padding', '0 ' + width / 12 + 'px')
+      this.width(width);
+      viewport.width = width;
+      this.css("padding", "0 " + width / 12 + "px");
     }
 
     if (height >= 0) {
-      this.height(height)
-      viewport.height = height
+      this.height(height);
+      viewport.height = height;
     }
 
-    this.css('margin', '0')
-    this.css('box-sizing', 'border-box')
+    this.css("margin", "0");
+    this.css("box-sizing", "border-box");
 
-    this.viewport(viewport)
+    this.viewport(viewport);
   }
 
   /**
@@ -1078,58 +1120,59 @@ export class Contents {
    * @param {number} gap
    */
   columns(width, height, columnWidth, gap, dir) {
-    let COLUMN_AXIS = prefixed('column-axis')
-    let COLUMN_GAP = prefixed('column-gap')
-    let COLUMN_WIDTH = prefixed('column-width')
-    let COLUMN_FILL = prefixed('column-fill')
+    let COLUMN_AXIS = prefixed("column-axis");
+    let COLUMN_GAP = prefixed("column-gap");
+    let COLUMN_WIDTH = prefixed("column-width");
+    let COLUMN_FILL = prefixed("column-fill");
 
-    let writingMode = this.writingMode()
-    let axis = writingMode.indexOf('vertical') === 0 ? 'vertical' : 'horizontal'
+    let writingMode = this.writingMode();
+    let axis =
+      writingMode.indexOf("vertical") === 0 ? "vertical" : "horizontal";
 
-    this.layoutStyle('paginated')
+    this.layoutStyle("paginated");
 
-    if (dir === 'rtl' && axis === 'horizontal') {
-      this.direction(dir)
+    if (dir === "rtl" && axis === "horizontal") {
+      this.direction(dir);
     }
 
-    this.width(width)
-    this.height(height)
+    this.width(width);
+    this.height(height);
 
     // Deal with Mobile trying to scale to viewport
-    this.viewport({ width: width, height: height, scale: 1.0, scalable: 'no' })
+    this.viewport({ width: width, height: height, scale: 1.0, scalable: "no" });
 
     // TODO: inline-block needs more testing
     // Fixes Safari column cut offs, but causes RTL issues
     // this.css("display", "inline-block");
 
-    this.css('overflow-y', 'hidden')
-    this.css('margin', '0', true)
+    this.css("overflow-y", "hidden");
+    this.css("margin", "0", true);
 
-    if (axis === 'vertical') {
-      this.css('padding-top', gap / 2 + 'px', true)
-      this.css('padding-bottom', gap / 2 + 'px', true)
-      this.css('padding-left', '20px')
-      this.css('padding-right', '20px')
-      this.css(COLUMN_AXIS, 'vertical')
+    if (axis === "vertical") {
+      this.css("padding-top", gap / 2 + "px", true);
+      this.css("padding-bottom", gap / 2 + "px", true);
+      this.css("padding-left", "20px");
+      this.css("padding-right", "20px");
+      this.css(COLUMN_AXIS, "vertical");
     } else {
-      this.css('padding-top', '20px')
-      this.css('padding-bottom', '20px')
-      this.css('padding-left', gap / 2 + 'px', true)
-      this.css('padding-right', gap / 2 + 'px', true)
-      this.css(COLUMN_AXIS, 'horizontal')
+      this.css("padding-top", "20px");
+      this.css("padding-bottom", "20px");
+      this.css("padding-left", gap / 2 + "px", true);
+      this.css("padding-right", gap / 2 + "px", true);
+      this.css(COLUMN_AXIS, "horizontal");
     }
 
-    this.css('box-sizing', 'border-box')
-    this.css('max-width', 'inherit')
+    this.css("box-sizing", "border-box");
+    this.css("max-width", "inherit");
 
-    this.css(COLUMN_FILL, 'auto')
+    this.css(COLUMN_FILL, "auto");
 
-    this.css(COLUMN_GAP, gap + 'px')
-    this.css(COLUMN_WIDTH, columnWidth + 'px')
+    this.css(COLUMN_GAP, gap + "px");
+    this.css(COLUMN_WIDTH, columnWidth + "px");
 
     // Fix glyph clipping in WebKit
     // https://github.com/futurepress/epub.js/issues/983
-    this.css('-webkit-line-box-contain', 'block glyphs replaced')
+    this.css("-webkit-line-box-contain", "block glyphs replaced");
   }
 
   /**
@@ -1139,16 +1182,17 @@ export class Contents {
    * @param {number} offsetY
    */
   scaler(scale, offsetX, offsetY) {
-    var scaleStr = 'scale(' + scale + ')'
-    var translateStr = ''
+    var scaleStr = "scale(" + scale + ")";
+    var translateStr = "";
     // this.css("position", "absolute"));
-    this.css('transform-origin', 'top left')
+    this.css("transform-origin", "top left");
 
     if (offsetX >= 0 || offsetY >= 0) {
-      translateStr = ' translate(' + (offsetX || 0) + 'px, ' + (offsetY || 0) + 'px )'
+      translateStr =
+        " translate(" + (offsetX || 0) + "px, " + (offsetY || 0) + "px )";
     }
 
-    this.css('transform', scaleStr + translateStr)
+    this.css("transform", scaleStr + translateStr);
   }
 
   /**
@@ -1157,12 +1201,12 @@ export class Contents {
    * @param {number} height
    */
   fit(width, height, section) {
-    var viewport = this.viewport()
-    var viewportWidth = parseInt(viewport.width)
-    var viewportHeight = parseInt(viewport.height)
-    var widthScale = width / viewportWidth
-    var heightScale = height / viewportHeight
-    var scale = widthScale < heightScale ? widthScale : heightScale
+    var viewport = this.viewport();
+    var viewportWidth = parseInt(viewport.width);
+    var viewportHeight = parseInt(viewport.height);
+    var widthScale = width / viewportWidth;
+    var heightScale = height / viewportHeight;
+    var scale = widthScale < heightScale ? widthScale : heightScale;
 
     // the translate does not work as intended, elements can end up unaligned
     // var offsetY = (height - (viewportHeight * scale)) / 2;
@@ -1171,25 +1215,28 @@ export class Contents {
     // 	offsetX = width - (viewportWidth * scale);
     // }
 
-    this.layoutStyle('paginated')
+    this.layoutStyle("paginated");
 
     // scale needs width and height to be set
-    this.width(viewportWidth)
-    this.height(viewportHeight)
-    this.overflow('hidden')
+    this.width(viewportWidth);
+    this.height(viewportHeight);
+    this.overflow("hidden");
 
     // Scale to the correct size
-    this.scaler(scale, 0, 0)
+    this.scaler(scale, 0, 0);
     // this.scaler(scale, offsetX > 0 ? offsetX : 0, offsetY);
 
     // background images are not scaled by transform
-    this.css('background-size', viewportWidth * scale + 'px ' + viewportHeight * scale + 'px')
+    this.css(
+      "background-size",
+      viewportWidth * scale + "px " + viewportHeight * scale + "px",
+    );
 
-    this.css('background-color', 'transparent')
-    if (section && section.properties.includes('page-spread-left')) {
+    this.css("background-color", "transparent");
+    if (section && section.properties.includes("page-spread-left")) {
       // set margin since scale is weird
-      var marginLeft = width - viewportWidth * scale
-      this.css('margin-left', marginLeft + 'px')
+      var marginLeft = width - viewportWidth * scale;
+      this.css("margin-left", marginLeft + "px");
     }
   }
 
@@ -1199,14 +1246,14 @@ export class Contents {
    */
   direction(dir) {
     if (this.documentElement) {
-      this.documentElement.style['direction'] = dir
+      this.documentElement.style["direction"] = dir;
     }
   }
 
   mapPage(cfiBase, layout, start, end, dev) {
-    var mapping = new Mapping(layout, dev)
+    var mapping = new Mapping(layout, dev);
 
-    return mapping.page(this, cfiBase, start, end)
+    return mapping.page(this, cfiBase, start, end);
   }
 
   /**
@@ -1215,8 +1262,8 @@ export class Contents {
    */
   linksHandler() {
     replaceLinks(this.content, (href) => {
-      this.emit(EVENTS.CONTENTS.LINK_CLICKED, href)
-    })
+      this.emit(EVENTS.CONTENTS.LINK_CLICKED, href);
+    });
   }
 
   /**
@@ -1224,13 +1271,15 @@ export class Contents {
    * @param {string} [mode="horizontal-tb"] "horizontal-tb" | "vertical-rl" | "vertical-lr"
    */
   writingMode(mode) {
-    let WRITING_MODE = prefixed('writing-mode')
+    let WRITING_MODE = prefixed("writing-mode");
 
     if (mode && this.documentElement) {
-      this.documentElement.style[WRITING_MODE] = mode
+      this.documentElement.style[WRITING_MODE] = mode;
     }
 
-    return this.window.getComputedStyle(this.documentElement)[WRITING_MODE] || ''
+    return (
+      this.window.getComputedStyle(this.documentElement)[WRITING_MODE] || ""
+    );
   }
 
   /**
@@ -1240,11 +1289,11 @@ export class Contents {
    */
   layoutStyle(style) {
     if (style) {
-      this._layoutStyle = style
-      navigator.epubReadingSystem.layoutStyle = this._layoutStyle
+      this._layoutStyle = style;
+      navigator.epubReadingSystem.layoutStyle = this._layoutStyle;
     }
 
-    return this._layoutStyle || 'paginated'
+    return this._layoutStyle || "paginated";
   }
 
   /**
@@ -1260,33 +1309,33 @@ export class Contents {
       layoutStyle: this.layoutStyle(),
       hasFeature: function (feature) {
         switch (feature) {
-          case 'dom-manipulation':
-            return true
-          case 'layout-changes':
-            return true
-          case 'touch-events':
-            return true
-          case 'mouse-events':
-            return true
-          case 'keyboard-events':
-            return true
-          case 'spine-scripting':
-            return false
+          case "dom-manipulation":
+            return true;
+          case "layout-changes":
+            return true;
+          case "touch-events":
+            return true;
+          case "mouse-events":
+            return true;
+          case "keyboard-events":
+            return true;
+          case "spine-scripting":
+            return false;
           default:
-            return false
+            return false;
         }
-      }
-    }
-    return navigator.epubReadingSystem
+      },
+    };
+    return navigator.epubReadingSystem;
   }
 
   destroy() {
     // this.document.removeEventListener('transitionend', this._resizeCheck);
 
-    this.removeListeners()
+    this.removeListeners();
   }
 }
 
-EventEmitter(Contents.prototype)
+EventEmitter(Contents.prototype);
 
-export default Contents
+export default Contents;

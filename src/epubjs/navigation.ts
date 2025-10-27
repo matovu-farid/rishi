@@ -1,16 +1,22 @@
-import { qs, qsa, querySelectorByType, filterChildren, getParentByTagName } from './utils/core'
+import {
+  qs,
+  qsa,
+  querySelectorByType,
+  filterChildren,
+  getParentByTagName,
+} from "./utils/new_core";
 export interface NavItem {
-  id: string
-  href: string
-  label: string
-  subitems?: Array<NavItem>
-  parent?: string
+  id: string;
+  href: string;
+  label: string;
+  subitems?: Array<NavItem>;
+  parent?: string;
 }
 
 export interface LandmarkItem {
-  href?: string
-  label?: string
-  type?: string
+  href?: string;
+  label?: string;
+  type?: string;
 }
 
 /**
@@ -18,23 +24,23 @@ export interface LandmarkItem {
  * @param {document} xml navigation html / xhtml / ncx
  */
 export class Navigation {
-  toc: Array<NavItem>
-  landmarks: Array<LandmarkItem>
-  private tocByHref: Record<string, number>
-  private tocById: Record<string, number>
-  private landmarksByType: Record<string, number>
-  private length: number
+  toc: Array<NavItem>;
+  landmarks: Array<LandmarkItem>;
+  private tocByHref: Record<string, number>;
+  private tocById: Record<string, number>;
+  private landmarksByType: Record<string, number>;
+  private length: number;
   constructor(xml: XMLDocument) {
-    this.toc = []
-    this.tocByHref = {}
-    this.tocById = {}
+    this.toc = [];
+    this.tocByHref = {};
+    this.tocById = {};
 
-    this.landmarks = []
-    this.landmarksByType = {}
+    this.landmarks = [];
+    this.landmarksByType = {};
 
-    this.length = 0
+    this.length = 0;
     if (xml) {
-      this.parse(xml)
+      this.parse(xml);
     }
   }
 
@@ -43,27 +49,27 @@ export class Navigation {
    * @param {document} xml navigation html / xhtml / ncx
    */
   parse(xml: XMLDocument) {
-    let isXml = xml.nodeType
-    let html
-    let ncx
+    let isXml = xml.nodeType;
+    let html;
+    let ncx;
 
     if (isXml) {
-      html = qs(xml, 'html')
-      ncx = qs(xml, 'ncx')
+      html = qs(xml, "html");
+      ncx = qs(xml, "ncx");
     }
 
     if (!isXml) {
-      this.toc = this.load(xml)
+      this.toc = this.load(xml);
     } else if (html) {
-      this.toc = this.parseNav(xml)
-      this.landmarks = this.parseLandmarks(xml)
+      this.toc = this.parseNav(xml);
+      this.landmarks = this.parseLandmarks(xml);
     } else if (ncx) {
-      this.toc = this.parseNcx(xml)
+      this.toc = this.parseNcx(xml);
     }
 
-    this.length = 0
+    this.length = 0;
 
-    this.unpack(this.toc)
+    this.unpack(this.toc);
   }
 
   /**
@@ -72,23 +78,23 @@ export class Navigation {
    * @param  {array} toc
    */
   unpack(toc) {
-    var item
+    var item;
 
     for (var i = 0; i < toc.length; i++) {
-      item = toc[i]
+      item = toc[i];
 
       if (item.href) {
-        this.tocByHref[item.href] = i
+        this.tocByHref[item.href] = i;
       }
 
       if (item.id) {
-        this.tocById[item.id] = i
+        this.tocById[item.id] = i;
       }
 
-      this.length++
+      this.length++;
 
       if (item.subitems.length) {
-        this.unpack(item.subitems)
+        this.unpack(item.subitems);
       }
     }
   }
@@ -99,19 +105,19 @@ export class Navigation {
    * @return {object} navItem
    */
   get(target: string) {
-    var index
+    var index;
 
     if (!target) {
-      return this.toc
+      return this.toc;
     }
 
-    if (target.indexOf('#') === 0) {
-      index = this.tocById[target.substring(1)]
+    if (target.indexOf("#") === 0) {
+      index = this.tocById[target.substring(1)];
     } else if (target in this.tocByHref) {
-      index = this.tocByHref[target]
+      index = this.tocByHref[target];
     }
 
-    return this.getByIndex(target, index, this.toc)
+    return this.getByIndex(target, index, this.toc);
   }
 
   /**
@@ -123,21 +129,21 @@ export class Navigation {
    */
   getByIndex(target: string, index: number, navItems: Array<any>): object {
     if (navItems.length === 0) {
-      return
+      return;
     }
 
-    const item = navItems[index]
+    const item = navItems[index];
     if (item && (target === item.id || target === item.href)) {
-      return item
+      return item;
     } else {
-      let result
+      let result;
       for (let i = 0; i < navItems.length; ++i) {
-        result = this.getByIndex(target, index, navItems[i].subitems)
+        result = this.getByIndex(target, index, navItems[i].subitems);
         if (result) {
-          break
+          break;
         }
       }
-      return result
+      return result;
     }
   }
 
@@ -148,15 +154,15 @@ export class Navigation {
    * @return {object} landmarkItem
    */
   landmark(type: string): object {
-    var index
+    var index;
 
     if (!type) {
-      return this.landmarks
+      return this.landmarks;
     }
 
-    index = this.landmarksByType[type]
+    index = this.landmarksByType[type];
 
-    return this.landmarks[index]
+    return this.landmarks[index];
   }
 
   /**
@@ -166,16 +172,16 @@ export class Navigation {
    * @return {array} navigation list
    */
   parseNav(navHtml) {
-    var navElement = querySelectorByType(navHtml, 'nav', 'toc')
-    var list = []
+    var navElement = querySelectorByType(navHtml, "nav", "toc");
+    var list = [];
 
-    if (!navElement) return list
+    if (!navElement) return list;
 
-    let navList = filterChildren(navElement, 'ol', true)
-    if (!navList) return list
+    let navList = filterChildren(navElement, "ol", true);
+    if (!navList) return list;
 
-    list = this.parseNavList(navList)
-    return list
+    list = this.parseNavList(navList);
+    return list;
   }
 
   /**
@@ -184,21 +190,21 @@ export class Navigation {
    * @param  {string} parent id
    * @return {array} navigation list
    */
-  parseNavList(navListHtml, parent:string) {
-    const result = []
+  parseNavList(navListHtml, parent: string) {
+    const result = [];
 
-    if (!navListHtml) return result
-    if (!navListHtml.children) return result
+    if (!navListHtml) return result;
+    if (!navListHtml.children) return result;
 
     for (let i = 0; i < navListHtml.children.length; i++) {
-      const item = this.navItem(navListHtml.children[i], parent)
+      const item = this.navItem(navListHtml.children[i], parent);
 
       if (item) {
-        result.push(item)
+        result.push(item);
       }
     }
 
-    return result
+    return result;
   }
 
   /**
@@ -208,24 +214,25 @@ export class Navigation {
    * @return {object} navItem
    */
   navItem(item, parent) {
-    let id = item.getAttribute('id') || undefined
-    let content = filterChildren(item, 'a', true) || filterChildren(item, 'span', true)
+    let id = item.getAttribute("id") || undefined;
+    let content =
+      filterChildren(item, "a", true) || filterChildren(item, "span", true);
 
     if (!content) {
-      return
+      return;
     }
 
-    let src = content.getAttribute('href') || ''
+    let src = content.getAttribute("href") || "";
 
     if (!id) {
-      id = src
+      id = src;
     }
-    let text = content.textContent || ''
+    let text = content.textContent || "";
 
-    let subitems = []
-    let nested = filterChildren(item, 'ol', true)
+    let subitems = [];
+    let nested = filterChildren(item, "ol", true);
     if (nested) {
-      subitems = this.parseNavList(nested, id)
+      subitems = this.parseNavList(nested, id);
     }
 
     return {
@@ -233,8 +240,8 @@ export class Navigation {
       href: src,
       label: text,
       subitems: subitems,
-      parent: parent
-    }
+      parent: parent,
+    };
   }
 
   /**
@@ -244,24 +251,24 @@ export class Navigation {
    * @return {array} landmarks list
    */
   parseLandmarks(navHtml) {
-    var navElement = querySelectorByType(navHtml, 'nav', 'landmarks')
-    var navItems = navElement ? qsa(navElement, 'li') : []
-    var length = navItems.length
-    var i
-    var list = []
-    var item
+    var navElement = querySelectorByType(navHtml, "nav", "landmarks");
+    var navItems = navElement ? qsa(navElement, "li") : [];
+    var length = navItems.length;
+    var i;
+    var list = [];
+    var item;
 
-    if (!navItems || length === 0) return list
+    if (!navItems || length === 0) return list;
 
     for (i = 0; i < length; ++i) {
-      item = this.landmarkItem(navItems[i])
+      item = this.landmarkItem(navItems[i]);
       if (item) {
-        list.push(item)
-        this.landmarksByType[item.type] = i
+        list.push(item);
+        this.landmarksByType[item.type] = i;
       }
     }
 
-    return list
+    return list;
   }
 
   /**
@@ -271,21 +278,23 @@ export class Navigation {
    * @return {object} landmarkItem
    */
   landmarkItem(item) {
-    let content = filterChildren(item, 'a', true)
+    let content = filterChildren(item, "a", true);
 
     if (!content) {
-      return
+      return;
     }
 
-    let type = content.getAttributeNS('http://www.idpf.org/2007/ops', 'type') || undefined
-    let href = content.getAttribute('href') || ''
-    let text = content.textContent || ''
+    let type =
+      content.getAttributeNS("http://www.idpf.org/2007/ops", "type") ||
+      undefined;
+    let href = content.getAttribute("href") || "";
+    let text = content.textContent || "";
 
     return {
       href: href,
       label: text,
-      type: type
-    }
+      type: type,
+    };
   }
 
   /**
@@ -295,27 +304,27 @@ export class Navigation {
    * @return {array} navigation list
    */
   parseNcx(tocXml) {
-    var navPoints = qsa(tocXml, 'navPoint')
-    var length = navPoints.length
-    var i
-    var toc = {}
-    var list = []
-    var item, parent
+    var navPoints = qsa(tocXml, "navPoint");
+    var length = navPoints.length;
+    var i;
+    var toc = {};
+    var list = [];
+    var item, parent;
 
-    if (!navPoints || length === 0) return list
+    if (!navPoints || length === 0) return list;
 
     for (i = 0; i < length; ++i) {
-      item = this.ncxItem(navPoints[i])
-      toc[item.id] = item
+      item = this.ncxItem(navPoints[i]);
+      toc[item.id] = item;
       if (!item.parent) {
-        list.push(item)
+        list.push(item);
       } else {
-        parent = toc[item.parent]
-        parent.subitems.push(item)
+        parent = toc[item.parent];
+        parent.subitems.push(item);
       }
     }
 
-    return list
+    return list;
   }
 
   /**
@@ -325,21 +334,21 @@ export class Navigation {
    * @return {object} ncxItem
    */
   ncxItem(item) {
-    var id = item.getAttribute('id') || false,
-      content = qs(item, 'content'),
-      src = content.getAttribute('src'),
-      navLabel = qs(item, 'navLabel'),
-      text = navLabel.textContent ? navLabel.textContent : '',
+    var id = item.getAttribute("id") || false,
+      content = qs(item, "content"),
+      src = content.getAttribute("src"),
+      navLabel = qs(item, "navLabel"),
+      text = navLabel.textContent ? navLabel.textContent : "",
       subitems = [],
       parentNode = item.parentNode,
-      parent
+      parent;
 
     if (
       parentNode &&
-      (parentNode.nodeName === 'navPoint' ||
-        parentNode.nodeName.split(':').slice(-1)[0] === 'navPoint')
+      (parentNode.nodeName === "navPoint" ||
+        parentNode.nodeName.split(":").slice(-1)[0] === "navPoint")
     ) {
-      parent = parentNode.getAttribute('id')
+      parent = parentNode.getAttribute("id");
     }
 
     return {
@@ -347,8 +356,8 @@ export class Navigation {
       href: src,
       label: text,
       subitems: subitems,
-      parent: parent
-    }
+      parent: parent,
+    };
   }
 
   /**
@@ -358,10 +367,10 @@ export class Navigation {
    */
   load(json) {
     return json.map((item) => {
-      item.label = item.title
-      item.subitems = item.children ? this.load(item.children) : []
-      return item
-    })
+      item.label = item.title;
+      item.subitems = item.children ? this.load(item.children) : [];
+      return item;
+    });
   }
 
   /**
@@ -370,8 +379,8 @@ export class Navigation {
    * @return {method} forEach loop
    */
   forEach(fn) {
-    return this.toc.forEach(fn)
+    return this.toc.forEach(fn);
   }
 }
 
-export default Navigation
+export default Navigation;
