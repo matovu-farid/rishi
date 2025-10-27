@@ -257,11 +257,9 @@ class EpubCFI {
     }
 
     component.steps = steps
-      .map(
-        function (step: string) {
-          return this.parseStep(step);
-        }.bind(this)
-      )
+      .map((step: string) => {
+        return this.parseStep(step);
+      })
       .filter((step): step is CFIStep => step !== undefined);
 
     return component;
