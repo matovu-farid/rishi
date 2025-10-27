@@ -893,11 +893,8 @@ class EpubCFI {
     return index;
   }
 
-  filteredPosition(
-    anchor: Node,
-    ignoreClass: string | undefined
-  ): number | undefined {
-    var children, index, map;
+  filteredPosition(anchor: Node, ignoreClass: string | undefined): number {
+    let children, index, map;
 
     if (anchor.nodeType === ELEMENT_NODE) {
       if (anchor.parentNode) {
@@ -920,8 +917,11 @@ class EpubCFI {
     }
 
     index = Array.prototype.indexOf.call(children, anchor);
+    if (!map || !index) {
+      return 0;
+    }
 
-    return map != null ? map[index] : undefined;
+    return map[index];
   }
 
   stepsToXpath(steps: CFIStep[]): string {
