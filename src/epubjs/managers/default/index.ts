@@ -8,6 +8,7 @@ import Views from "../helpers/views";
 import { EVENTS } from "../../utils/constants";
 import type { EpubCFIPair } from "@/epubjs/types/mapping";
 import type Layout from "../../layout";
+import View from "@/epubjs/types/managers/view";
 
 export interface ViewLocation {
   index: number;
@@ -15,6 +16,10 @@ export interface ViewLocation {
   pages: number[];
   totalPages: number;
   mapping: EpubCFIPair;
+}
+export interface Size {
+  width: number;
+  height: number;
 }
 export interface ViewSettings {
   ignoreClass?: string;
@@ -26,15 +31,51 @@ export interface ViewSettings {
   height?: number;
   forceEvenPages?: boolean;
   allowScriptedContent?: boolean;
+  allowPopups?: boolean;
 }
 export interface ManagerOptions extends ViewSettings {
   infinite?: boolean;
   overflow?: string;
   [key: string]: any;
 }
-
+export interface DefaultViewManagerSettings {
+  infinite?: boolean;
+  hidden?: boolean;
+  width?: number;
+  height?: number;
+  axis?: string;
+  writingMode?: string;
+  flow?: string;
+  ignoreClass?: string;
+  fullsize?: boolean;
+  allowScriptedContent?: boolean;
+  allowPopups?: boolean;
+  method?: "srcdoc" | "blobUrl" | "write";
+  overflow?: string;
+  rtlScrollType?: string;
+  size?: Size;
+}
 class DefaultViewManager {
-  constructor(options) {
+  name: string;
+  optsSettings: ManagerOptions;
+  View: View;
+  request: Request;
+  renditionQueue: any;
+  q: Queue;
+  settings: DefaultViewManagerSettings = {};
+  viewSettings: ViewSettings;
+  rendered: boolean;
+  container: any;
+  stage?: Stage;
+
+  _bounds: any;
+  _stageSize: any;
+  layout?: Layout;
+  method?: "srcdoc" | "blobUrl" | "write";
+  overflow?: string;
+  rtlScrollType?: string;
+
+  constructor(options: ManagerOptions) {
     this.name = "default";
     this.optsSettings = options.settings;
     this.View = options.view;
@@ -74,7 +115,7 @@ class DefaultViewManager {
     this.rendered = false;
   }
 
-  render(element, size) {
+  render(element: Element, size: { width: number; height: number }) {
     let tag = element.tagName;
 
     if (
@@ -142,12 +183,9 @@ class DefaultViewManager {
   addEventListeners() {
     var scroller;
 
-    window.addEventListener(
-      "unload",
-      function (e) {
-        this.destroy();
-      }.bind(this)
-    );
+    window.addEventListener("unload", () => {
+      this.destroy();
+    });
 
     if (!this.settings.fullsize) {
       scroller = this.container;
@@ -1012,7 +1050,7 @@ class DefaultViewManager {
     return bounds;
   }
 
-  applyLayout(layout) {
+  applyLayout(layout: Layout) {
     this.layout = layout;
     this.updateLayout();
     if (

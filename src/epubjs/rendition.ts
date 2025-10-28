@@ -50,7 +50,7 @@ export interface Location {
 export interface View {
   on(
     MARK_CLICKED: any,
-    arg1: (cfiRange: string, data: unknown) => void,
+    arg1: (cfiRange: string, data: unknown) => void
   ): unknown;
   index: number;
   section: Section;
@@ -331,12 +331,12 @@ export class Rendition extends EventEmitter {
     }
 
     this.direction(
-      this.book.package.metadata.direction || this.settings.defaultDirection,
+      this.book.package.metadata.direction || this.settings.defaultDirection
     );
 
     // Parse metadata to get layout props
     this.settings.globalLayoutProperties = this.determineLayoutProperties(
-      this.book.package.metadata,
+      this.book.package.metadata
     );
 
     this.flow(this.settings.globalLayoutProperties.flow);
@@ -353,7 +353,7 @@ export class Rendition extends EventEmitter {
     // Listen for rotation
     this.manager.on(
       EVENTS.MANAGERS.ORIENTATION_CHANGE,
-      this.onOrientationChange.bind(this),
+      this.onOrientationChange.bind(this)
     );
 
     // Listen for scroll changes
@@ -460,7 +460,7 @@ export class Rendition extends EventEmitter {
          * @memberof Rendition
          */
         this.emit(EVENTS.RENDITION.DISPLAY_ERROR, err);
-      },
+      }
     );
 
     return displayed;
@@ -518,7 +518,7 @@ export class Rendition extends EventEmitter {
    */
   afterDisplayed(view: View) {
     view.on(EVENTS.VIEWS.MARK_CLICKED, (cfiRange: string, data: unknown) =>
-      this.triggerMarkEvent(cfiRange, data, view.contents),
+      this.triggerMarkEvent(cfiRange, data, view.contents)
     );
 
     this.hooks.render.trigger(view, this).then(() => {
@@ -576,7 +576,7 @@ export class Rendition extends EventEmitter {
         width: size.width,
         height: size.height,
       },
-      epubcfi,
+      epubcfi
     );
 
     if (this.location && this.location.start) {
@@ -832,7 +832,7 @@ export class Rendition extends EventEmitter {
                   });
 
                   this.emit(EVENTS.RENDITION.RELOCATED, this.location);
-                }.bind(this),
+                }.bind(this)
               );
             } else if (location) {
               let located = this.located(location);
@@ -869,9 +869,9 @@ export class Rendition extends EventEmitter {
                */
               this.emit(EVENTS.RENDITION.RELOCATED, this.location);
             }
-          }.bind(this),
+          }.bind(this)
         );
-      }.bind(this),
+      }.bind(this)
     );
   }
 
@@ -886,7 +886,7 @@ export class Rendition extends EventEmitter {
         function (result) {
           let located = this.located(result);
           return located;
-        }.bind(this),
+        }.bind(this)
       );
     } else if (location) {
       let located = this.located(location);
@@ -929,7 +929,7 @@ export class Rendition extends EventEmitter {
     };
 
     let locationStart = this.book.locations.locationFromCfi(
-      start.mapping.start,
+      start.mapping.start
     );
     let locationEnd = this.book.locations.locationFromCfi(end.mapping.end);
 
@@ -1013,7 +1013,7 @@ export class Rendition extends EventEmitter {
     });
 
     contents.on(EVENTS.CONTENTS.SELECTED, (e: string) =>
-      this.triggerSelectedEvent(e, contents),
+      this.triggerSelectedEvent(e, contents)
     );
   }
 
@@ -1091,7 +1091,7 @@ export class Rendition extends EventEmitter {
     data = {},
     cb?: () => void,
     className = "epubjs-hl",
-    styles = {},
+    styles = {}
   ) {
     if (!this.manager) {
       return Promise.reject(new Error("Rendition manager not available"));
@@ -1104,20 +1104,18 @@ export class Rendition extends EventEmitter {
       // Check if this is a range CFI (should have start and end)
       if (!rangeCfi.range) {
         return Promise.reject(
-          new Error("CFI string is not a range: " + cfiRange),
+          new Error("CFI string is not a range: " + cfiRange)
         );
       }
 
       // Find the view that contains this CFI range
-      const found = this.manager.visible().filter(function (view: {
-        index: any;
-      }) {
-        return rangeCfi.spinePos === view.index;
-      });
+      const found = this.manager
+        .visible()
+        .filter((view: { index: any }) => rangeCfi.spinePos === view.index);
 
       if (!found.length) {
         return Promise.reject(
-          new Error("No view found for CFI range: " + cfiRange),
+          new Error("No view found for CFI range: " + cfiRange)
         );
       }
 
@@ -1129,12 +1127,12 @@ export class Rendition extends EventEmitter {
       // Verify the CFI range can be converted to a DOM range
       const domRange = rangeCfi.toRange(
         view.contents.document,
-        this.settings.ignoreClass,
+        this.settings.ignoreClass
       );
 
       if (!domRange) {
         return Promise.reject(
-          new Error("Could not convert CFI range to DOM range"),
+          new Error("Could not convert CFI range to DOM range")
         );
       }
 
@@ -1153,14 +1151,14 @@ export class Rendition extends EventEmitter {
         data,
         cb || (() => {}),
         className,
-        mergedStyles,
+        mergedStyles
       );
 
       // Return a resolved promise since highlight is synchronous
       return Promise.resolve(annotation);
     } catch (error) {
       return Promise.reject(
-        new Error("Error highlighting range: " + error.message),
+        new Error("Error highlighting range: " + error.message)
       );
     }
   }
@@ -1182,7 +1180,7 @@ export class Rendition extends EventEmitter {
       // Check if this is a range CFI (should have start and end)
       if (!rangeCfi.range) {
         return Promise.reject(
-          new Error("CFI string is not a range: " + cfiRange),
+          new Error("CFI string is not a range: " + cfiRange)
         );
       }
 
@@ -1198,7 +1196,7 @@ export class Rendition extends EventEmitter {
         // but not be visible, so we can still try to remove it
         console.warn(
           "No visible view found for CFI range, attempting to remove from store: " +
-            cfiRange,
+            cfiRange
         );
       }
 
@@ -1214,7 +1212,7 @@ export class Rendition extends EventEmitter {
       return Promise.resolve(annotationExists);
     } catch (error) {
       return Promise.reject(
-        new Error("Error removing highlight: " + error.message),
+        new Error("Error removing highlight: " + error.message)
       );
     }
   }
@@ -1474,7 +1472,7 @@ export class Rendition extends EventEmitter {
 
     const hasNextPageInSection = this._hasNextPageInCurrentSection(
       currentView,
-      currentSection,
+      currentSection
     );
     /**
      * Paragraphs array
@@ -1484,7 +1482,7 @@ export class Rendition extends EventEmitter {
     if (hasNextPageInSection) {
       paragraphs = await this._getNextPageParagraphsInSectionAsync(
         currentView,
-        currentSection,
+        currentSection
       );
     } else {
       const nextSectionParagraphs =
@@ -1494,7 +1492,7 @@ export class Rendition extends EventEmitter {
 
     if (minLength > 0) {
       paragraphs = paragraphs.filter(
-        (p: { text: string | any[] }) => p.text.length >= minLength,
+        (p: { text: string | any[] }) => p.text.length >= minLength
       );
     }
 
@@ -1510,7 +1508,7 @@ export class Rendition extends EventEmitter {
    */
   async _getNextPageParagraphsInSectionAsync(
     currentView: { contents: Contents; section: { cfiBase: any } },
-    currentSection: { pages: string | any[] },
+    currentSection: { pages: string | any[] }
   ) {
     try {
       const layout = this.manager.layout;
@@ -1523,7 +1521,7 @@ export class Rendition extends EventEmitter {
         currentView.contents,
         currentView.section.cfiBase,
         nextPageStart,
-        nextPageEnd,
+        nextPageEnd
       );
 
       if (!nextPageMapping || !nextPageMapping.start || !nextPageMapping.end) {
@@ -1543,7 +1541,7 @@ export class Rendition extends EventEmitter {
       try {
         const comparison = startRange.compareBoundaryPoints(
           Range.START_TO_START,
-          endRange,
+          endRange
         );
         if (comparison > 0) {
           const temp = startRange;
@@ -1560,7 +1558,7 @@ export class Rendition extends EventEmitter {
 
       const paragraphs = this._getParagraphsFromRange(
         range,
-        currentView.contents,
+        currentView.contents
       );
 
       return paragraphs;
@@ -1613,7 +1611,7 @@ export class Rendition extends EventEmitter {
         // Load the section content directly using the book's load method with timeout
         const loadPromise = nextSection.load(this.book.load.bind(this.book));
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Section load timeout")), 10000),
+          setTimeout(() => reject(new Error("Section load timeout")), 10000)
         );
 
         const loadedContent = await Promise.race([loadPromise, timeoutPromise]);
@@ -1634,13 +1632,13 @@ export class Rendition extends EventEmitter {
           document,
           body,
           nextSection.cfiBase,
-          nextSection.index,
+          nextSection.index
         );
 
         // Get the first page mapping instead of the entire section
         const firstPageMapping = this._getFirstPageMapping(
           contents,
-          nextSection,
+          nextSection
         );
 
         if (
@@ -1686,7 +1684,7 @@ export class Rendition extends EventEmitter {
       // Get the first page mapping instead of the entire section
       const firstPageMapping = this._getFirstPageMapping(
         nextView.contents,
-        nextView.section,
+        nextView.section
       );
 
       if (
@@ -1788,7 +1786,7 @@ export class Rendition extends EventEmitter {
 
     const hasPreviousPageInSection = this._hasPreviousPageInCurrentSection(
       currentView,
-      currentSection,
+      currentSection
     );
     /**
      * Paragraphs array
@@ -1798,7 +1796,7 @@ export class Rendition extends EventEmitter {
     if (hasPreviousPageInSection) {
       paragraphs = await this._getPreviousPageParagraphsInSectionAsync(
         currentView,
-        currentSection,
+        currentSection
       );
     } else {
       const previousSectionParagraphs =
@@ -1808,7 +1806,7 @@ export class Rendition extends EventEmitter {
 
     if (minLength > 0) {
       paragraphs = paragraphs.filter(
-        (p: { text: string | any[] }) => p.text.length >= minLength,
+        (p: { text: string | any[] }) => p.text.length >= minLength
       );
     }
 
@@ -1823,7 +1821,7 @@ export class Rendition extends EventEmitter {
    */
   async _getPreviousPageParagraphsInSectionAsync(
     currentView: View,
-    currentSection: Section,
+    currentSection: Section
   ) {
     try {
       const layout = this.manager.layout;
@@ -1836,7 +1834,7 @@ export class Rendition extends EventEmitter {
         currentView.contents,
         currentView.section.cfiBase,
         previousPageStart,
-        previousPageEnd,
+        previousPageEnd
       );
 
       if (
@@ -1860,7 +1858,7 @@ export class Rendition extends EventEmitter {
       try {
         const comparison = startRange.compareBoundaryPoints(
           Range.START_TO_START,
-          endRange,
+          endRange
         );
         if (comparison > 0) {
           const temp = startRange;
@@ -1877,7 +1875,7 @@ export class Rendition extends EventEmitter {
 
       const paragraphs = this._getParagraphsFromRange(
         range,
-        currentView.contents,
+        currentView.contents
       );
 
       return paragraphs;
@@ -1931,10 +1929,10 @@ export class Rendition extends EventEmitter {
       try {
         // Load the section content directly using the book's load method with timeout
         const loadPromise = previousSection.load(
-          this.book.load.bind(this.book),
+          this.book.load.bind(this.book)
         );
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Section load timeout")), 10000),
+          setTimeout(() => reject(new Error("Section load timeout")), 10000)
         );
 
         const loadedContent = await Promise.race([loadPromise, timeoutPromise]);
@@ -1955,13 +1953,13 @@ export class Rendition extends EventEmitter {
           document,
           body,
           previousSection.cfiBase,
-          previousSection.index,
+          previousSection.index
         );
 
         // Get the last page mapping instead of the entire section
         const lastPageMapping = this._getLastPageMapping(
           contents,
-          previousSection,
+          previousSection
         );
 
         if (
@@ -2007,7 +2005,7 @@ export class Rendition extends EventEmitter {
       // Get the last page mapping instead of the entire section
       const lastPageMapping = this._getLastPageMapping(
         previousView.contents,
-        previousView.section,
+        previousView.section
       );
 
       if (!lastPageMapping || !lastPageMapping.start || !lastPageMapping.end) {
@@ -2033,7 +2031,7 @@ export class Rendition extends EventEmitter {
       // Extract paragraphs from the range
       const paragraphs = this._getParagraphsFromRange(
         range,
-        previousView.contents,
+        previousView.contents
       );
 
       return paragraphs;
@@ -2080,7 +2078,7 @@ export class Rendition extends EventEmitter {
    */
   _getParagraphsFromRange(
     range: Range,
-    contents: Contents,
+    contents: Contents
   ): ParagraphWithCFI[] {
     const paragraphs: ParagraphWithCFI[] = [];
 
@@ -2144,7 +2142,7 @@ export class Rendition extends EventEmitter {
             ) {
               elementText += nodeText.substring(
                 range.startOffset,
-                range.endOffset,
+                range.endOffset
               );
               firstTextOffset = range.startOffset;
               lastTextOffset = range.endOffset;
@@ -2204,11 +2202,11 @@ export class Rendition extends EventEmitter {
           // Ensure offsets are within valid bounds
           const validFirstOffset = Math.min(
             Math.max(firstTextOffset, 0),
-            maxStartOffset,
+            maxStartOffset
           );
           const validLastOffset = Math.min(
             Math.max(lastTextOffset, 0),
-            maxEndOffset,
+            maxEndOffset
           );
 
           // Set start to the beginning of the first text node (accounting for trimming)
@@ -2222,7 +2220,7 @@ export class Rendition extends EventEmitter {
           const elementCfi = new EpubCFI(
             blockElement,
             contents.cfiBase,
-            this.settings.ignoreClass,
+            this.settings.ignoreClass
           );
 
           let startCfi: string, endCfi: string, cfiRange: string;
@@ -2237,7 +2235,7 @@ export class Rendition extends EventEmitter {
           const rangeCfiObj = new EpubCFI(
             paragraphRange,
             contents.cfiBase,
-            this.settings.ignoreClass,
+            this.settings.ignoreClass
           );
           cfiRange = rangeCfiObj.toString();
 
@@ -2275,7 +2273,7 @@ export class Rendition extends EventEmitter {
           const cfi = new EpubCFI(
             range,
             contents.cfiBase,
-            this.settings.ignoreClass,
+            this.settings.ignoreClass
           );
           const cfiString = cfi.toString();
           paragraphs.push({
@@ -2330,7 +2328,7 @@ export class Rendition extends EventEmitter {
                 return NodeFilter.FILTER_REJECT;
               }
             },
-          },
+          }
         );
 
       let node: Node | null;
@@ -2420,10 +2418,10 @@ export class Rendition extends EventEmitter {
     doc: {
       createElement: (arg0: string) => any;
       getElementsByTagName: (
-        arg0: string,
+        arg0: string
       ) => { appendChild: (arg0: any) => void }[];
     },
-    section: any,
+    section: any
   ) {
     let script = doc.createElement("script");
     script.setAttribute("type", "text/javascript");
@@ -2443,10 +2441,10 @@ export class Rendition extends EventEmitter {
     doc: {
       createElement: (arg0: string) => any;
       getElementsByTagName: (
-        arg0: string,
+        arg0: string
       ) => { appendChild: (arg0: any) => void }[];
     },
-    section: any,
+    section: any
   ) {
     let ident = this.book.packaging.metadata.identifier;
     let meta = doc.createElement("meta");
