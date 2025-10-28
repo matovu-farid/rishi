@@ -332,7 +332,7 @@ class DefaultViewManager {
   }
 
   display(section, target) {
-    var displaying = new defer();
+    var displaying = defer();
     var displayed = displaying.promise;
 
     // Check if moving to target is needed

@@ -238,7 +238,7 @@ export class Rendition extends EventEmitter {
     // Hold queue until book is opened
     this.q.enqueue(this.book.opened);
 
-    this.starting = new defer();
+    this.starting = defer();
     /**
      * @member {promise} started returns after the rendition has started
      * @memberof Rendition
@@ -419,7 +419,7 @@ export class Rendition extends EventEmitter {
       return;
     }
     // const isCfiString = this.epubcfi.isCfiString(target)
-    const displaying = new defer();
+    const displaying = defer();
     const displayed = displaying.promise;
     let section: any;
     // let moveTo: any

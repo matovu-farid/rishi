@@ -44,7 +44,7 @@ export function uuid(): string {
       var r = (d + Math.random() * 16) % 16 | 0;
       d = Math.floor(d / 16);
       return (c == "x" ? r : (r & 0x7) | 0x8).toString(16);
-    },
+    }
   );
   return uuid;
 }
@@ -60,7 +60,7 @@ export function documentHeight(): number {
     document.body.scrollHeight,
     document.documentElement.scrollHeight,
     document.body.offsetHeight,
-    document.documentElement.offsetHeight,
+    document.documentElement.offsetHeight
   );
 }
 
@@ -180,7 +180,7 @@ export function extend(target: any, ..._sources: any[]): any {
 export function insert(
   item: any,
   array: any[],
-  compareFunction?: (a: any, b: any) => number,
+  compareFunction?: (a: any, b: any) => number
 ): number {
   var location = locationOf(item, array, compareFunction);
   array.splice(location, 0, item);
@@ -203,7 +203,7 @@ export function locationOf(
   array: any[],
   compareFunction?: (a: any, b: any) => number,
   _start?: number,
-  _end?: number,
+  _end?: number
 ): number {
   var start = _start || 0;
   var end = _end || array.length;
@@ -253,7 +253,7 @@ export function indexOfSorted(
   array: any[],
   compareFunction?: (a: any, b: any) => number,
   _start?: number,
-  _end?: number,
+  _end?: number
 ): number {
   var start = _start || 0;
   var end = _end || array.length;
@@ -519,7 +519,7 @@ export function revokeBlobUrl(url: string): void {
  */
 export function createBase64Url(
   content: any,
-  mime: string,
+  mime: string
 ): string | undefined {
   var data: string;
   var datauri: string;
@@ -557,7 +557,7 @@ export function type(obj: any): string {
 export function parse(
   markup: string,
   mime: string,
-  forceXMLDom?: boolean,
+  forceXMLDom?: boolean
 ): Document {
   var doc: Document;
   var Parser: typeof DOMParser | typeof XMLDOMParser;
@@ -611,7 +611,7 @@ export function qs(el: Element | Document, sel: string): Element | null {
  */
 export function qsa(
   el: Element | Document,
-  sel: string,
+  sel: string
 ): NodeListOf<Element> | HTMLCollection {
   if (typeof el.querySelector != "undefined") {
     return el.querySelectorAll(sel);
@@ -631,7 +631,7 @@ export function qsa(
 export function qsp(
   el: Element | Document,
   sel: string,
-  props: Record<string, string>,
+  props: Record<string, string>
 ): Element | null {
   let q: HTMLCollection;
   let filtered: Element[];
@@ -646,7 +646,7 @@ export function qsp(
   } else {
     q = (el as Element).getElementsByTagName(sel);
     filtered = Array.prototype.slice.call(q, 0).filter(function (
-      element: Element,
+      element: Element
     ) {
       for (var prop in props) {
         if (element.getAttribute(prop) === props[prop]) {
@@ -694,7 +694,7 @@ export function sprint(root: Node, func: (node: Node) => void): void {
 export function treeWalker(
   root: Node,
   func: (node: Node) => void,
-  filter?: number | null,
+  filter?: number | null
 ): void {
   var tw = document.createTreeWalker(root, filter ?? NodeFilter.SHOW_ALL, null);
   let node: Node | null;
@@ -742,51 +742,37 @@ export function blob2base64(blob: Blob): Promise<string | ArrayBuffer | null> {
 }
 
 /**
- * Creates a new pending promise and provides methods to resolve or reject it.
- * From: https://developer.mozilla.org/en-US/docs/Mozilla/JavaScript_code_modules/Promise.jsm/Deferred#backwards_forwards_compatible
+ * Create a promise with exposed resolve and reject methods
+ * This provides a modern replacement for the Deferred pattern
+ * @returns {object} object with promise, resolve, and reject
  * @memberof Core
  */
-export class Deferred {
-  resolve: ((value: any) => void) | null = null;
-  reject: ((reason?: any) => void) | null = null;
-  id: string;
-  promise: Promise<any>;
+export function createPromiseWithResolvers<T>(): {
+  promise: Promise<T>;
+  resolve: (value: T | PromiseLike<T>) => void;
+  reject: (reason?: any) => void;
+} {
+  let resolveFunc: (value: T | PromiseLike<T>) => void;
+  let rejectFunc: (reason?: any) => void;
 
-  constructor() {
-    /* A method to resolve the associated Promise with the value passed.
-     * If the promise is already settled it does nothing.
-     *
-     * @param {anything} value : This value is used to resolve the promise
-     * If the value is a Promise then the associated promise assumes the state
-     * of Promise passed as value.
-     */
+  const promise = new Promise<T>((resolve, reject) => {
+    resolveFunc = resolve;
+    rejectFunc = reject;
+  });
 
-    /* A method to reject the associated Promise with the value passed.
-     * If the promise is already settled it does nothing.
-     *
-     * @param {anything} reason: The reason for the rejection of the Promise.
-     * Generally its an Error object. If however a Promise is passed, then the Promise
-     * itself will be the reason for rejection no matter the state of the Promise.
-     */
-
-    this.id = uuid();
-
-    /* A newly created Pomise object.
-     * Initially in pending state.
-     */
-    this.promise = new Promise((resolve, reject) => {
-      this.resolve = resolve;
-      this.reject = reject;
-    });
-    Object.freeze(this);
-  }
+  return {
+    promise,
+    resolve: resolveFunc!,
+    reject: rejectFunc!,
+  };
 }
 
 /**
- * Alias for Deferred class for backwards compatibility
+ * Alias for createPromiseWithResolvers for backwards compatibility
+ * Returns an object with promise, resolve, and reject methods
  */
-export function defer(): Deferred {
-  return new Deferred();
+export function defer<T>(): ReturnType<typeof createPromiseWithResolvers<T>> {
+  return createPromiseWithResolvers<T>();
 }
 
 /**
@@ -800,7 +786,7 @@ export function defer(): Deferred {
 export function querySelectorByType(
   html: Element | Document,
   element: string,
-  type: string,
+  type: string
 ): Element | null {
   var query: Element | NodeListOf<Element> | null = null;
   if (typeof html.querySelector != "undefined") {
@@ -813,7 +799,7 @@ export function querySelectorByType(
       if (
         (queryResults[i] as Element).getAttributeNS(
           "http://www.idpf.org/2007/ops",
-          "type",
+          "type"
         ) === type ||
         (queryResults[i] as Element).getAttribute("epub:type") === type
       ) {
@@ -869,7 +855,7 @@ export function parents(node: Node): Node[] {
 export function filterChildren(
   el: Element,
   nodeName: string,
-  single?: boolean,
+  single?: boolean
 ): Element[] | Element | undefined {
   var result: Element[] = [];
   var childNodes = el.childNodes;
@@ -897,7 +883,7 @@ export function filterChildren(
  */
 export function getParentByTagName(
   node: Node | null,
-  tagname: string,
+  tagname: string
 ): Element | undefined {
   let parent: Node | null;
   if (node === null || tagname === "") return;
@@ -991,7 +977,7 @@ export class RangeObject {
 
   _commonAncestorContainer(
     startContainer?: Node,
-    endContainer?: Node,
+    endContainer?: Node
   ): Node | undefined {
     var startParents = parents(startContainer || this.startContainer!);
     var endParents = parents(endContainer || this.endContainer!);

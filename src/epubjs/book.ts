@@ -40,7 +40,7 @@ export interface BookOptions {
     url: string,
     type: string,
     withCredentials: object,
-    headers: object,
+    headers: object
   ) => Promise<object>;
   requestCredentials?: object;
   requestHeaders?: object;
@@ -100,6 +100,15 @@ export class Book {
   storage: Store;
   package: any;
   displayOptions: any;
+  loading: {
+    manifest: Promise<PackagingManifestObject>;
+    spine: Promise<SpineItem[]>;
+    metadata: Promise<PackagingMetadataObject>;
+    cover: Promise<string>;
+    navigation: Promise<Navigation>;
+    pageList: Promise<PageListItem[]>;
+    resources: Promise<string[]>;
+  };
 
   constructor(url, options) {
     // Allow passing just options to the Book
@@ -127,7 +136,7 @@ export class Book {
     extend(this.settings, options);
 
     // Promises
-    this.opening = new defer();
+    this.opening = defer();
     /**
      * @member {promise} opened returns after the book is loaded
      * @memberof Book
@@ -136,14 +145,14 @@ export class Book {
     this.isOpen = false;
 
     this.loading = {
-      manifest: new defer(),
-      spine: new defer(),
-      metadata: new defer(),
-      cover: new defer(),
-      navigation: new defer(),
-      pageList: new defer(),
-      resources: new defer(),
-      displayOptions: new defer(),
+      manifest: defer(),
+      spine: defer(),
+      metadata: defer(),
+      cover: defer(),
+      navigation: defer(),
+      pageList: defer(),
+      resources: defer(),
+      displayOptions: defer(),
     };
 
     this.loaded = {
@@ -316,7 +325,7 @@ export class Book {
         input,
         "binary",
         this.settings.requestCredentials,
-        this.settings.requestHeaders,
+        this.settings.requestHeaders
       ).then(this.openEpub.bind(this));
     } else if (type == INPUT_TYPE.OPF) {
       this.url = new Url(input);
@@ -327,7 +336,7 @@ export class Book {
     } else {
       this.url = new Url(input);
       opening = this.openContainer(CONTAINER_PATH).then(
-        this.openPackaging.bind(this),
+        this.openPackaging.bind(this)
       );
     }
 
@@ -407,7 +416,7 @@ export class Book {
         resolved,
         null,
         this.settings.requestCredentials,
-        this.settings.requestHeaders,
+        this.settings.requestHeaders
       );
     }
   }
@@ -533,7 +542,7 @@ export class Book {
     this.spine.unpack(
       this.packaging,
       this.resolve.bind(this),
-      this.canonical.bind(this),
+      this.canonical.bind(this)
     );
 
     this.resources = new Resources(this.packaging.manifest, {
