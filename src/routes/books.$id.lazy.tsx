@@ -38,6 +38,8 @@ function BookView(): React.JSX.Element {
   const rendition = useRef<Rendition | undefined>(undefined);
   const [renditionState, setRenditionState] = useState<Rendition | null>();
   const [theme, setTheme] = useState<ThemeType>(ThemeType.White);
+  const [useRust, setUseRust] = useState<boolean>(true);
+  const [useScrollFlow, setUseScrollFlow] = useState<boolean>(false);
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => {
     if (rendition.current) {
@@ -81,10 +83,18 @@ function BookView(): React.JSX.Element {
 
   // Update rendition state when ref becomes available
   useEffect(() => {
-    rendition.current?.on("rendered", () => {
+    if (!rendition.current) return;
+
+    const handleRendered = () => {
       if (rendition.current === renditionState) return;
       setRenditionState(rendition.current);
-    });
+    };
+
+    rendition.current.on("rendered", handleRendered);
+
+    return () => {
+      rendition.current?.off("rendered", handleRendered);
+    };
   }, [renditionState]);
 
   if (isError)
@@ -157,6 +167,38 @@ function BookView(): React.JSX.Element {
             </RadioGroup>
           </div>
         </Menu>
+        <div className="ml-2 flex items-center gap-2">
+          <label
+            htmlFor="use-rust-toggle"
+            className={cn("text-xs", getTextColor())}
+          >
+            Rust
+          </label>
+          <input
+            id="use-rust-toggle"
+            type="checkbox"
+            checked={useRust}
+            onChange={(e) => setUseRust(e.target.checked)}
+            aria-label="Use Rust renderer"
+          />
+        </div>
+        {useRust && (
+          <div className="ml-2 flex items-center gap-2">
+            <label
+              htmlFor="flow-toggle"
+              className={cn("text-xs", getTextColor())}
+            >
+              Scroll
+            </label>
+            <input
+              id="flow-toggle"
+              type="checkbox"
+              checked={useScrollFlow}
+              onChange={(e) => setUseScrollFlow(e.target.checked)}
+              aria-label="Use scrolled flow"
+            />
+          </div>
+        )}
       </div>
       <div style={{ height: "100vh" }}>
         <ReactReader
@@ -168,24 +210,28 @@ function BookView(): React.JSX.Element {
           url={book.epubPath}
           title={book.title}
           location={book.currentBookId || 0}
+          useRust={useRust}
+          flow={useScrollFlow ? "scrolled" : "paginated"}
           locationChanged={(epubcfi: string) => {
             updateBookId.mutate({ book, newId: epubcfi });
           }}
           swipeable={true}
           readerStyles={createIReactReaderTheme(themes[theme].readerTheme)}
           getRendition={(_rendition) => {
-            updateTheme(_rendition, theme);
-            rendition.current = _rendition;
-            setRenditionState(_rendition);
+            updateTheme(_rendition as any, theme);
+            rendition.current = _rendition as any;
+            setRenditionState(_rendition as any);
           }}
         />
       </div>
-      {/* TTS Controls - Bottom Center */}
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-50">
-        {renditionState && (
-          <TTSControls bookId={book.id} rendition={renditionState} />
-        )}
-      </div>
+      {/* TTS Controls - Bottom Center (only for non-Rust reader) */}
+      {!useRust && (
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-50">
+          {renditionState && (
+            <TTSControls bookId={book.id} rendition={renditionState} />
+          )}
+        </div>
+      )}
     </div>
   );
 }

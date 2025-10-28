@@ -2,6 +2,7 @@
 import React, { PureComponent } from "react";
 import { type SwipeEventData } from "react-swipeable";
 import { EpubView, type IEpubViewProps } from "./epub_viewer";
+import RustEpubView from "./epub_viewer/RustEpubView";
 import type { IEpubViewStyle } from "./epub_viewer/style";
 import {
   ReactReaderStyle as defaultStyles,
@@ -40,6 +41,8 @@ export type IReactReaderProps = IEpubViewProps & {
   }) => void; // Callback when page paragraphs are extracted
   onNextPageParagraphs?: (data: { paragraphs: ParagraphWithCFI[] }) => void; // Callback when next page paragraphs are extracted
   onPreviousPageParagraphs?: (data: { paragraphs: ParagraphWithCFI[] }) => void; // Callback when previous page paragraphs are extracted
+  useRust?: boolean; // Use Rust backend instead of epub.js
+  flow?: "paginated" | "scrolled"; // Flow for Rust view
 };
 
 // Component state for ReactReader
@@ -151,6 +154,15 @@ export class ReactReader extends PureComponent<
   };
 
   /**
+   * Handle location changes from RustEpubView
+   * Converts page number to string and calls parent callback
+   */
+  handleLocationChanged = (page: number) => {
+    const { locationChanged } = this.props;
+    locationChanged?.(String(page));
+  };
+
+  /**
    * Handle mouse wheel events for page turning
    * Scrolling down -> next page
    * Scrolling up -> previous page
@@ -182,15 +194,17 @@ export class ReactReader extends PureComponent<
 
     if (rendition) {
       // Hook into content loading to access iframe document
-      rendition.hooks.content.register((contents: { window: { document } }) => {
-        const iframeDoc = contents.window.document;
+      (rendition.hooks.content as any).register(
+        (contents: { window: { document: Document } }) => {
+          const iframeDoc: Document = contents.window.document as Document;
 
-        // Remove any existing listener before adding a new one (prevents duplicates)
-        iframeDoc.removeEventListener("wheel", this.handleWheel);
-        iframeDoc.addEventListener("wheel", this.handleWheel, {
-          passive: false, // Required to call preventDefault()
-        });
-      });
+          // Remove any existing listener before adding a new one (prevents duplicates)
+          iframeDoc.removeEventListener("wheel", this.handleWheel);
+          iframeDoc.addEventListener("wheel", this.handleWheel, {
+            passive: false, // Required to call preventDefault()
+          });
+        }
+      );
     }
   };
 
@@ -349,6 +363,7 @@ export class ReactReader extends PureComponent<
       swipeable,
       epubViewStyles,
       isRTL = false,
+      useRust = false,
       ...props // Remaining props passed through to EpubView
     } = this.props;
     const { toc, expandedToc } = this.state;
@@ -395,31 +410,56 @@ export class ReactReader extends PureComponent<
           >
             <div style={readerStyles.reader}>
               {/* Core EPUB viewer component */}
-              <EpubView
-                ref={this.readerRef}
-                loadingView={
-                  loadingView === undefined ? (
-                    <div style={readerStyles.loadingView}>Loading…</div>
-                  ) : (
-                    loadingView
-                  )
-                }
-                errorView={
-                  errorView === undefined ? (
-                    <div style={readerStyles.errorView}>Error loading book</div>
-                  ) : (
-                    errorView
-                  )
-                }
-                epubViewStyles={epubViewStyles}
-                {...props}
-                tocChanged={this.onTocChange}
-                locationChanged={locationChanged}
-                onPageTextExtracted={this.props.onPageTextExtracted}
-                onPageParagraphsExtracted={this.props.onPageParagraphsExtracted}
-                onNextPageParagraphs={this.props.onNextPageParagraphs}
-                onPreviousPageParagraphs={this.props.onPreviousPageParagraphs}
-              />
+              {(() => {
+                console.log(
+                  "[ReactReader] useRust =",
+                  useRust,
+                  "url =",
+                  props.url
+                );
+                return useRust ? (
+                  <RustEpubView
+                    path={String(props.url)}
+                    flow={this.props.flow}
+                    onLocationChanged={this.handleLocationChanged}
+                    onNavLoaded={this.onTocChange}
+                    searchQuery={this.props.searchQuery}
+                    onSearchResults={this.props.onSearchResults}
+                  />
+                ) : (
+                  <EpubView
+                    ref={this.readerRef}
+                    loadingView={
+                      loadingView === undefined ? (
+                        <div style={readerStyles.loadingView}>Loading…</div>
+                      ) : (
+                        loadingView
+                      )
+                    }
+                    errorView={
+                      errorView === undefined ? (
+                        <div style={readerStyles.errorView}>
+                          Error loading book
+                        </div>
+                      ) : (
+                        errorView
+                      )
+                    }
+                    epubViewStyles={epubViewStyles}
+                    {...props}
+                    tocChanged={this.onTocChange}
+                    locationChanged={locationChanged}
+                    onPageTextExtracted={this.props.onPageTextExtracted}
+                    onPageParagraphsExtracted={
+                      this.props.onPageParagraphsExtracted
+                    }
+                    onNextPageParagraphs={this.props.onNextPageParagraphs}
+                    onPreviousPageParagraphs={
+                      this.props.onPreviousPageParagraphs
+                    }
+                  />
+                );
+              })()}
               {/* Transparent overlay for swipe detection */}
               {swipeable && <div style={readerStyles.swipeWrapper} />}
             </div>

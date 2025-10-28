@@ -16,6 +16,8 @@ use std::path::{Component, Path, PathBuf};
 use xmlutils::XMLError;
 
 use crate::epub::archive::EpubArchive;
+use crate::epub::nav::{parse_nav_document, NavData};
+use crate::epub::packaging::parse_packaging_extras;
 
 use crate::epub::xmlutils;
 
@@ -115,6 +117,13 @@ pub struct ResourceItem {
     pub properties: Option<String>,
 }
 
+#[derive(Clone, Debug)]
+pub struct GuideRef {
+    pub r#type: Option<String>,
+    pub title: Option<String>,
+    pub href: Option<String>,
+}
+
 /// Struct to control the epub document
 ///
 /// The general policy for `EpubDoc` is to support both EPUB2 (commonly used)
@@ -170,34 +179,24 @@ pub struct EpubDoc<R: Read + Seek> {
 
     /// unique identifier
     pub unique_identifier: Option<String>,
-}
 
-/// A EpubDoc used for testing purposes
-#[cfg(feature = "mock")]
-impl EpubDoc<std::io::Cursor<Vec<u8>>> {
-    pub fn mock() -> Result<Self, DocError> {
-        // binary for empty zip file so that archive can be created
-        let data: Vec<u8> = vec![
-            0x50, 0x4b, 0x05, 0x06, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00,
-            00, 00,
-        ];
+    /// OPF spine page-progression-direction
+    pub page_progression_direction: Option<String>,
 
-        let archive = EpubArchive::from_reader(std::io::Cursor::new(data))?;
-        Ok(Self {
-            archive,
-            version: EpubVersion::Version2_0,
-            spine: vec![],
-            toc: vec![],
-            toc_title: String::new(),
-            resources: HashMap::new(),
-            metadata: Vec::new(),
-            root_file: PathBuf::new(),
-            root_base: PathBuf::new(),
-            current: 0,
-            extra_css: vec![],
-            unique_identifier: None,
-        })
-    }
+    /// EPUB2 guide references
+    pub guides: Vec<GuideRef>,
+
+    /// Rendition properties (EPUB3)
+    pub rendition_layout: Option<String>,
+    pub rendition_flow: Option<String>,
+    pub rendition_orientation: Option<String>,
+    pub rendition_spread: Option<String>,
+
+    /// EPUB3 bindings: media handlers
+    pub bindings: Vec<crate::epub::packaging::Binding>,
+
+    /// EPUB3 collections
+    pub collections: Vec<crate::epub::packaging::Collection>,
 }
 
 impl EpubDoc<BufReader<File>> {
@@ -273,6 +272,14 @@ impl<R: Read + Seek> EpubDoc<R> {
             current: 0,
             extra_css: vec![],
             unique_identifier: None,
+            page_progression_direction: None,
+            guides: vec![],
+            rendition_layout: None,
+            rendition_flow: None,
+            rendition_orientation: None,
+            rendition_spread: None,
+            bindings: vec![],
+            collections: vec![],
         };
         doc.fill_resources()?;
         Ok(doc)
@@ -351,6 +358,14 @@ impl<R: Read + Seek> EpubDoc<R> {
             // The concept of navigation document doesn't exist in EPUB2.
             _ => None,
         }
+    }
+
+    /// Parses the EPUB3 navigation document (nav.xhtml) if available and returns
+    /// table of contents, page list and landmarks. Returns None if no nav document exists.
+    pub fn get_nav_data(&mut self) -> Option<NavData> {
+        let nav_id = self.get_nav_id()?;
+        let (bytes, _mime) = self.get_resource(&nav_id)?;
+        parse_nav_document(bytes.as_slice()).ok()
     }
 
     /// Returns the cover's content and mime-type
@@ -743,6 +758,20 @@ impl<R: Read + Seek> EpubDoc<R> {
         self.spine.iter().position(|item| item.idref == uri)
     }
 
+    /// Resolve a content href (may include a fragment) to a chapter index in the spine
+    pub fn href_to_spine_index(&self, href: &str) -> Option<usize> {
+        let path_str = href.split('#').next().unwrap_or(href);
+        let abs_path = self.convert_path_seps(path_str);
+        let maybe_id = self.resources.iter().find_map(|(rid, res)| {
+            if res.path == abs_path {
+                Some(rid.clone())
+            } else {
+                None
+            }
+        });
+        maybe_id.and_then(|id| self.resource_id_to_chapter(&id))
+    }
+
     fn fill_resources(&mut self) -> Result<(), DocError> {
         let container = self.archive.get_entry(&self.root_file)?;
         let root = xmlutils::XMLReader::parse(container.as_slice())?;
@@ -784,6 +813,32 @@ impl<R: Read + Seek> EpubDoc<R> {
             .find("metadata")
             .ok_or(DocError::InvalidEpub)?;
         self.fill_metadata(&metadata_elem.borrow());
+
+        // packaging extras
+        let extras = parse_packaging_extras(&root.borrow());
+        self.page_progression_direction = extras.page_progression_direction;
+        self.rendition_layout = extras.rendition_layout;
+        self.rendition_flow = extras.rendition_flow;
+        self.rendition_orientation = extras.rendition_orientation;
+        self.rendition_spread = extras.rendition_spread;
+        self.bindings = extras.bindings;
+        self.collections = extras.collections;
+
+        // EPUB2 guide
+        if let Some(guide_ref) = root.borrow().find("guide") {
+            let guide = guide_ref.borrow();
+            for r in &guide.children {
+                let item = r.borrow();
+                if item.name.local_name != "reference" {
+                    continue;
+                }
+                self.guides.push(GuideRef {
+                    r#type: item.get_attr("type"),
+                    title: item.get_attr("title"),
+                    href: item.get_attr("href"),
+                });
+            }
+        }
 
         let identifier = if let Some(uid) = unique_identifier_id {
             // find identifier with id

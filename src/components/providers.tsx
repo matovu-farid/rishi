@@ -1,12 +1,25 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { PropsWithChildren } from "react";
+import { PropsWithChildren, useEffect } from "react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { errorTracker } from "@/services/errorTracking";
+import { DebugPanel } from "./DebugPanel";
 
 export const queryClient = new QueryClient();
 
 function Providers({ children }: PropsWithChildren): JSX.Element {
+  useEffect(() => {
+    // Initialize error tracker
+    errorTracker.init().catch((err) => {
+      console.error("[Providers] Failed to initialize error tracker:", err);
+    });
+
+    return () => {
+      errorTracker.destroy();
+    };
+  }, []);
+
   return (
     <div>
       <QueryClientProvider client={queryClient}>
@@ -14,6 +27,7 @@ function Providers({ children }: PropsWithChildren): JSX.Element {
         <ReactQueryDevtools initialIsOpen={false} />
       </QueryClientProvider>
       <ToastContainer />
+      <DebugPanel />
     </div>
   );
 }
