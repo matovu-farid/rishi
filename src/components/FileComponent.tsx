@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import Loader from "./Loader";
 import { Link } from "@tanstack/react-router";
@@ -7,7 +6,6 @@ import { toast } from "react-toastify";
 import { IconButton } from "./ui/IconButton";
 import { Button } from "./ui/Button";
 import { Trash2, Plus } from "lucide-react";
-import { getCoverImage } from "@/modules/getCoverImage";
 import { chooseFiles } from "@/modules/chooseFiles";
 import { BookData, getBookData } from "@/generated";
 import {
@@ -17,10 +15,6 @@ import {
   storeBook,
 } from "@/modules/books";
 
-// Type augmentation for Electron's File.path property
-interface ElectronFile extends File {
-  path: string; // Electron-only augmentation
-}
 // Add this helper function
 function bytesToBlobUrl(bytes: number[]): string {
   const uint8Array = new Uint8Array(bytes);
@@ -52,24 +46,7 @@ function FileDrop(): React.JSX.Element {
       void queryClient.invalidateQueries({ queryKey: ["books"] });
     },
   });
-  const getCoverImageMutation = useMutation({
-    mutationKey: ["getCoverImage"],
-    mutationFn: async ({ filePath }: { filePath: string }) => {
-      const coverImage = await getCoverImage(filePath);
-      if (coverImage === null) {
-        throw new Error("Failed to get cover image");
-      }
-      return coverImage;
-    },
 
-    onError(error) {
-      toast.error("Can't upload book");
-      console.log({ error });
-    },
-    onSuccess() {
-      void queryClient.invalidateQueries({ queryKey: ["books"] });
-    },
-  });
   const getBookDataMutation = useMutation({
     mutationKey: ["getBookData"],
     mutationFn: async ({ filePath }: { filePath: string }) => {
@@ -108,25 +85,8 @@ function FileDrop(): React.JSX.Element {
   };
 
   // Handle drag and drop (uses Electron's File.path property)
-  const onDrop = useCallback(
-    (acceptedFiles: File[]) => {
-      acceptedFiles.forEach((file) => {
-        console.log({ file });
-        // In Electron, File objects have a .path property with the real path
-        const electronFile = file as ElectronFile;
-        if (electronFile.path) {
-          getCoverImageMutation.mutate({ filePath: electronFile.path });
-        } else {
-          toast.error(
-            "Could not get file path. Please use the file picker button."
-          );
-        }
-      });
-    },
-    [getCoverImageMutation]
-  );
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({});
   if (isError)
     return (
       <div className="w-full h-full place-items-center grid">
