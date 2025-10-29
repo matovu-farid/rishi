@@ -287,18 +287,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
     this.audioElement.currentTime = 0;
 
     // Set new source and wait for it to be ready
-    // Decode URL-encoded path from Tauri v2 path module before converting
-    const decodedPath = decodeURIComponent(audioPath);
-    const convertedSrc = convertFileSrc(decodedPath);
-    
-    console.log("🎵 Converting audio path:", {
-      originalPath: audioPath,
-      decodedPath: decodedPath,
-      convertedSrc: convertedSrc,
-      isEncoded: audioPath.includes('%'),
-    });
-    
-    this.audioElement.src = convertedSrc;
+    this.audioElement.src = convertFileSrc(audioPath);
     this.audioElement.load();
 
     try {
