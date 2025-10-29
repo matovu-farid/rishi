@@ -9,6 +9,7 @@ import {
   Volume2,
   AlertTriangle,
   Bug,
+  Info,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useEffect, useState } from "react";
@@ -93,6 +94,24 @@ export function TTSControls({
     await player.next();
   };
 
+  const handleShowErrorDetails = () => {
+    const detailedInfo = player.getDetailedErrorInfo();
+    console.log("📊 Detailed Error Information:", detailedInfo);
+
+    // Create a formatted error message
+    const errorInfo = JSON.stringify(detailedInfo, null, 2);
+    console.log("📊 Formatted Error Info:\n", errorInfo);
+
+    // Show a toast with the basic info
+    toast.info(
+      `Check console for detailed error information. Errors: ${detailedInfo.errors.length}`,
+      {
+        position: "top-center",
+        autoClose: 5000,
+      }
+    );
+  };
+
   const getPlayIcon = () => {
     if (playingState === PlayingState.Loading) {
       return <Spinner size="medium" color="currentColor" />;
@@ -172,9 +191,19 @@ export function TTSControls({
           </IconButton>
         )}
 
-        {/* Error Icon (if there's an error) */}
+        {/* Error Icon with detailed info button (if there's an error) */}
         {errors.length > 0 && (
-          <AlertTriangle size={20} className="text-red-500" />
+          <>
+            <AlertTriangle size={20} className="text-red-500" />
+            <IconButton
+              size="small"
+              onClick={handleShowErrorDetails}
+              className="text-red-500 hover:bg-red-500/10"
+              title="Show detailed error information"
+            >
+              <Info size={16} />
+            </IconButton>
+          </>
         )}
       </div>
 

@@ -61,17 +61,35 @@ export class TTSService extends EventEmitter {
     text: string,
     priority = 0 // 0 is normal priority, 1 is high priority, 2 is highest priority
   ): Promise<string> {
-    console.log(">>> Service: Request audio");
     const requestId = `${bookId}-${cfiRange}`;
+
+    console.log(">>> Service: Request audio", {
+      requestId,
+      bookId,
+      cfiRange,
+      textLength: text.length,
+      textPreview: text.substring(0, 50) + "...",
+      priority,
+    });
 
     try {
       // Check if request is already active
       if (this.activeRequests.has(requestId)) {
-        console.log(`Request already active: ${requestId}`);
+        console.log(
+          ">>> Service: Request already active, waiting for completion",
+          {
+            requestId,
+          }
+        );
+
         // Return a promise that will resolve when the active request completes
         return new Promise((resolve, reject) => {
           const onAudioReady = (event: AudioReadyEvent) => {
             if (event.bookId === bookId && event.cfiRange === cfiRange) {
+              console.log(">>> Service: Active request completed", {
+                requestId,
+                audioPath: event.audioPath,
+              });
               this.cleanupPendingListener(requestId);
               resolve(event.audioPath);
             }
@@ -79,6 +97,10 @@ export class TTSService extends EventEmitter {
 
           const onError = (event: TTSErrorEvent) => {
             if (event.bookId === bookId && event.cfiRange === cfiRange) {
+              console.error(">>> Service: Active request failed", {
+                requestId,
+                error: event.error,
+              });
               this.cleanupPendingListener(requestId);
               reject(new Error(event.error));
             }
@@ -86,6 +108,10 @@ export class TTSService extends EventEmitter {
 
           // Setup timeout to prevent memory leaks
           const timeout = setTimeout(() => {
+            console.error(">>> Service: Request timeout", {
+              requestId,
+              timeoutMs: this.LISTENER_TIMEOUT_MS,
+            });
             this.cleanupPendingListener(requestId);
             reject(new Error("Request timeout"));
           }, this.LISTENER_TIMEOUT_MS);
@@ -102,10 +128,20 @@ export class TTSService extends EventEmitter {
       }
 
       // Check cache first
+      console.log(">>> Service: Checking cache", { requestId });
       const cached = await ttsCache.getCachedAudio(bookId, cfiRange);
+
       if (cached.exists) {
+        console.log(">>> Service: Cache hit", {
+          requestId,
+          cachedPath: cached.path,
+        });
         return cached.path;
       }
+
+      console.log(">>> Service: Cache miss, queuing for generation", {
+        requestId,
+      });
 
       // Track active request
       this.activeRequests.add(requestId);
@@ -117,10 +153,33 @@ export class TTSService extends EventEmitter {
         text,
         priority
       );
+
+      console.log(">>> Service: Audio generation completed", {
+        requestId,
+        audioPath,
+      });
+
       return audioPath;
     } catch (error) {
       this.activeRequests.delete(requestId);
-      console.error(`TTS request failed for ${requestId}:`, error);
+
+      const errorDetails = {
+        requestId,
+        bookId,
+        cfiRange,
+        textLength: text.length,
+        textPreview: text.substring(0, 50) + "...",
+        error:
+          error instanceof Error
+            ? {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+              }
+            : String(error),
+      };
+
+      console.error(">>> Service: TTS request failed", errorDetails);
 
       // Emit error event
       this.emit("error", {

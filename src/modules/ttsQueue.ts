@@ -177,17 +177,35 @@ export class TTSQueue extends EventEmitter {
       this.activeRequests.set(item.requestId, item);
 
       try {
+        console.log(">>> Queue: Starting audio generation", {
+          requestId: item.requestId,
+          cfiRange: item.cfiRange,
+        });
+
         // TODO: Check if this can be optimized as a stream
         const audioData = await this.generateAudio(item);
-        console.log(">>> Queue: Generated audio buffer");
+        console.log(">>> Queue: Generated audio buffer", {
+          requestId: item.requestId,
+          bufferSize: audioData.length,
+        });
 
         // Save directly to cache
+        console.log(">>> Queue: Saving audio to cache", {
+          requestId: item.requestId,
+        });
+
         const audioPath = await ttsCache.saveCachedAudio(
           item.bookId,
           item.cfiRange,
           audioData
         );
-        console.log(">>> Queue: Saved audio to cache", { audioPath });
+
+        console.log(">>> Queue: Saved audio to cache", {
+          requestId: item.requestId,
+          audioPath,
+          bookId: item.bookId,
+          cfiRange: item.cfiRange,
+        });
 
         // Clean up tracking
         this.pendingRequests.delete(item.requestId);
@@ -210,6 +228,17 @@ export class TTSQueue extends EventEmitter {
           requestId: item.requestId,
         });
       } catch (error) {
+        console.error(">>> Queue: Error in processQueue", {
+          requestId: item.requestId,
+          error:
+            error instanceof Error
+              ? {
+                  name: error.name,
+                  message: error.message,
+                  stack: error.stack,
+                }
+              : String(error),
+        });
         // Clean up tracking
         this.pendingRequests.delete(item.requestId);
         this.activeRequests.delete(item.requestId);
@@ -263,35 +292,96 @@ export class TTSQueue extends EventEmitter {
    * Generate audio using OpenAI TTS API
    */
   private async generateAudio(item: QueueItem): Promise<Uint8Array> {
+    const url = `http://${this.openaiProxyUrl}/v1/audio/speech`;
+
+    console.log(">>> Queue: Generating audio", {
+      url,
+      requestId: item.requestId,
+      textLength: item.text.length,
+      textPreview: item.text.substring(0, 100) + "...",
+      priority: item.priority,
+      retryCount: item.retryCount,
+    });
+
     try {
-      const url = `http://${this.openaiProxyUrl}/v1/audio/speech`;
-      console.log(">>> Queue: Generating audio for:", url);
+      const requestBody = {
+        model: "tts-1",
+        voice: "alloy",
+        input: item.text,
+        response_format: "mp3",
+        speed: 1.0,
+      };
+
+      console.log(">>> Queue: Sending request", {
+        requestId: item.requestId,
+        bodySize: JSON.stringify(requestBody).length,
+      });
+
       const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          model: "tts-1",
-          voice: "alloy",
-          input: item.text,
-          response_format: "mp3",
-          speed: 1.0,
-        }),
+        body: JSON.stringify(requestBody),
       });
-      console.log(">>> Queue: Response", { status: response.status });
+
+      console.log(">>> Queue: Response received", {
+        requestId: item.requestId,
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries()),
+      });
+
+      if (!response.ok) {
+        const errorText = await response
+          .text()
+          .catch(() => "Could not read error text");
+        console.error(">>> Queue: API returned error", {
+          requestId: item.requestId,
+          status: response.status,
+          statusText: response.statusText,
+          errorText,
+        });
+        throw new Error(
+          `OpenAI TTS API error: ${response.status} ${response.statusText} - ${errorText}`
+        );
+      }
 
       // Convert response to buffer
       const audioData = await response.bytes();
-      console.log(">>> Queue: Converted response to buffer");
+      console.log(">>> Queue: Converted response to buffer", {
+        requestId: item.requestId,
+        bufferSize: audioData.length,
+      });
+
+      if (audioData.length === 0) {
+        throw new Error("OpenAI TTS API returned empty audio buffer");
+      }
+
       return audioData;
     } catch (error) {
-      if (error instanceof Error) {
-        console.log(">>> Queue: Error", { error: error.message });
-      } else {
-        console.log(">>> Queue: Error", { error: String(error) });
-      }
-      throw new Error(`OpenAI TTS API error: ${error}`);
+      const errorDetails = {
+        requestId: item.requestId,
+        url,
+        textLength: item.text.length,
+        textPreview: item.text.substring(0, 100) + "...",
+        retryCount: item.retryCount,
+        error:
+          error instanceof Error
+            ? {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+              }
+            : String(error),
+      };
+
+      console.error(">>> Queue: Audio generation failed", errorDetails);
+
+      throw new Error(
+        `OpenAI TTS API error: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 

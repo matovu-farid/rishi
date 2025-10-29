@@ -59,13 +59,53 @@ export class TTSCache {
     bookId: string,
     cfiRange: string
   ): Promise<string> {
-    console.log(">>> Get audio file path");
-    const bookCacheDir = await this.getBookCacheDir(bookId);
-    if (!(await fs.exists(bookCacheDir))) {
-      await fs.mkdir(bookCacheDir, { recursive: true });
+    console.log(">>> Cache: Get audio file path", {
+      bookId,
+      cfiRange: cfiRange.substring(0, 50) + "...",
+    });
+
+    try {
+      const bookCacheDir = await this.getBookCacheDir(bookId);
+      const exists = await fs.exists(bookCacheDir);
+
+      console.log(">>> Cache: Book cache dir status", {
+        bookCacheDir,
+        exists,
+      });
+
+      if (!exists) {
+        console.log(">>> Cache: Creating book cache directory", {
+          bookCacheDir,
+        });
+        await fs.mkdir(bookCacheDir, { recursive: true });
+        console.log(">>> Cache: Book cache directory created");
+      }
+
+      const hashedCfi = md5(cfiRange);
+      const filePath = await path.join(bookCacheDir, `${hashedCfi}.mp3`);
+
+      console.log(">>> Cache: Generated file path", {
+        filePath,
+        hashedCfi,
+        bookId,
+      });
+
+      return filePath;
+    } catch (error) {
+      console.error(">>> Cache: Error getting audio file path", {
+        bookId,
+        cfiRange: cfiRange.substring(0, 50) + "...",
+        error:
+          error instanceof Error
+            ? {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+              }
+            : String(error),
+      });
+      throw error;
     }
-    const hashedCfi = md5(cfiRange);
-    return path.join(bookCacheDir, `${hashedCfi}.mp3`);
   }
 
   /**
@@ -75,9 +115,59 @@ export class TTSCache {
     bookId: string,
     cfiRange: string
   ): Promise<CachedAudioInfo> {
-    console.log(">>> Get cached audio");
-    const filePath = await this.getAudioFilePath(bookId, cfiRange);
-    return { filePath, path: filePath, exists: await fs.exists(filePath) };
+    console.log(">>> Cache: Get cached audio", {
+      bookId,
+      cfiRange: cfiRange.substring(0, 50) + "...",
+    });
+
+    try {
+      const filePath = await this.getAudioFilePath(bookId, cfiRange);
+      const exists = await fs.exists(filePath);
+
+      console.log(">>> Cache: File check result", {
+        filePath,
+        exists,
+        bookId,
+      });
+
+      if (exists) {
+        try {
+          const stats = await fs.stat(filePath);
+          console.log(">>> Cache: Cached file stats", {
+            filePath,
+            size: stats.size,
+            mtime: stats.mtime,
+          });
+        } catch (statsError) {
+          console.error(">>> Cache: Failed to get file stats", {
+            filePath,
+            error:
+              statsError instanceof Error
+                ? {
+                    name: statsError.name,
+                    message: statsError.message,
+                  }
+                : String(statsError),
+          });
+        }
+      }
+
+      return { filePath, path: filePath, exists };
+    } catch (error) {
+      console.error(">>> Cache: Error checking cached audio", {
+        bookId,
+        cfiRange: cfiRange.substring(0, 50) + "...",
+        error:
+          error instanceof Error
+            ? {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+              }
+            : String(error),
+      });
+      throw error;
+    }
   }
 
   /**
@@ -88,35 +178,76 @@ export class TTSCache {
     cfiRange: string,
     audioData: Uint8Array
   ): Promise<string> {
-    console.log(">>> Save cached audio");
+    console.log(">>> Cache: Save cached audio", {
+      bookId,
+      cfiRange: cfiRange.substring(0, 50) + "...",
+      audioDataSize: audioData.length,
+    });
 
     try {
       const filePath = await this.getAudioFilePath(bookId, cfiRange);
 
-      console.log({
+      console.log(">>> Cache: Saving to file path", {
         bookId,
-        cfiRange,
+        cfiRange: cfiRange.substring(0, 50) + "...",
         filePath,
         cacheDir: this.cacheDir,
+        audioDataSize: audioData.length,
       });
 
       // Check cache size before saving
+      console.log(">>> Cache: Checking cache size before save");
       await this.checkAndCleanupCache();
 
       // Save audio buffer to file
+      console.log(">>> Cache: Writing audio data to file", {
+        filePath,
+        dataSize: audioData.length,
+      });
+
       await fs.writeFile(filePath, audioData);
 
       // Verify file was created
+      console.log(">>> Cache: Verifying file was written");
+      const exists = await fs.exists(filePath);
+
+      if (!exists) {
+        throw new Error("File was not created successfully");
+      }
+
       const stats = await fs.stat(filePath);
-      console.log("File created successfully:", {
+      console.log(">>> Cache: File created successfully", {
         path: filePath,
         size: stats.size,
+        expectedSize: audioData.length,
+        sizeMismatch: stats.size !== audioData.length,
       });
+
+      if (stats.size === 0) {
+        throw new Error("File was created but is empty (0 bytes)");
+      }
 
       return filePath;
     } catch (error) {
-      console.error("Failed to save cached audio:", error);
-      throw new Error(`Failed to save cached audio: ${error}`);
+      const errorDetails = {
+        bookId,
+        cfiRange: cfiRange.substring(0, 50) + "...",
+        audioDataSize: audioData.length,
+        cacheDir: this.cacheDir,
+        error:
+          error instanceof Error
+            ? {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+              }
+            : String(error),
+      };
+
+      console.error(">>> Cache: Failed to save cached audio", errorDetails);
+      throw new Error(
+        `Failed to save cached audio: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
