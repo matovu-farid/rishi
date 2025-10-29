@@ -173,8 +173,12 @@ export class Player extends EventEmitter<PlayerEventMap> {
     this.setPlayingState(PlayingState.Playing);
 
     if (this.paragraphs.length === 0) {
-      console.error("🎵 No paragraphs available");
-      this.errors.push("No paragraphs available to play");
+      console.log(
+        "🎵 No paragraphs on page (likely an image page) - pausing briefly then moving to next page"
+      );
+      // Give user 2 seconds to view the image, then move to next page
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await this.moveToNextPage();
       return;
     }
 
@@ -184,6 +188,17 @@ export class Player extends EventEmitter<PlayerEventMap> {
       this.errors.push("No current paragraph available to play");
       return;
     }
+
+    // Check if paragraph has no text (e.g., image-only content)
+    if (!currentParagraph.text.trim()) {
+      console.log(
+        "🎵 No text in paragraph (likely an image) - pausing briefly then moving to next paragraph"
+      );
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await this.next();
+      return;
+    }
+
     // Highlight current paragraph and store reference
 
     await this.highlightParagraph(currentParagraph);

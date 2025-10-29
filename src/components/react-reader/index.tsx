@@ -142,6 +142,11 @@ export class ReactReader extends PureComponent<
    */
   setLocation = (loc: string) => {
     const { locationChanged } = this.props;
+    // Actually navigate to the location in the book
+    const node = this.readerRef.current;
+    if (node && node.rendition) {
+      node.rendition.display(loc);
+    }
     this.setState(
       {
         expandedToc: false,
