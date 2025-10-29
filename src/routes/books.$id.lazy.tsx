@@ -19,6 +19,7 @@ import { TTSControls } from "@components/TTSControls";
 import { Rendition } from "epubjs/types";
 import { getBooks, updateBookLocation } from "@/modules/books";
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { debounce } from "@/utils/debounce";
 
 export const Route = createLazyFileRoute("/books/$id")({
   component: () => <BookView />,
@@ -64,7 +65,6 @@ function BookView(): React.JSX.Element {
     setTheme(newTheme);
     setMenuOpen(false);
   };
-  const queryClient = useQueryClient();
   const updateBookLocationMutation = useMutation({
     mutationFn: async ({
       bookId,
@@ -80,11 +80,11 @@ function BookView(): React.JSX.Element {
       toast.error("Can not change book page");
       console.log({ error });
     },
-    async onSuccess() {
-      await queryClient.invalidateQueries({ queryKey: ["book"] });
-      await queryClient.invalidateQueries({ queryKey: ["pageView"] });
-    },
   });
+
+  // Create stable debounced function that uses the latest mutation
+  const mutationRef = useRef(updateBookLocationMutation);
+  mutationRef.current = updateBookLocationMutation;
 
   // Update rendition state when ref becomes available
   useEffect(() => {
@@ -175,6 +175,7 @@ function BookView(): React.JSX.Element {
           title={book.title}
           location={book.current_location || 0}
           locationChanged={(epubcfi: string) => {
+            // Use debounced update to prevent race condition and excessive DB writes
             updateBookLocationMutation.mutate({
               bookId: book.id,
               location: epubcfi,
