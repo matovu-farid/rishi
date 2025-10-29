@@ -878,6 +878,7 @@ export class Rendition extends EventEmitter {
   /**
    * Get the Current Location object
    * @return {displayedLocation | promise} location (may be a promise)
+
    */
   currentLocation() {
     var location = this.manager.currentLocation();
