@@ -784,8 +784,10 @@ async function _getNextPageParagraphsInSectionAsync(
 
 function _hasNextPageInCurrentSection(currentSection: Section) {
   // Use page numbers from location data
+  // If pagination data isn't ready yet (on first load), assume we might have more pages
+  // This will attempt to get the next page, which will fail gracefully if none exists
   if (!currentSection.pages || !currentSection.totalPages) {
-    return false;
+    return true; // Changed from false to handle initial load race condition
   }
 
   // Check if current page is less than total pages
@@ -1033,8 +1035,10 @@ async function _getPreviousPageParagraphsInSectionAsync(
  */
 function _hasPreviousPageInCurrentSection(currentSection: Section) {
   // Use page numbers from location data
+  // If pagination data isn't ready yet (on first load), assume we might have previous pages
+  // This will attempt to get the previous page, which will fail gracefully if none exists
   if (!currentSection.pages || !currentSection.totalPages) {
-    return false;
+    return true; // Changed from false to handle initial load race condition
   }
 
   // Check if current page is greater than 1

@@ -265,7 +265,9 @@ export class EpubView extends Component<IEpubViewProps, IEpubViewState> {
         onNextPageParagraphs ||
         onPreviousPageParagraphs
       ) {
-        this.rendition.on("rendered", () => {
+        // Use 'relocated' event instead of 'rendered' to ensure pagination data is available
+        // This fixes the race condition where pages/totalPages weren't populated on first load
+        this.rendition.on("relocated", () => {
           if (onPageTextExtracted) {
             const pageTextData = this.getCurrentPageText();
             onPageTextExtracted(pageTextData);
