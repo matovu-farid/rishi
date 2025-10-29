@@ -1,12 +1,20 @@
-import type Rendition from "@/epubjs/types/rendition";
+import type Rendition from "epubjs/types/rendition";
 import type { ParagraphWithCFI } from "@/types";
 import EventEmitter from "events";
-import { EVENTS } from "@/epubjs";
+// @ts-ignore
+import { EVENTS } from "epubjs/src/utils/constants";
 import {
   getTTSAudioPath,
   requestTTSAudio,
 } from "@/modules/ipc_handel_functions";
 import { convertFileSrc } from "@tauri-apps/api/core";
+import {
+  getCurrentViewParagraphs,
+  getNextViewParagraphs,
+  getPreviousViewParagraphs,
+  highlightRange,
+  removeHighlight,
+} from "@/epubwrapper";
 export enum PlayingState {
   Playing = "playing",
   Paused = "paused",
@@ -61,16 +69,16 @@ export class Player extends EventEmitter<PlayerEventMap> {
 
     // this.paragraphs = rendition.getCurrentViewParagraphs() || []
     rendition.on(EVENTS.RENDITION.RENDERED, () => {
-      this.paragraphs = rendition.getCurrentViewParagraphs() || [];
+      this.paragraphs = getCurrentViewParagraphs(rendition) || [];
 
-      void rendition.getNextViewParagraphs().then((nextPageParagraphs) => {
+      void getNextViewParagraphs(rendition).then((nextPageParagraphs) => {
         this.nextPageParagraphs = nextPageParagraphs || [];
       });
-      void rendition
-        .getPreviousViewParagraphs()
-        .then((previousPageParagraphs) => {
+      void getPreviousViewParagraphs(rendition).then(
+        (previousPageParagraphs) => {
           this.previousPageParagraphs = previousPageParagraphs?.reverse() || [];
-        });
+        }
+      );
     });
     this.rendition.once(EVENTS.RENDITION.RENDERED, () => {
       this.audioElement = new Audio();
@@ -94,19 +102,19 @@ export class Player extends EventEmitter<PlayerEventMap> {
     }
   }
   private resetParagraphs() {
-    this.paragraphs = this.rendition.getCurrentViewParagraphs() || [];
+    this.paragraphs = getCurrentViewParagraphs(this.rendition) || [];
     if (this.direction === Direction.Backward)
       this.setParagraphIndex(this.paragraphs.length - 1);
     else this.setParagraphIndex(0);
     return Promise.all([
-      this.rendition.getNextViewParagraphs().then((nextPageParagraphs) => {
+      getNextViewParagraphs(this.rendition).then((nextPageParagraphs) => {
         this.nextPageParagraphs = nextPageParagraphs || [];
       }),
-      this.rendition
-        .getPreviousViewParagraphs()
-        .then((previousPageParagraphs) => {
+      getPreviousViewParagraphs(this.rendition).then(
+        (previousPageParagraphs) => {
           this.previousPageParagraphs = previousPageParagraphs?.reverse() || [];
-        }),
+        }
+      ),
     ]);
   }
 
@@ -132,7 +140,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
     try {
       const currentParagraph = this.getCurrentParagraph();
       if (!currentParagraph) return;
-      await this.rendition.removeHighlight(currentParagraph.cfiRange);
+      await removeHighlight(this.rendition, currentParagraph.cfiRange);
     } catch (error) {
       console.warn("Failed to remove highlight:", error);
     }
@@ -388,10 +396,10 @@ export class Player extends EventEmitter<PlayerEventMap> {
   }
 
   private highlightParagraph(paragraph: ParagraphWithCFI) {
-    return this.rendition.highlightRange(paragraph.cfiRange);
+    return highlightRange(this.rendition, paragraph.cfiRange);
   }
   private async unhighlightParagraph(paragraph: ParagraphWithCFI) {
-    return await this.rendition.removeHighlight(paragraph.cfiRange);
+    return await removeHighlight(this.rendition, paragraph.cfiRange);
   }
   private async requestAudio(paragraph: ParagraphWithCFI, priority: number) {
     console.log(">>> Player: Request audio");

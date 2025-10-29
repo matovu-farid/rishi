@@ -17,7 +17,7 @@ import { Palette } from "lucide-react";
 import { useState } from "react";
 import { TTSControls } from "@components/TTSControls";
 import { getBooks, updateCurrentBookId } from "@/modules/epub";
-import { Rendition } from "@/epubjs/types";
+import { Rendition } from "epubjs/types";
 
 export const Route = createLazyFileRoute("/books/$id")({
   component: () => <BookView />,

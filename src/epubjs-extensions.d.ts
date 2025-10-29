@@ -7,6 +7,7 @@ import type Manager from "epubjs/types/managers/manager";
 import type Mapping from "epubjs/types/mapping";
 import type Rendition from "epubjs/types/rendition";
 import type Annotations from "epubjs/types/annotations";
+import type { EpubCFI } from "epubjs";
 
 declare module "epubjs/types/section" {
   interface SpineItem {
@@ -29,13 +30,21 @@ declare module "epubjs/types/managers/view" {
   export default interface View {
     contents: Contents;
     section: Section;
+    index: number;
   }
 }
-// edit find method of view[]
 
 declare module "epubjs/types/annotations" {
   export default interface Annotations {
-    _annotations: Record<string, Annotation>;
+    _annotations: Record<string, any>;
+    highlight(
+      cfiRange: string | EpubCFI,
+      data?: Record<string, unknown>,
+      cb?: () => void,
+      className?: string,
+      styles?: Record<string, unknown>
+    ): any;
+    remove(cfiRange: string | EpubCFI, type: string): void;
   }
 }
 
@@ -48,7 +57,9 @@ declare module "epubjs/types/layout" {
 
 declare module "epubjs/types/managers/manager" {
   export default interface Manager {
-    views: View[];
+    views: View[] & {
+      find: ({ index }: { index: number }) => View | undefined;
+    };
     layout: Layout;
     currentLocation(): Section[];
     mapping: Mapping;
@@ -63,6 +74,7 @@ declare module "epubjs/types/managers/manager" {
 declare module "epubjs/types/rendition" {
   export default interface Rendition {
     manager: Manager;
+    annotations: Annotations;
     settings: {
       ignoreClass: string;
       [key: string]: any;

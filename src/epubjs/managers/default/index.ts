@@ -6,7 +6,7 @@ import Queue from "../../utils/queue";
 import Stage from "../helpers/stage";
 import Views from "../helpers/views";
 import { EVENTS } from "../../utils/constants";
-import type { EpubCFIPair } from "@/epubjs/types/mapping";
+import type { EpubCFIPair } from "epubjs/types/mapping";
 import type Layout from "../../layout";
 import View from "@/epubjs/types/managers/view";
 

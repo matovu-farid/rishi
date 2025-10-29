@@ -1,4 +1,3 @@
-import "./epubjs-extensions";
 import type { Book, Rendition } from "epubjs";
 import type { BookOptions } from "epubjs/types/book";
 import type View from "epubjs/types/managers/view";
@@ -359,7 +358,10 @@ export function highlightRange(
     return Promise.resolve(annotation);
   } catch (error) {
     return Promise.reject(
-      new Error("Error highlighting range: " + error.message)
+      new Error(
+        "Error highlighting range: " +
+          (error instanceof Error ? error.message : String(error))
+      )
     );
   }
 }
@@ -413,7 +415,10 @@ export function removeHighlight(rendition: Rendition, cfiRange: string) {
     return Promise.resolve(annotationExists);
   } catch (error) {
     return Promise.reject(
-      new Error("Error removing highlight: " + error.message)
+      new Error(
+        "Error removing highlight: " +
+          (error instanceof Error ? error.message : String(error))
+      )
     );
   }
 }
