@@ -4,7 +4,7 @@ import { createLazyFileRoute, Link } from "@tanstack/react-router";
 import { ReactReader } from "@components/react-reader";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
-import { Book } from "@/types";
+
 import React, { useEffect, useRef } from "react";
 import { Button } from "@components/ui/Button";
 import { IconButton } from "@components/ui/IconButton";
@@ -16,8 +16,9 @@ import createIReactReaderTheme from "@/themes/readerThemes";
 import { Palette } from "lucide-react";
 import { useState } from "react";
 import { TTSControls } from "@components/TTSControls";
-import { getBooks, updateCurrentBookId } from "@/modules/epub";
 import { Rendition } from "epubjs/types";
+import { getBooks, updateBookLocation } from "@/modules/books";
+import { convertFileSrc } from "@tauri-apps/api/core";
 
 export const Route = createLazyFileRoute("/books/$id")({
   component: () => <BookView />,
@@ -64,9 +65,15 @@ function BookView(): React.JSX.Element {
     setMenuOpen(false);
   };
   const queryClient = useQueryClient();
-  const updateBookId = useMutation({
-    mutationFn: async ({ book, newId }: { book: Book; newId: string }) => {
-      await updateCurrentBookId(book.internalFolderName, newId);
+  const updateBookLocationMutation = useMutation({
+    mutationFn: async ({
+      bookId,
+      location,
+    }: {
+      bookId: string;
+      location: string;
+    }) => {
+      await updateBookLocation(bookId, location);
     },
 
     onError(error) {
@@ -117,7 +124,6 @@ function BookView(): React.JSX.Element {
       <div className="absolute right-2 top-2 z-10 flex items-center gap-2">
         <Link to="/">
           <Button
-            disabled={book.currentBookId === 0}
             variant="ghost"
             className={cn("disabled:invisible", getTextColor())}
           >
@@ -165,11 +171,14 @@ function BookView(): React.JSX.Element {
               <Loader />
             </div>
           }
-          url={book.epubPath}
+          url={convertFileSrc(book.epubPath)}
           title={book.title}
-          location={book.currentBookId || 0}
+          location={book.current_location || 0}
           locationChanged={(epubcfi: string) => {
-            updateBookId.mutate({ book, newId: epubcfi });
+            updateBookLocationMutation.mutate({
+              bookId: book.id,
+              location: epubcfi,
+            });
           }}
           swipeable={true}
           readerStyles={createIReactReaderTheme(themes[theme].readerTheme)}

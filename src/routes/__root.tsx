@@ -1,4 +1,4 @@
-import { getBooks } from "@/modules/epub";
+import { getBooks } from "@/modules/books";
 import Loader from "../components/Loader";
 import { useQuery } from "@tanstack/react-query";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
@@ -43,7 +43,7 @@ function RootComponent(): JSX.Element {
   return (
     <>
       {/* <GlobalFonts /> */}
-      {books
+      {/* {books
         .flatMap((book) => book.assets)
         .flatMap((asset) => asset.css)
         .filter((cssObj) => cssObj !== undefined)
@@ -52,7 +52,7 @@ function RootComponent(): JSX.Element {
             cssObj && (
               <link key={cssObj.id} rel="stylesheet" href={cssObj.href} />
             )
-        )}
+        )} */}
       <Outlet />
       <TanStackRouterDevtools />
     </>

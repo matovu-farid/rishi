@@ -2,7 +2,6 @@
 import React, { Component } from "react";
 
 import type { NavItem, Contents, Rendition, Location, Book } from "epubjs";
-import Epub from "epubjs";
 import { EpubViewStyle as defaultStyles, type IEpubViewStyle } from "./style";
 import type { ParagraphWithCFI } from "@//types";
 import {

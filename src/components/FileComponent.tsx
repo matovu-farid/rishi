@@ -3,20 +3,30 @@ import { useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import Loader from "./Loader";
 import { Link } from "@tanstack/react-router";
-import { Book } from "@//types";
 import { toast } from "react-toastify";
 import { IconButton } from "./ui/IconButton";
 import { Button } from "./ui/Button";
 import { Trash2, Plus } from "lucide-react";
-import { deleteBook, getBooks } from "@/modules/epub";
 import { getCoverImage } from "@/modules/getCoverImage";
 import { chooseFiles } from "@/modules/chooseFiles";
+import { BookData, getBookData } from "@/generated";
+import {
+  getBooks,
+  deleteBook,
+  copyBookToAppData,
+  storeBook,
+} from "@/modules/books";
 
 // Type augmentation for Electron's File.path property
 interface ElectronFile extends File {
   path: string; // Electron-only augmentation
 }
-
+// Add this helper function
+function bytesToBlobUrl(bytes: number[]): string {
+  const uint8Array = new Uint8Array(bytes);
+  const blob = new Blob([uint8Array], { type: "image/jpeg" }); // Change type if needed
+  return URL.createObjectURL(blob);
+}
 function FileDrop(): React.JSX.Element {
   const queryClient = useQueryClient();
   const {
@@ -30,8 +40,8 @@ function FileDrop(): React.JSX.Element {
   });
   const deleteBookMutation = useMutation({
     mutationKey: ["deleteBook"],
-    mutationFn: async ({ book }: { book: Book }) => {
-      await deleteBook(book.internalFolderName);
+    mutationFn: async ({ book }: { book: BookData }) => {
+      await deleteBook(book);
     },
 
     onError(error) {
@@ -60,6 +70,25 @@ function FileDrop(): React.JSX.Element {
       void queryClient.invalidateQueries({ queryKey: ["books"] });
     },
   });
+  const getBookDataMutation = useMutation({
+    mutationKey: ["getBookData"],
+    mutationFn: async ({ filePath }: { filePath: string }) => {
+      const epubPath = await copyBookToAppData(filePath);
+
+      const bookData = await getBookData({ epubPath });
+      await storeBook(bookData);
+
+      return bookData;
+    },
+
+    onError(error) {
+      toast.error("Can't upload book");
+      console.log({ error });
+    },
+    onSuccess() {
+      void queryClient.invalidateQueries({ queryKey: ["books"] });
+    },
+  });
 
   // Handle native file picker (recommended approach)
   const handleChooseFiles = async () => {
@@ -68,7 +97,8 @@ function FileDrop(): React.JSX.Element {
       console.log({ filePaths });
       if (filePaths.length > 0) {
         filePaths.forEach((filePath) => {
-          getCoverImageMutation.mutate({ filePath });
+          // getCoverImageMutation.mutate({ filePath });
+          getBookDataMutation.mutate({ filePath });
         });
       }
     } catch (error) {
@@ -141,7 +171,7 @@ function FileDrop(): React.JSX.Element {
         {...getRootProps()}
       >
         <input {...getInputProps()} className="p-5 cursor-pointer" />
-        {books
+        {/* {books
           .flatMap((book) => book.assets)
           .flatMap((asset) => asset.css)
           .filter((cssObj) => cssObj !== undefined)
@@ -150,12 +180,12 @@ function FileDrop(): React.JSX.Element {
               cssObj && (
                 <link key={cssObj.id} rel="stylesheet" href={cssObj.href} />
               )
-          )}
+          )} */}
         {isDragActive && (!books || books.length === 0) ? (
           <p>Drop the files here ...</p>
         ) : books && books.length > 0 ? (
-          books.map((book, idx) => (
-            <div key={idx + book.cover} className="p-2 grid relative">
+          books.map((book) => (
+            <div key={book.id} className="p-2 grid relative">
               <div
                 onClick={(e) => {
                   e.preventDefault();
@@ -182,7 +212,7 @@ function FileDrop(): React.JSX.Element {
                 >
                   <img
                     className="object-fill"
-                    src={book.cover}
+                    src={bytesToBlobUrl(book.cover)}
                     width={200}
                     alt="cover image"
                   />
