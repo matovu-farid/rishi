@@ -55,6 +55,7 @@
           "url": "https://private.tauri.app"
         }
       ]
-    }
+    },
+    "store:default"
   ]
 }

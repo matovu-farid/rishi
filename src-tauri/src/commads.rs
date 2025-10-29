@@ -4,6 +4,15 @@ use std::io;
 use std::path::{Path, PathBuf};
 use zip::ZipArchive;
 
+use crate::epub;
+
+use crate::epub::BookData;
+
+#[tauri::command]
+pub fn get_book_data(epubPath: &Path) -> Result<BookData, String> {
+    epub::get_bookData(epubPath)
+}
+
 #[tauri::command]
 pub fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)

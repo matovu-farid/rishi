@@ -1,25 +1,29 @@
 // Core imports for React component and ePub.js library
 import React, { Component } from "react";
 
-import type {
-  NavItem,
-  Contents,
-  Rendition,
-  Location,
-  RenditionOptions,
-  BookOptions,
-  Book,
-} from "@/epubjs";
-import Epub from "@/epubjs";
+import type { NavItem, Contents, Rendition, Location, Book } from "epubjs";
 import { EpubViewStyle as defaultStyles, type IEpubViewStyle } from "./style";
 import type { ParagraphWithCFI } from "@//types";
+import {
+  getCurrentViewParagraphs,
+  getCurrentViewText,
+  getNextViewParagraphs,
+  getPreviousViewParagraphs,
+  highlightRange,
+  initialize,
+  removeHighlight,
+} from "@/epubwrapper";
 
 export { EpubViewStyle } from "./style";
+
+type RenditionOptions = Rendition["settings"];
 
 // Extended rendition options to include popup handling capability
 export type RenditionOptionsFix = RenditionOptions & {
   allowPopups: boolean;
 };
+
+type BookOptions = Book["settings"];
 
 // Type definition for table of contents items
 export type IToc = {
@@ -110,7 +114,7 @@ export class EpubView extends Component<IEpubViewProps, IEpubViewState> {
       this.book.destroy();
     }
     // Create new book instance with epub.js
-    this.book = Epub(url, epubInitOptions);
+    this.book = initialize(url, epubInitOptions);
 
     // Handle book loading failures
     // this.book.on('openFailed', () => {
@@ -120,7 +124,7 @@ export class EpubView extends Component<IEpubViewProps, IEpubViewState> {
     // })
 
     // Once navigation data is loaded, extract TOC and initialize the reader
-    this.book.loaded.navigation.then(({ toc }) => {
+    this.book?.loaded.navigation.then(({ toc }) => {
       this.setState(
         {
           isLoaded: true,
@@ -260,7 +264,9 @@ export class EpubView extends Component<IEpubViewProps, IEpubViewState> {
         onNextPageParagraphs ||
         onPreviousPageParagraphs
       ) {
-        this.rendition.on("rendered", () => {
+        // Use 'relocated' event instead of 'rendered' to ensure pagination data is available
+        // This fixes the race condition where pages/totalPages weren't populated on first load
+        this.rendition.on("relocated", () => {
           if (onPageTextExtracted) {
             const pageTextData = this.getCurrentPageText();
             onPageTextExtracted(pageTextData);
@@ -372,7 +378,7 @@ export class EpubView extends Component<IEpubViewProps, IEpubViewState> {
     if (!this.rendition) {
       return { text: "" };
     }
-    const currentView = this.rendition?.getCurrentViewText();
+    const currentView = getCurrentViewText(this.rendition);
     // Handle both string and object return types from getCurrentViewText
     const textValue =
       typeof currentView === "string" ? currentView : currentView?.text || "";
@@ -384,9 +390,6 @@ export class EpubView extends Component<IEpubViewProps, IEpubViewState> {
    * Returns structured data with array of paragraph objects including CFI ranges
    */
   getCurrentPageParagraphs = () => {
-    if (!this.rendition) {
-      return { paragraphs: [] };
-    }
     return this.getCurrentViewParagraphs();
   };
 
@@ -400,17 +403,14 @@ export class EpubView extends Component<IEpubViewProps, IEpubViewState> {
         return { paragraphs: [] };
       }
 
-      const result = this.rendition.getCurrentViewParagraphs();
-      if (result && Array.isArray(result)) {
-        // Return full paragraph objects with CFI ranges
-        const paragraphs: ParagraphWithCFI[] = result.map((item) => ({
-          text: item.text || "",
-          cfiRange: item.cfiRange || "",
-        }));
-        return { paragraphs };
-      }
+      const result = getCurrentViewParagraphs(this.rendition);
 
-      return { paragraphs: [] };
+      // Return full paragraph objects with CFI ranges
+      const paragraphs: ParagraphWithCFI[] = result.map((item) => ({
+        text: item.text || "",
+        cfiRange: item.cfiRange || "",
+      }));
+      return { paragraphs };
     } catch (error) {
       console.warn("Error extracting paragraphs:", error);
       return { paragraphs: [] };
@@ -426,33 +426,14 @@ export class EpubView extends Component<IEpubViewProps, IEpubViewState> {
       if (!this.rendition) {
         return { paragraphs: [] };
       }
+      const result = await getNextViewParagraphs(this.rendition);
 
-      // Check if getNextViewParagraphs method exists on rendition
-      if (typeof this.rendition.getNextViewParagraphs === "function") {
-        const result = await this.rendition.getNextViewParagraphs();
-        if (result && Array.isArray(result)) {
-          // Return full paragraph objects with CFI ranges
-          const paragraphs: ParagraphWithCFI[] = result.map((item) => ({
-            text: item.text || "",
-            cfiRange: item.cfiRange || "",
-          }));
-          return { paragraphs };
-        }
-      } else {
-        // Fallback: simulate next page paragraphs by getting current page and logging them
-        // This is a placeholder implementation since getNextViewParagraphs doesn't exist in epub.js
-        console.log(
-          "getNextViewParagraphs method not available in epub.js rendition"
-        );
-        const currentParagraphs = this.getCurrentViewParagraphs();
-        console.log(
-          "Current page paragraphs (as fallback for next page):",
-          currentParagraphs.paragraphs
-        );
-        return currentParagraphs;
-      }
-
-      return { paragraphs: [] };
+      // Return full paragraph objects with CFI ranges
+      const paragraphs: ParagraphWithCFI[] = result.map((item) => ({
+        text: item.text || "",
+        cfiRange: item.cfiRange || "",
+      }));
+      return { paragraphs };
     } catch (error) {
       console.warn("Error extracting next page paragraphs:", error);
       return { paragraphs: [] };
@@ -468,33 +449,14 @@ export class EpubView extends Component<IEpubViewProps, IEpubViewState> {
       if (!this.rendition) {
         return { paragraphs: [] };
       }
+      const result = await getPreviousViewParagraphs(this.rendition);
 
-      // Check if getPreviousViewParagraphs method exists on rendition
-      if (typeof this.rendition.getPreviousViewParagraphs === "function") {
-        const result = await this.rendition.getPreviousViewParagraphs();
-        if (result && Array.isArray(result)) {
-          // Return full paragraph objects with CFI ranges
-          const paragraphs: ParagraphWithCFI[] = result.map((item) => ({
-            text: item.text || "",
-            cfiRange: item.cfiRange || "",
-          }));
-          return { paragraphs };
-        }
-      } else {
-        // Fallback: simulate previous page paragraphs by getting current page and logging them
-        // This is a placeholder implementation since getPreviousViewParagraphs doesn't exist in epub.js
-        console.log(
-          "getPreviousViewParagraphs method not available in epub.js rendition"
-        );
-        const currentParagraphs = this.getCurrentViewParagraphs();
-        console.log(
-          "Current page paragraphs (as fallback for previous page):",
-          currentParagraphs.paragraphs
-        );
-        return currentParagraphs;
-      }
-
-      return { paragraphs: [] };
+      // Return full paragraph objects with CFI ranges
+      const paragraphs: ParagraphWithCFI[] = result.map((item) => ({
+        text: item.text || "",
+        cfiRange: item.cfiRange || "",
+      }));
+      return { paragraphs };
     } catch (error) {
       console.warn("Error extracting previous page paragraphs:", error);
       return { paragraphs: [] };
@@ -506,7 +468,7 @@ export class EpubView extends Component<IEpubViewProps, IEpubViewState> {
    */
   highlightParagraph = (cfiRange: string) => {
     if (this.rendition && cfiRange) {
-      this.rendition.highlightRange(cfiRange);
+      highlightRange(this.rendition, cfiRange);
     }
   };
 
@@ -515,7 +477,7 @@ export class EpubView extends Component<IEpubViewProps, IEpubViewState> {
    */
   removeHighlight = (cfiRange: string) => {
     if (this.rendition && cfiRange) {
-      this.rendition.removeHighlight(cfiRange);
+      removeHighlight(this.rendition, cfiRange);
     }
   };
 

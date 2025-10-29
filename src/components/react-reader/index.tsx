@@ -7,7 +7,7 @@ import {
   ReactReaderStyle as defaultStyles,
   type IReactReaderStyle,
 } from "./style";
-import { type NavItem } from "@/epubjs";
+import { type NavItem } from "epubjs";
 import {
   SwipeWrapper,
   TableOfContents,

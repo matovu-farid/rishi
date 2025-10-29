@@ -1,22 +1,26 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import Loader from "./Loader";
 import { Link } from "@tanstack/react-router";
-import { Book } from "@//types";
 import { toast } from "react-toastify";
 import { IconButton } from "./ui/IconButton";
 import { Button } from "./ui/Button";
 import { Trash2, Plus } from "lucide-react";
-import { deleteBook, getBooks } from "@/modules/epub";
-import { getCoverImage } from "@/modules/getCoverImage";
 import { chooseFiles } from "@/modules/chooseFiles";
+import { BookData, getBookData } from "@/generated";
+import {
+  getBooks,
+  deleteBook,
+  copyBookToAppData,
+  storeBook,
+} from "@/modules/books";
 
-// Type augmentation for Electron's File.path property
-interface ElectronFile extends File {
-  path: string; // Electron-only augmentation
+// Add this helper function
+function bytesToBlobUrl(bytes: number[]): string {
+  const uint8Array = new Uint8Array(bytes);
+  const blob = new Blob([uint8Array], { type: "image/jpeg" }); // Change type if needed
+  return URL.createObjectURL(blob);
 }
-
 function FileDrop(): React.JSX.Element {
   const queryClient = useQueryClient();
   const {
@@ -30,8 +34,8 @@ function FileDrop(): React.JSX.Element {
   });
   const deleteBookMutation = useMutation({
     mutationKey: ["deleteBook"],
-    mutationFn: async ({ book }: { book: Book }) => {
-      await deleteBook(book.internalFolderName);
+    mutationFn: async ({ book }: { book: BookData }) => {
+      await deleteBook(book);
     },
 
     onError(error) {
@@ -42,14 +46,16 @@ function FileDrop(): React.JSX.Element {
       void queryClient.invalidateQueries({ queryKey: ["books"] });
     },
   });
-  const getCoverImageMutation = useMutation({
-    mutationKey: ["getCoverImage"],
+
+  const getBookDataMutation = useMutation({
+    mutationKey: ["getBookData"],
     mutationFn: async ({ filePath }: { filePath: string }) => {
-      const coverImage = await getCoverImage(filePath);
-      if (coverImage === null) {
-        throw new Error("Failed to get cover image");
-      }
-      return coverImage;
+      const epubPath = await copyBookToAppData(filePath);
+
+      const bookData = await getBookData({ epubPath });
+      await storeBook(bookData);
+
+      return bookData;
     },
 
     onError(error) {
@@ -68,7 +74,8 @@ function FileDrop(): React.JSX.Element {
       console.log({ filePaths });
       if (filePaths.length > 0) {
         filePaths.forEach((filePath) => {
-          getCoverImageMutation.mutate({ filePath });
+          // getCoverImageMutation.mutate({ filePath });
+          getBookDataMutation.mutate({ filePath });
         });
       }
     } catch (error) {
@@ -78,25 +85,8 @@ function FileDrop(): React.JSX.Element {
   };
 
   // Handle drag and drop (uses Electron's File.path property)
-  const onDrop = useCallback(
-    (acceptedFiles: File[]) => {
-      acceptedFiles.forEach((file) => {
-        console.log({ file });
-        // In Electron, File objects have a .path property with the real path
-        const electronFile = file as ElectronFile;
-        if (electronFile.path) {
-          getCoverImageMutation.mutate({ filePath: electronFile.path });
-        } else {
-          toast.error(
-            "Could not get file path. Please use the file picker button."
-          );
-        }
-      });
-    },
-    [getCoverImageMutation]
-  );
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({});
   if (isError)
     return (
       <div className="w-full h-full place-items-center grid">
@@ -141,7 +131,7 @@ function FileDrop(): React.JSX.Element {
         {...getRootProps()}
       >
         <input {...getInputProps()} className="p-5 cursor-pointer" />
-        {books
+        {/* {books
           .flatMap((book) => book.assets)
           .flatMap((asset) => asset.css)
           .filter((cssObj) => cssObj !== undefined)
@@ -150,12 +140,12 @@ function FileDrop(): React.JSX.Element {
               cssObj && (
                 <link key={cssObj.id} rel="stylesheet" href={cssObj.href} />
               )
-          )}
+          )} */}
         {isDragActive && (!books || books.length === 0) ? (
           <p>Drop the files here ...</p>
         ) : books && books.length > 0 ? (
-          books.map((book, idx) => (
-            <div key={idx + book.cover} className="p-2 grid relative">
+          books.map((book) => (
+            <div key={book.id} className="p-2 grid relative">
               <div
                 onClick={(e) => {
                   e.preventDefault();
@@ -182,7 +172,7 @@ function FileDrop(): React.JSX.Element {
                 >
                   <img
                     className="object-fill"
-                    src={book.cover}
+                    src={bytesToBlobUrl(book.cover)}
                     width={200}
                     alt="cover image"
                   />
