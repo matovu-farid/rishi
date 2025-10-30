@@ -41,6 +41,10 @@ export function TTSControls({
 
   useEffect(() => {
     player.on(PlayerEvent.PLAYING_STATE_CHANGED, setPlayingState);
+    return () => {
+      player.off(PlayerEvent.PLAYING_STATE_CHANGED, setPlayingState);
+      player.cleanup();
+    };
   }, [player]);
 
   // Check for errors using setTimeout to avoid cascading renders

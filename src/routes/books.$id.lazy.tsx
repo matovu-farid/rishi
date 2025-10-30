@@ -2,7 +2,7 @@ import Loader from "@components/Loader";
 import { useQuery } from "@tanstack/react-query";
 import { createLazyFileRoute, Link } from "@tanstack/react-router";
 import { ReactReader } from "@components/react-reader";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 
 import React, { useEffect, useRef } from "react";

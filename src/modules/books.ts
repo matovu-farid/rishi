@@ -3,12 +3,11 @@ import { path } from "@tauri-apps/api";
 import { load } from "@tauri-apps/plugin-store";
 import * as fs from "@tauri-apps/plugin-fs";
 
-const store = await load("store.json", {
-  autoSave: true,
-  defaults: { books: [] },
-});
-
 export async function storeBook(book: BookData) {
+  const store = await load("store.json", {
+    autoSave: true,
+    defaults: { books: [] },
+  });
   const books = await store.get<BookData[]>("books");
   if (!books) {
     await store.set("books", [book]);
@@ -20,6 +19,10 @@ export async function storeBook(book: BookData) {
 }
 
 export async function deleteBook(book: BookData) {
+  const store = await load("store.json", {
+    autoSave: true,
+    defaults: { books: [] },
+  });
   const books = await store.get<BookData[]>("books");
   if (!books) {
     return;
@@ -29,10 +32,14 @@ export async function deleteBook(book: BookData) {
     return;
   }
   books.splice(index, 1);
-  store.set("books", books);
+  await store.set("books", books);
 }
 
 export async function getBooks() {
+  const store = await load("store.json", {
+    autoSave: true,
+    defaults: { books: [] },
+  });
   const books = await store.get<BookData[]>("books");
   if (!books) {
     return [];
@@ -41,6 +48,10 @@ export async function getBooks() {
 }
 
 export async function updateBookLocation(bookId: string, location: string) {
+  const store = await load("store.json", {
+    autoSave: true,
+    defaults: { books: [] },
+  });
   const books = await store.get<BookData[]>("books");
   if (!books) {
     return;
@@ -50,10 +61,14 @@ export async function updateBookLocation(bookId: string, location: string) {
     return;
   }
   book.current_location = location;
-  store.set("books", books);
+  await store.set("books", books);
 }
 
 export async function getBookLocation(bookId: string) {
+  const store = await load("store.json", {
+    autoSave: true,
+    defaults: { books: [] },
+  });
   const books = await store.get<BookData[]>("books");
   if (!books) {
     return;
