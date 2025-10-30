@@ -138,6 +138,8 @@ export class TTSCache {
             size: stats.size,
             mtime: stats.mtime,
           });
+
+      
         } catch (statsError) {
           console.error(">>> Cache: Failed to get file stats", {
             filePath,

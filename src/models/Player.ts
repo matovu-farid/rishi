@@ -234,8 +234,37 @@ export class Player extends EventEmitter<PlayerEventMap> {
   public setParagraphs(paragraphs: ParagraphWithCFI[]) {
     this.paragraphs = paragraphs;
   }
+  public async play(maxRetries: number = 3): Promise<void> {
+    let attempt = 0;
+    let skipCache = false;
 
-  public async play() {
+    while (attempt < maxRetries) {
+      try {
+        await this.clearHighlights();
+
+        await this.playWithoutRetry(skipCache);
+        return; // success
+      } catch (err) {
+        console.error(">>> Player: Play attempt failed", {
+          attempt: attempt + 1,
+          skipCache,
+          err,
+        });
+
+        // Ensure a clean retry
+        const currentParagraph = this.getCurrentParagraph();
+        if (currentParagraph) this.audioCache.delete(currentParagraph.cfiRange);
+        this.audioElement.pause();
+        this.audioElement.src = "";
+        skipCache = true; // From now on bypass cache
+        attempt += 1;
+      }
+    }
+    console.error(">>> Player: All retries failed — skipping paragraph");
+    await this.next();
+  }
+
+  public async playWithoutRetry(skipCache: boolean = false) {
     if (this.playingState === PlayingState.Playing) return;
     this.setPlayingState(PlayingState.Playing);
 
@@ -274,13 +303,14 @@ export class Player extends EventEmitter<PlayerEventMap> {
 
     const audioPath = await this.requestAudio(
       currentParagraph,
-      this.getNextPriority()
+      this.getNextPriority(),
+      skipCache
     );
 
     if (!audioPath) {
       console.error("🎵 Failed to get audio path");
       this.errors.push("Failed to request audio");
-      return;
+      throw new Error("Failed to request audio");
     }
 
     this.audioElement.pause();
@@ -290,119 +320,75 @@ export class Player extends EventEmitter<PlayerEventMap> {
     this.audioElement.src = convertFileSrc(audioPath);
     this.audioElement.load();
 
-    try {
-      await new Promise((resolve, reject) => {
-        const handleCanPlay = () => {
-          console.log("✅ Audio ready to play:", {
-            src: this.audioElement.src,
-            duration: this.audioElement.duration,
-            paragraphIndex: this.currentParagraphIndex,
-          });
-          this.audioElement?.removeEventListener(
-            "canplaythrough",
-            handleCanPlay
-          );
-          this.audioElement?.removeEventListener("error", handleError);
-          resolve(undefined);
-        };
-        const handleError = (e: Event) => {
-          const audioElement = e.target as HTMLAudioElement;
-          const mediaError = audioElement.error;
-
-          const errorDetails = {
-            timestamp: new Date().toISOString(),
-            eventType: e.type,
-            src: audioElement.src,
-            readyState: audioElement.readyState,
-            networkState: audioElement.networkState,
-            networkStateName: this.getNetworkStateName(
-              audioElement.networkState
-            ),
-            readyStateName: this.getReadyStateName(audioElement.readyState),
-            mediaError: mediaError
-              ? {
-                  code: mediaError.code,
-                  message: mediaError.message,
-                  errorName: this.getMediaErrorName(mediaError.code),
-                }
-              : null,
-            currentParagraph: {
-              index: this.currentParagraphIndex,
-              text: currentParagraph.text.substring(0, 100) + "...",
-              cfiRange: currentParagraph.cfiRange,
-            },
-          };
-
-          console.error("🔴 Audio load error - Full details:", errorDetails);
-          console.error("🔴 Load error event:", e);
-
-          this.audioElement?.removeEventListener(
-            "canplaythrough",
-            handleCanPlay
-          );
-          this.audioElement?.removeEventListener("error", handleError);
-          reject(new Error(JSON.stringify(errorDetails)));
-        };
-        this.audioElement?.addEventListener("canplaythrough", handleCanPlay, {
-          once: true,
-        });
-        this.audioElement?.addEventListener("error", handleError, {
-          once: true,
-        });
-      });
-
-      console.log("▶️ Starting audio playback:", {
-        src: this.audioElement.src,
-        paragraphIndex: this.currentParagraphIndex,
-        paragraphText: currentParagraph.text.substring(0, 100) + "...",
-      });
-
-      await this.audioElement.play();
-      this.setPlayingState(PlayingState.Playing);
-
-      console.log("✅ Audio playback started successfully");
-
-      // Prefetch next paragraphs
-
-      void this.prefetchAudio(this.currentParagraphIndex + 1, 3);
-      void this.prefetchAudio(this.currentParagraphIndex - 3, 3);
-    } catch (error) {
-      const errorDetails = {
-        timestamp: new Date().toISOString(),
-        error:
-          error instanceof Error
-            ? {
-                name: error.name,
-                message: error.message,
-                stack: error.stack,
-              }
-            : String(error),
-        audioElement: {
+    await new Promise((resolve, reject) => {
+      const handleCanPlay = () => {
+        console.log("✅ Audio ready to play:", {
           src: this.audioElement.src,
-          readyState: this.audioElement.readyState,
-          networkState: this.audioElement.networkState,
-          error: this.audioElement.error
+          duration: this.audioElement.duration,
+          paragraphIndex: this.currentParagraphIndex,
+        });
+        this.audioElement?.removeEventListener("canplaythrough", handleCanPlay);
+        this.audioElement?.removeEventListener("error", handleError);
+        resolve(undefined);
+      };
+      const handleError = (e: Event) => {
+        const audioElement = e.target as HTMLAudioElement;
+        const mediaError = audioElement.error;
+
+        const errorDetails = {
+          timestamp: new Date().toISOString(),
+          eventType: e.type,
+          src: audioElement.src,
+          readyState: audioElement.readyState,
+          networkState: audioElement.networkState,
+          networkStateName: this.getNetworkStateName(audioElement.networkState),
+          readyStateName: this.getReadyStateName(audioElement.readyState),
+          mediaError: mediaError
             ? {
-                code: this.audioElement.error.code,
-                message: this.audioElement.error.message,
+                code: mediaError.code,
+                message: mediaError.message,
+                errorName: this.getMediaErrorName(mediaError.code),
               }
             : null,
-        },
-        currentParagraph: {
-          index: this.currentParagraphIndex,
-          text: currentParagraph.text.substring(0, 100) + "...",
-          cfiRange: currentParagraph.cfiRange,
-        },
+          currentParagraph: {
+            index: this.currentParagraphIndex,
+            text: currentParagraph.text.substring(0, 100) + "...",
+            cfiRange: currentParagraph.cfiRange,
+          },
+        };
+
+        console.error("🔴 Audio load error - Full details:", errorDetails);
+        console.error("🔴 Load error event:", e);
+
+        this.audioElement?.removeEventListener("canplaythrough", handleCanPlay);
+        this.audioElement?.removeEventListener("error", handleError);
+        const p = this.getCurrentParagraph();
+        if (p) this.audioCache.delete(p.cfiRange);
+        reject(new Error(JSON.stringify(errorDetails)));
       };
+      this.audioElement?.addEventListener("canplaythrough", handleCanPlay, {
+        once: true,
+      });
+      this.audioElement?.addEventListener("error", handleError, {
+        once: true,
+      });
+    });
 
-      console.error("🔴 Playback failed - Full details:", errorDetails);
+    console.log("▶️ Starting audio playback:", {
+      src: this.audioElement.src,
+      paragraphIndex: this.currentParagraphIndex,
+      paragraphText: currentParagraph.text.substring(0, 100) + "...",
+    });
 
-      const errorMsg = `Playback failed: ${error instanceof Error ? error.message : "Unknown error"}`;
-      this.errors.push(errorMsg);
-      console.error("🔴 Error added to errors array:", errorMsg);
+    await this.audioElement.play();
+    this.setPlayingState(PlayingState.Playing);
 
-      this.setPlayingState(PlayingState.Stopped);
-    }
+    console.log("✅ Audio playback started successfully");
+
+    // Prefetch next paragraphs
+
+    void this.prefetchAudio(this.currentParagraphIndex + 1, 3);
+    void this.prefetchAudio(this.currentParagraphIndex - 3, 3);
   }
   public pause() {
     if (this.audioElement.paused) return;
@@ -600,7 +586,11 @@ export class Player extends EventEmitter<PlayerEventMap> {
   private async unhighlightParagraph(paragraph: ParagraphWithCFI) {
     return await removeHighlight(this.rendition, paragraph.cfiRange);
   }
-  public async requestAudio(paragraph: ParagraphWithCFI, priority: number) {
+  public async requestAudio(
+    paragraph: ParagraphWithCFI,
+    priority: number,
+    skipCache = false
+  ) {
     console.log(">>> Player: Request audio", {
       paragraphIndex: this.currentParagraphIndex,
       cfiRange: paragraph.cfiRange,
@@ -608,50 +598,54 @@ export class Player extends EventEmitter<PlayerEventMap> {
       priority,
     });
 
-    if (!paragraph.text.trim()) {
-      console.log(">>> Player: Empty paragraph text, skipping audio request");
-      return null;
-    }
-
-    const cached = this.audioCache.get(paragraph.cfiRange);
-    if (cached) {
-      console.log(">>> Player: Using memory cached audio", { cached });
-      return cached;
-    }
-
-    // Check disk cache via direct API call
-    try {
-      const diskCached = await getTTSAudioPath(this.bookId, paragraph.cfiRange);
-      console.log(">>> Player: Disk cache result", {
-        diskCached,
-        exists: !!diskCached,
-      });
-
-      if (diskCached) {
-        this.addToAudioCache(paragraph.cfiRange, diskCached);
-        console.log(">>> Player: Added disk cached audio to memory cache");
-        return diskCached;
+    if (skipCache === false) {
+      if (!paragraph.text.trim()) {
+        console.log(">>> Player: Empty paragraph text, skipping audio request");
+        return null;
       }
-    } catch (error) {
-      console.error(">>> Player: Cache check failed with error:", {
-        error:
-          error instanceof Error
-            ? {
-                name: error.name,
-                message: error.message,
-                stack: error.stack,
-              }
-            : String(error),
-        paragraph: {
-          cfiRange: paragraph.cfiRange,
-          textPreview: paragraph.text.substring(0, 50) + "...",
-        },
-      });
+
+      const cached = this.audioCache.get(paragraph.cfiRange);
+      if (cached) {
+        console.log(">>> Player: Using memory cached audio", { cached });
+        return cached;
+      }
+
+      // Check disk cache via direct API call
+      try {
+        const diskCached = await getTTSAudioPath(
+          this.bookId,
+          paragraph.cfiRange
+        );
+        console.log(">>> Player: Disk cache result", {
+          diskCached,
+          exists: !!diskCached,
+        });
+
+        if (diskCached) {
+          this.addToAudioCache(paragraph.cfiRange, diskCached);
+          console.log(">>> Player: Added disk cached audio to memory cache");
+          return diskCached;
+        }
+      } catch (error) {
+        console.error(">>> Player: Cache check failed with error:", {
+          error:
+            error instanceof Error
+              ? {
+                  name: error.name,
+                  message: error.message,
+                  stack: error.stack,
+                }
+              : String(error),
+          paragraph: {
+            cfiRange: paragraph.cfiRange,
+            textPreview: paragraph.text.substring(0, 50) + "...",
+          },
+        });
+      }
+
+      // Request new audio via React Query mutation
+      console.log(">>> Player: Requesting new audio from TTS service");
     }
-
-    // Request new audio via React Query mutation
-    console.log(">>> Player: Requesting new audio from TTS service");
-
     try {
       const audioPath = await requestTTSAudio(
         this.bookId,
