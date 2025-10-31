@@ -4,26 +4,27 @@
  * Do not edit manually - regenerate using: cargo tauri-typegen generate
  */
 
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from "@tauri-apps/api/core";
 
-import * as types from './types';
+import * as types from "./types";
 
-export async function getBookData(params: types.GetBookDataParams): Promise<types.BookData> {
+export async function getBookData(
+  params: types.GetBookDataParams
+): Promise<types.BookData> {
   const validatedParams = types.GetBookDataParamsSchema.parse(params);
-  return invoke('get_book_data', validatedParams);
+  return invoke("get_book_data", validatedParams);
 }
 
 export async function greet(params: types.GreetParams): Promise<string> {
   const validatedParams = types.GreetParamsSchema.parse(params);
-  return invoke('greet', validatedParams);
+  return invoke("greet", validatedParams);
 }
 
 export async function isDev(): Promise<boolean> {
-  return invoke('is_dev');
+  return invoke("is_dev");
 }
 
 export async function unzip(params: types.UnzipParams): Promise<types.PathBuf> {
   const validatedParams = types.UnzipParamsSchema.parse(params);
-  return invoke('unzip', validatedParams);
+  return invoke("unzip", validatedParams);
 }
-

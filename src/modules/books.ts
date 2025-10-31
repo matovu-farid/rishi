@@ -83,7 +83,7 @@ export async function getBookLocation(bookId: string) {
 export async function copyBookToAppData(filePath: string) {
   const appdataPath = await path.appDataDir();
   const fileName = await path.basename(filePath);
-  const epubPath = await path.join(appdataPath, fileName);
-  await fs.copyFile(filePath, epubPath);
-  return epubPath;
+  const bookPath = await path.join(appdataPath, fileName);
+  await fs.copyFile(filePath, bookPath);
+  return bookPath;
 }

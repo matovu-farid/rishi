@@ -5,12 +5,16 @@ use std::path::{Path, PathBuf};
 use zip::ZipArchive;
 
 use crate::epub;
-
-use crate::epub::BookData;
+use crate::pdf;
 
 #[tauri::command]
-pub fn get_book_data(epubPath: &Path) -> Result<BookData, String> {
+pub fn get_book_data(epubPath: &Path) -> Result<epub::BookData, String> {
     epub::get_bookData(epubPath)
+}
+
+#[tauri::command]
+pub fn get_pdf_data(pdfPath: &Path) -> Result<pdf::BookData, String> {
+    pdf::get_bookData(pdfPath)
 }
 
 #[tauri::command]

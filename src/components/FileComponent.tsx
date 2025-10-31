@@ -47,7 +47,8 @@ function FileDrop(): React.JSX.Element {
     },
   });
 
-  const getBookDataMutation = useMutation({
+
+  const storeBookDataMutation = useMutation({
     mutationKey: ["getBookData"],
     mutationFn: async ({ filePath }: { filePath: string }) => {
       const epubPath = await copyBookToAppData(filePath);
@@ -67,6 +68,27 @@ function FileDrop(): React.JSX.Element {
     },
   });
 
+  const storePdfMutation = useMutation({
+    mutationKey: ["getPdfData"],
+    mutationFn: async ({ filePath }: { filePath: string }) => {
+      const pdfPath = await copyBookToAppData(filePath);
+
+      const bookData = await getBookData({ epubPath });
+      await storeBook(bookData);
+
+      return bookData;
+    },
+
+    onError(error) {
+      toast.error("Can't upload book");
+      console.log({ error });
+    },
+    onSuccess() {
+      void queryClient.invalidateQueries({ queryKey: ["books"] });
+    },
+  });
+
+
   // Handle native file picker (recommended approach)
   const handleChooseFiles = async () => {
     try {
@@ -75,7 +97,11 @@ function FileDrop(): React.JSX.Element {
       if (filePaths.length > 0) {
         filePaths.forEach((filePath) => {
           // getCoverImageMutation.mutate({ filePath });
-          getBookDataMutation.mutate({ filePath });
+          if (filePath.endsWith(".epub")) {
+            storeBookDataMutation.mutate({ filePath });
+          } else if (filePath.endsWith(".pdf")) {
+            storePdfMutation.mutate({ filePath });
+          }
         });
       }
     } catch (error) {
