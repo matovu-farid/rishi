@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 
 import { Link } from "@tanstack/react-router";
-import React, { useRef } from "react";
+import React, { useCallback, useRef } from "react";
 import { Button } from "@components/ui/Button";
 import { IconButton } from "@components/ui/IconButton";
 import { Menu } from "@components/ui/Menu";
@@ -14,7 +14,7 @@ import { useState } from "react";
 import { Rendition } from "epubjs/types";
 import { updateBookLocation } from "@/modules/books";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { Document, Page } from "react-pdf";
+import { Document, Page, Outline } from "react-pdf";
 
 import { BookData } from "@/generated";
 
@@ -28,6 +28,9 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 function cn(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
 }
+function highlightPattern(text: string, pattern: string) {
+  return text.replace(pattern, (value) => `<mark>${value}</mark>`);
+}
 
 function updateTheme(rendition: Rendition, theme: ThemeType) {
   const reditionThemes = rendition.themes;
@@ -37,6 +40,7 @@ function updateTheme(rendition: Rendition, theme: ThemeType) {
 }
 
 export function PdfView({ book }: { book: BookData }): React.JSX.Element {
+  const [searchText, setSearchText] = useState("");
   const [theme, setTheme] = useState<ThemeType>(ThemeType.White);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -44,6 +48,10 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     setTheme(newTheme);
     setMenuOpen(false);
   };
+  const textRenderer = useCallback(
+    (textItem: { str: string }) => highlightPattern(textItem.str, searchText),
+    [searchText]
+  );
   const updateBookLocationMutation = useMutation({
     mutationFn: async ({
       bookId,
@@ -75,15 +83,32 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
         return "text-black hover:bg-black/10 hover:text-black";
     }
   }
-  const [numPages, setNumPages] = useState<number>();
+  const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
+  function changePage(offset: number) {
+    setPageNumber((prevPageNumber) => prevPageNumber + offset);
+  }
+  function onItemClick({ pageNumber: itemPageNumber }: { pageNumber: number }) {
+    setPageNumber(itemPageNumber);
+  }
+
+  function previousPage() {
+    changePage(-1);
+  }
+
+  function nextPage() {
+    changePage(1);
+  }
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }): void {
     setNumPages(numPages);
   }
+  function onChange(event: React.ChangeEvent<HTMLInputElement>) {
+    setSearchText(event.target.value);
+  }
 
   return (
-    <div className="relative">
+    <div className=" relative h-full w-full">
       <div className="absolute right-2 top-2 z-10 flex items-center gap-2">
         <Link to="/">
           <Button
@@ -127,19 +152,41 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
           </div>
         </Menu>
       </div>
-      <div style={{ height: "100vh" }}>
-        <div>
-          <Document
-            file={convertFileSrc(book.filePath)}
-            onLoadSuccess={onDocumentLoadSuccess}
-          >
-            <Page pageNumber={pageNumber} />
-          </Document>
-          <p>
-            Page {pageNumber} of {numPages}
-          </p>
-        </div>
+
+      <Document
+        className="h-full w-full "
+        error={<div>Error loading PDF</div>}
+        file={convertFileSrc(book.filePath)}
+        onLoadSuccess={onDocumentLoadSuccess}
+        onItemClick={onItemClick}
+      >
+        <Outline onItemClick={onItemClick} />
+        {Array.from(new Array(numPages), (el, index) => (
+          <Page key={`page_${index + 1}`} pageNumber={index + 1} />
+        ))}
+      </Document>
+      <div>
+        <label htmlFor="search">Search:</label>
+        <input
+          type="search"
+          id="search"
+          value={searchText}
+          onChange={onChange}
+        />
       </div>
+      <p>
+        Page {pageNumber} of {numPages}
+      </p>
+      <button type="button" disabled={pageNumber <= 1} onClick={previousPage}>
+        Previous
+      </button>
+      <button
+        type="button"
+        disabled={pageNumber >= numPages}
+        onClick={nextPage}
+      >
+        Next
+      </button>
     </div>
   );
 }
