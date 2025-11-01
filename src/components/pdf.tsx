@@ -111,12 +111,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     <div className=" relative h-full w-full">
       <div className="absolute right-2 top-2 z-10 flex items-center gap-2">
         <Link to="/">
-          <Button
-            variant="ghost"
-            className={cn("disabled:invisible", getTextColor())}
-          >
-            Back
-          </Button>
+          <Button variant="ghost">Back</Button>
         </Link>
 
         <Menu
@@ -152,18 +147,25 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
           </div>
         </Menu>
       </div>
-
+      <Button variant="ghost" disabled={pageNumber <= 1} onClick={previousPage}>
+        Previous
+      </Button>
+      <Button
+        variant="ghost"
+        disabled={pageNumber >= numPages}
+        onClick={nextPage}
+      >
+        Next
+      </Button>
       <Document
-        className="h-full w-full "
+        className=" "
         error={<div>Error loading PDF</div>}
         file={convertFileSrc(book.filePath)}
         onLoadSuccess={onDocumentLoadSuccess}
         onItemClick={onItemClick}
       >
         <Outline onItemClick={onItemClick} />
-        {Array.from(new Array(numPages), (el, index) => (
-          <Page key={`page_${index + 1}`} pageNumber={index + 1} />
-        ))}
+        <Page pageNumber={pageNumber} />
       </Document>
       <div>
         <label htmlFor="search">Search:</label>
@@ -177,16 +179,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
       <p>
         Page {pageNumber} of {numPages}
       </p>
-      <button type="button" disabled={pageNumber <= 1} onClick={previousPage}>
-        Previous
-      </button>
-      <button
-        type="button"
-        disabled={pageNumber >= numPages}
-        onClick={nextPage}
-      >
-        Next
-      </button>
     </div>
   );
 }

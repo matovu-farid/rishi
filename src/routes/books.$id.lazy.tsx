@@ -66,11 +66,13 @@ function BookView(): React.JSX.Element {
         <Loader />
       </div>
     );
+  if (book.kind === "pdf") {
+    return <PdfView book={book} />;
+  }
 
   return (
     <div className="">
-      {book.kind === "epub" && <EpubView book={book} />}
-      {book.kind === "pdf" && <PdfView book={book} />}
+      <EpubView book={book} />
     </div>
   );
 }
