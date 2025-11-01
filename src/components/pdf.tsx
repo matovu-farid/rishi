@@ -321,7 +321,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
         >
           {isDualPage && pageNumber < numPages ? (
             // Dual-page view - side by side with gap
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3">
               <Page
                 pageNumber={pageNumber}
                 height={pdfHeight}
@@ -334,7 +334,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                 <Page
                   pageNumber={pageNumber + 1}
                   height={pdfHeight}
-                  className=" rounded"
+                  className="rounded"
                   renderTextLayer={true}
                   renderAnnotationLayer={true}
                   canvasBackground="white"
