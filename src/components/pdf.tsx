@@ -9,12 +9,7 @@ import { Menu } from "@components/ui/Menu";
 import { Radio, RadioGroup } from "@components/ui/Radio";
 import { ThemeType } from "@/themes/common";
 import { themes } from "@/themes/themes";
-import {
-  Palette,
-  ChevronLeft,
-  ChevronRight,
-  Menu as MenuIcon,
-} from "lucide-react";
+import { Palette, Menu as MenuIcon } from "lucide-react";
 import { updateBookLocation } from "@/modules/books";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -43,7 +38,6 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 ).toString();
 
 export function PdfView({ book }: { book: BookData }): React.JSX.Element {
-  const [searchText, setSearchText] = useState("");
   const [theme, setTheme] = useState<ThemeType>(ThemeType.White);
   const [menuOpen, setMenuOpen] = useState(false);
   const [tocOpen, setTocOpen] = useState(false);
@@ -56,12 +50,8 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   // Configure PDF.js options with CDN fallback for better font and image support
   const pdfOptions = useMemo<DocumentInitParameters>(
     () => ({
-      cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
       cMapPacked: true,
-      standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/standard_fonts/`,
-      // Enable better image rendering
-      disableFontFace: false,
-      // Improve text rendering
+
       verbosity: 0,
     }),
     []
@@ -214,10 +204,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     }
   }
 
-  function onChange(event: React.ChangeEvent<HTMLInputElement>) {
-    setSearchText(event.target.value);
-  }
-
   // Calculate available height for PDF (viewport - top bar - bottom bar)
   const pdfHeight = windowSize.height - 120; // 60px top + 60px bottom
 
@@ -238,13 +224,13 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
       <div
         className={cn(
           "fixed top-0 left-0 right-0 z-50",
-          "backdrop-blur-md",
+
           theme === ThemeType.Dark
-            ? "bg-gray-900/80 border-b border-gray-700"
-            : "bg-white/80 border-b border-gray-200"
+            ? "bg-gray-900/80  border-gray-700"
+            : "bg-white/80  border-gray-200"
         )}
       >
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center justify-between px-4 pt-1">
           <IconButton
             onClick={() => setTocOpen(true)}
             className={cn(
@@ -257,21 +243,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
           </IconButton>
 
           <div className="flex items-center gap-2">
-            <input
-              type="search"
-              id="search"
-              placeholder="Search..."
-              value={searchText}
-              onChange={onChange}
-              className={cn(
-                "px-3 py-1.5 rounded-lg border shadow-sm text-sm",
-                theme === ThemeType.Dark
-                  ? "border-gray-600 bg-gray-800 text-white placeholder-gray-500"
-                  : "border-gray-300 bg-white text-black placeholder-gray-400",
-                "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              )}
-            />
-
             <Menu
               trigger={
                 <IconButton
@@ -324,7 +295,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
 
       {/* Main PDF Viewer Area */}
       <div
-        className="flex items-center justify-center pt-[60px] pb-[60px] px-6 overflow-hidden"
+        className="flex items-center justify-center    overflow-hidden"
         style={{ height: "100vh" }}
       >
         <Document
@@ -354,7 +325,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
               <Page
                 pageNumber={pageNumber}
                 height={pdfHeight}
-                className="shadow-lg rounded"
+                className=" rounded"
                 renderTextLayer={true}
                 renderAnnotationLayer={true}
                 canvasBackground="white"
@@ -363,7 +334,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                 <Page
                   pageNumber={pageNumber + 1}
                   height={pdfHeight}
-                  className="shadow-lg rounded"
+                  className=" rounded"
                   renderTextLayer={true}
                   renderAnnotationLayer={true}
                   canvasBackground="white"
@@ -382,23 +353,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
             />
           )}
         </Document>
-      </div>
-
-      {/* Bottom Bar - Page Counter */}
-      <div
-        className={cn(
-          "fixed bottom-4 left-1/2 -translate-x-1/2 z-40",
-          "px-4 py-2 rounded-lg shadow-lg",
-          "bg-black/10 dark:bg-white/10 backdrop-blur-sm border",
-          theme === ThemeType.Dark ? "border-white/10" : "border-black/10",
-          getTextColor()
-        )}
-      >
-        <p className="text-sm font-medium">
-          {isDualPage && pageNumber < numPages
-            ? `Pages ${pageNumber}-${Math.min(pageNumber + 1, numPages)} of ${numPages}`
-            : `Page ${pageNumber} of ${numPages || "—"}`}
-        </p>
       </div>
 
       {/* TOC Sidebar */}
