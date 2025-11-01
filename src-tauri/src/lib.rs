@@ -1,6 +1,7 @@
 mod commads;
 mod epub;
 mod pdf;
+mod shared;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 
@@ -16,7 +17,9 @@ pub fn run() {
             commads::greet,
             commads::is_dev,
             commads::unzip,
-            commads::get_book_data
+            commads::get_book_data,
+            commads::get_pdf_data,
+            commads::get_paragraphs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

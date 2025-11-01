@@ -1,7 +1,27 @@
 import { BookData } from "@/generated";
 import { path } from "@tauri-apps/api";
-import { load } from "@tauri-apps/plugin-store";
 import * as fs from "@tauri-apps/plugin-fs";
+import { load } from "@tauri-apps/plugin-store";
+
+export async function copyBookToAppData(filePath: string) {
+  const appdataPath = await path.appDataDir();
+  const fileName = await path.basename(filePath);
+  const bookPath = await path.join(appdataPath, fileName);
+  await fs.copyFile(filePath, bookPath);
+  return bookPath;
+}
+
+export async function getBooks() {
+  const store = await load("store.json", {
+    autoSave: true,
+    defaults: { books: [] },
+  });
+  const books = await store.get<BookData[]>("books");
+  if (!books) {
+    return [];
+  }
+  return books;
+}
 
 export async function storeBook(book: BookData) {
   const store = await load("store.json", {
@@ -35,18 +55,6 @@ export async function deleteBook(book: BookData) {
   await store.set("books", books);
 }
 
-export async function getBooks() {
-  const store = await load("store.json", {
-    autoSave: true,
-    defaults: { books: [] },
-  });
-  const books = await store.get<BookData[]>("books");
-  if (!books) {
-    return [];
-  }
-  return books;
-}
-
 export async function updateBookLocation(bookId: string, location: string) {
   const store = await load("store.json", {
     autoSave: true,
@@ -78,12 +86,4 @@ export async function getBookLocation(bookId: string) {
     return;
   }
   return book.current_location;
-}
-
-export async function copyBookToAppData(filePath: string) {
-  const appdataPath = await path.appDataDir();
-  const fileName = await path.basename(filePath);
-  const bookPath = await path.join(appdataPath, fileName);
-  await fs.copyFile(filePath, bookPath);
-  return bookPath;
 }

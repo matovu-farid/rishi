@@ -8,16 +8,26 @@ import { z } from 'zod';
 
 export const BookDataSchema = z.object({
   id: z.string(),
+  kind: z.string(),
   cover: z.array(z.number()),
   title: z.string().optional(),
   author: z.string().optional(),
   publisher: z.string().optional(),
-  epubPath: z.string(),
+  filePath: z.string(),
   current_location: z.string(),
 });
 
 export const GetBookDataParamsSchema = z.object({
   epubPath: z.string(),
+});
+
+export const GetPdfDataParamsSchema = z.object({
+  pdfPath: z.string(),
+});
+
+export const GetParagraphsParamsSchema = z.object({
+  pdfPath: z.string(),
+  pageNumber: z.number(),
 });
 
 export const GreetParamsSchema = z.object({
@@ -30,6 +40,10 @@ export const UnzipParamsSchema = z.object({
 });
 
 export type GetBookDataParams = z.infer<typeof GetBookDataParamsSchema>;
+
+export type GetPdfDataParams = z.infer<typeof GetPdfDataParamsSchema>;
+
+export type GetParagraphsParams = z.infer<typeof GetParagraphsParamsSchema>;
 
 export type GreetParams = z.infer<typeof GreetParamsSchema>;
 

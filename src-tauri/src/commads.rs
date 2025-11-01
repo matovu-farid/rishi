@@ -6,15 +6,21 @@ use zip::ZipArchive;
 
 use crate::epub;
 use crate::pdf;
+use crate::shared::types::BookData;
 
 #[tauri::command]
-pub fn get_book_data(epubPath: &Path) -> Result<epub::BookData, String> {
+pub fn get_book_data(epubPath: &Path) -> Result<BookData, String> {
     epub::get_bookData(epubPath)
 }
 
 #[tauri::command]
-pub fn get_pdf_data(pdfPath: &Path) -> Result<pdf::BookData, String> {
-    pdf::get_bookData(pdfPath)
+pub fn get_pdf_data(pdfPath: &Path) -> Result<BookData, String> {
+    pdf::get_bookData(pdfPath).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_paragraphs(pdfPath: &Path, pageNumber: u32) -> Result<Vec<String>, String> {
+    pdf::get_paragraphs(pdfPath, pageNumber).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

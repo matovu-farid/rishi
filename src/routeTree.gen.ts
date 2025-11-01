@@ -13,7 +13,6 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Route as rootRouteImport } from './routes/__root'
 
 const IndexLazyRouteImport = createFileRoute('/')()
-const PdfIdLazyRouteImport = createFileRoute('/pdf/$id')()
 const BooksIdLazyRouteImport = createFileRoute('/books/$id')()
 
 const IndexLazyRoute = IndexLazyRouteImport.update({
@@ -21,11 +20,6 @@ const IndexLazyRoute = IndexLazyRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/index.lazy').then((d) => d.Route))
-const PdfIdLazyRoute = PdfIdLazyRouteImport.update({
-  id: '/pdf/$id',
-  path: '/pdf/$id',
-  getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/pdf.$id.lazy').then((d) => d.Route))
 const BooksIdLazyRoute = BooksIdLazyRouteImport.update({
   id: '/books/$id',
   path: '/books/$id',
@@ -35,31 +29,27 @@ const BooksIdLazyRoute = BooksIdLazyRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexLazyRoute
   '/books/$id': typeof BooksIdLazyRoute
-  '/pdf/$id': typeof PdfIdLazyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexLazyRoute
   '/books/$id': typeof BooksIdLazyRoute
-  '/pdf/$id': typeof PdfIdLazyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexLazyRoute
   '/books/$id': typeof BooksIdLazyRoute
-  '/pdf/$id': typeof PdfIdLazyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/books/$id' | '/pdf/$id'
+  fullPaths: '/' | '/books/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/books/$id' | '/pdf/$id'
-  id: '__root__' | '/' | '/books/$id' | '/pdf/$id'
+  to: '/' | '/books/$id'
+  id: '__root__' | '/' | '/books/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexLazyRoute: typeof IndexLazyRoute
   BooksIdLazyRoute: typeof BooksIdLazyRoute
-  PdfIdLazyRoute: typeof PdfIdLazyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -69,13 +59,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pdf/$id': {
-      id: '/pdf/$id'
-      path: '/pdf/$id'
-      fullPath: '/pdf/$id'
-      preLoaderRoute: typeof PdfIdLazyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/books/$id': {
@@ -91,7 +74,6 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexLazyRoute: IndexLazyRoute,
   BooksIdLazyRoute: BooksIdLazyRoute,
-  PdfIdLazyRoute: PdfIdLazyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

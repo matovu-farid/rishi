@@ -7,7 +7,7 @@ import { IconButton } from "./ui/IconButton";
 import { Button } from "./ui/Button";
 import { Trash2, Plus } from "lucide-react";
 import { chooseFiles } from "@/modules/chooseFiles";
-import { BookData, getBookData } from "@/generated";
+import { BookData, getBookData, getPdfData } from "@/generated";
 import {
   getBooks,
   deleteBook,
@@ -47,7 +47,6 @@ function FileDrop(): React.JSX.Element {
     },
   });
 
-
   const storeBookDataMutation = useMutation({
     mutationKey: ["getBookData"],
     mutationFn: async ({ filePath }: { filePath: string }) => {
@@ -73,7 +72,7 @@ function FileDrop(): React.JSX.Element {
     mutationFn: async ({ filePath }: { filePath: string }) => {
       const pdfPath = await copyBookToAppData(filePath);
 
-      const bookData = await getBookData({ epubPath });
+      const bookData = await getPdfData({ pdfPath });
       await storeBook(bookData);
 
       return bookData;
@@ -87,7 +86,6 @@ function FileDrop(): React.JSX.Element {
       void queryClient.invalidateQueries({ queryKey: ["books"] });
     },
   });
-
 
   // Handle native file picker (recommended approach)
   const handleChooseFiles = async () => {
@@ -157,16 +155,7 @@ function FileDrop(): React.JSX.Element {
         {...getRootProps()}
       >
         <input {...getInputProps()} className="p-5 cursor-pointer" />
-        {/* {books
-          .flatMap((book) => book.assets)
-          .flatMap((asset) => asset.css)
-          .filter((cssObj) => cssObj !== undefined)
-          .map(
-            (cssObj) =>
-              cssObj && (
-                <link key={cssObj.id} rel="stylesheet" href={cssObj.href} />
-              )
-          )} */}
+
         {isDragActive && (!books || books.length === 0) ? (
           <p>Drop the files here ...</p>
         ) : books && books.length > 0 ? (

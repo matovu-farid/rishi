@@ -1,19 +1,7 @@
+use crate::shared::types::{BookData, BookKind};
 use epub::doc::EpubDoc;
-use serde::{Deserialize, Serialize};
-use std::path::Path;
-use tauri::path;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct BookData {
-    id: String,
-    cover: Vec<u8>,
-    title: Option<String>,
-    author: Option<String>,
-    publisher: Option<String>,
-    epubPath: String,
-    current_location: String,
-}
+use std::path::Path;
 
 pub fn get_bookData(epubPath: &Path) -> Result<BookData, String> {
     let mut doc = EpubDoc::new(epubPath).map_err(|e| e.to_string())?;
@@ -26,14 +14,18 @@ pub fn get_bookData(epubPath: &Path) -> Result<BookData, String> {
     // create a unique id by hashing the path
     let digest = md5::compute(epubPath.to_string_lossy().to_string());
     let id = format!("{:x}", digest);
+    let filePath = epubPath.to_string_lossy().to_string();
+    let kind = BookKind::Epub.to_string();
+    let current_location = "".to_string();
 
-    Ok(BookData {
-        current_location: "".to_string(),
+    Ok(BookData::new(
         id,
+        kind,
         cover,
         title,
         author,
         publisher,
-        epubPath: epubPath.to_string_lossy().to_string(),
-    })
+        filePath,
+        current_location,
+    ))
 }
