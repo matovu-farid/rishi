@@ -2,6 +2,18 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import tailwindcss from "@tailwindcss/vite";
+import path from "node:path";
+import { createRequire } from "node:module";
+import { normalizePath } from "vite";
+import { viteStaticCopy } from "vite-plugin-static-copy";
+
+const require = createRequire(import.meta.url);
+const pdfjsDistPath = path.dirname(require.resolve("pdfjs-dist/package.json"));
+const cMapsDir = normalizePath(path.join(pdfjsDistPath, "cmaps"));
+const standardFontsDir = normalizePath(
+  path.join(pdfjsDistPath, "standard_fonts")
+);
+const wasmDir = normalizePath(path.join(pdfjsDistPath, "wasm"));
 
 const host = process.env.TAURI_DEV_HOST;
 
@@ -17,6 +29,22 @@ export default defineConfig(async () => ({
       babel: {
         plugins: [["babel-plugin-react-compiler"]],
       },
+    }),
+    viteStaticCopy({
+      targets: [
+        {
+          src: cMapsDir,
+          dest: "",
+        },
+        {
+          src: standardFontsDir,
+          dest: "",
+        },
+        {
+          src: wasmDir,
+          dest: "",
+        },
+      ],
     }),
   ],
   resolve: {

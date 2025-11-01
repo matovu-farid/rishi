@@ -2,56 +2,119 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 
 import { Link } from "@tanstack/react-router";
-import React, { useCallback, useRef } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Button } from "@components/ui/Button";
 import { IconButton } from "@components/ui/IconButton";
 import { Menu } from "@components/ui/Menu";
 import { Radio, RadioGroup } from "@components/ui/Radio";
 import { ThemeType } from "@/themes/common";
 import { themes } from "@/themes/themes";
-import { Palette } from "lucide-react";
-import { useState } from "react";
-import { Rendition } from "epubjs/types";
+import {
+  Palette,
+  ChevronLeft,
+  ChevronRight,
+  Menu as MenuIcon,
+} from "lucide-react";
 import { updateBookLocation } from "@/modules/books";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { Document, Page, Outline } from "react-pdf";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Document, Page, Outline, pdfjs } from "react-pdf";
+import type { DocumentInitParameters } from "pdfjs-dist/types/src/display/api";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@components/components/ui/sheet";
+import { cn } from "@components/lib/utils";
 
 import { BookData } from "@/generated";
 
-import { pdfjs } from "react-pdf";
+// Import required CSS for text and annotation layers
+import "react-pdf/dist/Page/AnnotationLayer.css";
+import "react-pdf/dist/Page/TextLayer.css";
+import createIReactReaderTheme from "@/themes/readerThemes";
+import { NavigationArrows } from "./react-reader/components";
 
+// Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
   import.meta.url
 ).toString();
 
-function cn(...classes: string[]) {
-  return classes.filter(Boolean).join(" ");
-}
-function highlightPattern(text: string, pattern: string) {
-  return text.replace(pattern, (value) => `<mark>${value}</mark>`);
-}
-
-function updateTheme(rendition: Rendition, theme: ThemeType) {
-  const reditionThemes = rendition.themes;
-  reditionThemes.override("color", themes[theme].color);
-  reditionThemes.override("background", themes[theme].background);
-  reditionThemes.override("font-size", "1.2em");
-}
-
 export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const [searchText, setSearchText] = useState("");
   const [theme, setTheme] = useState<ThemeType>(ThemeType.White);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [tocOpen, setTocOpen] = useState(false);
+  const [windowSize, setWindowSize] = useState({
+    width: typeof window !== "undefined" ? window.innerWidth : 1024,
+    height: typeof window !== "undefined" ? window.innerHeight : 768,
+  });
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Configure PDF.js options with CDN fallback for better font and image support
+  const pdfOptions = useMemo<DocumentInitParameters>(
+    () => ({
+      cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
+      cMapPacked: true,
+      standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/standard_fonts/`,
+      // Enable better image rendering
+      disableFontFace: false,
+      // Improve text rendering
+      verbosity: 0,
+    }),
+    []
+  );
+
+  // Track window resize and fullscreen changes
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+
+    const checkFullscreen = async () => {
+      try {
+        const appWindow = getCurrentWindow();
+        const isCurrentlyFullscreen = await appWindow.isFullscreen();
+        setIsFullscreen(isCurrentlyFullscreen);
+      } catch (error) {
+        console.error("Error checking fullscreen status:", error);
+        // Fallback to browser detection
+        setIsFullscreen(document.fullscreenElement !== null);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    // Check fullscreen on resize as well
+    const handleResizeAndFullscreen = () => {
+      handleResize();
+      checkFullscreen();
+    };
+
+    window.addEventListener("resize", handleResizeAndFullscreen);
+
+    // Initial check
+    checkFullscreen();
+
+    // Poll for fullscreen changes (Tauri doesn't have an event for this)
+    const fullscreenCheckInterval = setInterval(checkFullscreen, 500);
+
+    return () => {
+      window.removeEventListener("resize", handleResizeAndFullscreen);
+      clearInterval(fullscreenCheckInterval);
+    };
+  }, []);
 
   const handleThemeChange = (newTheme: ThemeType) => {
     setTheme(newTheme);
     setMenuOpen(false);
   };
-  const textRenderer = useCallback(
-    (textItem: { str: string }) => highlightPattern(textItem.str, searchText),
-    [searchText]
-  );
+
   const updateBookLocationMutation = useMutation({
     mutationFn: async ({
       bookId,
@@ -69,10 +132,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     },
   });
 
-  // Create stable debounced function that uses the latest mutation
-  const mutationRef = useRef(updateBookLocationMutation);
-  mutationRef.current = updateBookLocationMutation;
-
   function getTextColor() {
     switch (theme) {
       case ThemeType.White:
@@ -83,102 +142,310 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
         return "text-black hover:bg-black/10 hover:text-black";
     }
   }
+
+  const getBackgroundColor = () => {
+    switch (theme) {
+      case ThemeType.White:
+        return "bg-white";
+      case ThemeType.Dark:
+        return "bg-gray-900";
+      default:
+        return "bg-white";
+    }
+  };
+
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
+
+  // Determine if we should show dual-page view
+  const shouldShowDualPage = () => {
+    // Don't show dual-page in fullscreen mode (Books app behavior)
+    if (isFullscreen) return false;
+
+    // Show dual-page for medium and large views (>= 768px)
+    // This includes 1024x770 (default medium size) and larger
+    return windowSize.width >= 768;
+  };
+
+  const isDualPage = shouldShowDualPage();
+  const pageIncrement = isDualPage ? 2 : 1;
+
   function changePage(offset: number) {
-    setPageNumber((prevPageNumber) => prevPageNumber + offset);
+    setPageNumber((prevPageNumber) => {
+      const newPageNumber = prevPageNumber + offset;
+      if (newPageNumber >= 1 && newPageNumber <= numPages) {
+        // Update book location when page changes
+        updateBookLocationMutation.mutate({
+          bookId: book.id,
+          location: newPageNumber.toString(),
+        });
+        return newPageNumber;
+      }
+      return prevPageNumber;
+    });
   }
+
   function onItemClick({ pageNumber: itemPageNumber }: { pageNumber: number }) {
     setPageNumber(itemPageNumber);
+    setTocOpen(false);
+    // Update book location when navigating via TOC
+    updateBookLocationMutation.mutate({
+      bookId: book.id,
+      location: itemPageNumber.toString(),
+    });
   }
 
   function previousPage() {
-    changePage(-1);
+    changePage(-pageIncrement);
   }
 
   function nextPage() {
-    changePage(1);
+    changePage(pageIncrement);
   }
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }): void {
     setNumPages(numPages);
+    // If book has saved location, restore it
+    if (book.current_location) {
+      const savedPage = parseInt(book.current_location, 10);
+      if (!isNaN(savedPage) && savedPage >= 1 && savedPage <= numPages) {
+        setPageNumber(savedPage);
+      }
+    }
   }
+
   function onChange(event: React.ChangeEvent<HTMLInputElement>) {
     setSearchText(event.target.value);
   }
 
-  return (
-    <div className=" relative h-full w-full">
-      <div className="absolute right-2 top-2 z-10 flex items-center gap-2">
-        <Link to="/">
-          <Button variant="ghost">Back</Button>
-        </Link>
+  // Calculate available height for PDF (viewport - top bar - bottom bar)
+  const pdfHeight = windowSize.height - 120; // 60px top + 60px bottom
 
-        <Menu
-          trigger={
-            <IconButton className={cn("hover:bg-transparent border-none")}>
-              <Palette size={20} className={getTextColor()} />
-            </IconButton>
-          }
-          open={menuOpen}
-          onOpen={() => setMenuOpen(true)}
-          onClose={() => setMenuOpen(false)}
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-          theme={themes[theme]}
-        >
-          <div className="p-3">
-            <RadioGroup
-              value={theme}
-              onChange={(value) => handleThemeChange(value as ThemeType)}
-              name="theme-selector"
+  return (
+    <div
+      className={cn(
+        "relative h-screen w-full overflow-hidden",
+        getBackgroundColor()
+      )}
+    >
+      <NavigationArrows
+        onPrev={previousPage}
+        onNext={nextPage}
+        readerStyles={createIReactReaderTheme(themes[theme].readerTheme)}
+      />
+
+      {/* Fixed Top Bar */}
+      <div
+        className={cn(
+          "fixed top-0 left-0 right-0 z-50",
+          "backdrop-blur-md",
+          theme === ThemeType.Dark
+            ? "bg-gray-900/80 border-b border-gray-700"
+            : "bg-white/80 border-b border-gray-200"
+        )}
+      >
+        <div className="flex items-center justify-between px-4 py-3">
+          <IconButton
+            onClick={() => setTocOpen(true)}
+            className={cn(
+              "hover:bg-black/10 dark:hover:bg-white/10 border-none",
+              getTextColor()
+            )}
+            aria-label="Open table of contents"
+          >
+            <MenuIcon size={20} />
+          </IconButton>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="search"
+              id="search"
+              placeholder="Search..."
+              value={searchText}
+              onChange={onChange}
+              className={cn(
+                "px-3 py-1.5 rounded-lg border shadow-sm text-sm",
+                theme === ThemeType.Dark
+                  ? "border-gray-600 bg-gray-800 text-white placeholder-gray-500"
+                  : "border-gray-300 bg-white text-black placeholder-gray-400",
+                "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              )}
+            />
+
+            <Menu
+              trigger={
+                <IconButton
+                  className={cn(
+                    "hover:bg-transparent border-none",
+                    getTextColor()
+                  )}
+                >
+                  <Palette size={20} />
+                </IconButton>
+              }
+              open={menuOpen}
+              onOpen={() => setMenuOpen(true)}
+              onClose={() => setMenuOpen(false)}
+              anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
               theme={themes[theme]}
             >
-              {(Object.keys(themes) as Array<keyof typeof themes>).map(
-                (themeKey) => (
-                  <Radio
-                    key={themeKey}
-                    value={themeKey}
-                    label={themeKey}
-                    theme={themes[theme]}
-                  />
-                )
-              )}
-            </RadioGroup>
+              <div className="p-3">
+                <RadioGroup
+                  value={theme}
+                  onChange={(value) => handleThemeChange(value as ThemeType)}
+                  name="theme-selector"
+                  theme={themes[theme]}
+                >
+                  {(Object.keys(themes) as Array<keyof typeof themes>).map(
+                    (themeKey) => (
+                      <Radio
+                        key={themeKey}
+                        value={themeKey}
+                        label={themeKey}
+                        theme={themes[theme]}
+                      />
+                    )
+                  )}
+                </RadioGroup>
+              </div>
+            </Menu>
+
+            <Link to="/">
+              <Button
+                variant="ghost"
+                className={cn("shadow-sm", getTextColor())}
+              >
+                Back
+              </Button>
+            </Link>
           </div>
-        </Menu>
+        </div>
       </div>
-      <Button variant="ghost" disabled={pageNumber <= 1} onClick={previousPage}>
-        Previous
-      </Button>
-      <Button
-        variant="ghost"
-        disabled={pageNumber >= numPages}
-        onClick={nextPage}
+
+      {/* Main PDF Viewer Area */}
+      <div
+        className="flex items-center justify-center pt-[60px] pb-[60px] px-6 overflow-hidden"
+        style={{ height: "100vh" }}
       >
-        Next
-      </Button>
-      <Document
-        className=" "
-        error={<div>Error loading PDF</div>}
-        file={convertFileSrc(book.filePath)}
-        onLoadSuccess={onDocumentLoadSuccess}
-        onItemClick={onItemClick}
-      >
-        <Outline onItemClick={onItemClick} />
-        <Page pageNumber={pageNumber} />
-      </Document>
-      <div>
-        <label htmlFor="search">Search:</label>
-        <input
-          type="search"
-          id="search"
-          value={searchText}
-          onChange={onChange}
-        />
+        <Document
+          className="flex items-center justify-center"
+          file={convertFileSrc(book.filePath)}
+          options={pdfOptions}
+          onLoadSuccess={onDocumentLoadSuccess}
+          onItemClick={onItemClick}
+          error={
+            <div className={cn("p-4 text-center", getTextColor())}>
+              <p className="text-red-500">
+                Error loading PDF. Please try again.
+              </p>
+            </div>
+          }
+          loading={
+            <div className={cn("p-4 text-center", getTextColor())}>
+              <p>Loading PDF...</p>
+            </div>
+          }
+          externalLinkTarget="_blank"
+          externalLinkRel="noopener noreferrer nofollow"
+        >
+          {isDualPage && pageNumber < numPages ? (
+            // Dual-page view - side by side with gap
+            <div className="flex items-center gap-6">
+              <Page
+                pageNumber={pageNumber}
+                height={pdfHeight}
+                className="shadow-lg rounded"
+                renderTextLayer={true}
+                renderAnnotationLayer={true}
+                canvasBackground="white"
+              />
+              {pageNumber + 1 <= numPages && (
+                <Page
+                  pageNumber={pageNumber + 1}
+                  height={pdfHeight}
+                  className="shadow-lg rounded"
+                  renderTextLayer={true}
+                  renderAnnotationLayer={true}
+                  canvasBackground="white"
+                />
+              )}
+            </div>
+          ) : (
+            // Single page view
+            <Page
+              pageNumber={pageNumber}
+              height={pdfHeight}
+              className="shadow-lg rounded"
+              renderTextLayer={true}
+              renderAnnotationLayer={true}
+              canvasBackground="white"
+            />
+          )}
+        </Document>
       </div>
-      <p>
-        Page {pageNumber} of {numPages}
-      </p>
+
+      {/* Bottom Bar - Page Counter */}
+      <div
+        className={cn(
+          "fixed bottom-4 left-1/2 -translate-x-1/2 z-40",
+          "px-4 py-2 rounded-lg shadow-lg",
+          "bg-black/10 dark:bg-white/10 backdrop-blur-sm border",
+          theme === ThemeType.Dark ? "border-white/10" : "border-black/10",
+          getTextColor()
+        )}
+      >
+        <p className="text-sm font-medium">
+          {isDualPage && pageNumber < numPages
+            ? `Pages ${pageNumber}-${Math.min(pageNumber + 1, numPages)} of ${numPages}`
+            : `Page ${pageNumber} of ${numPages || "—"}`}
+        </p>
+      </div>
+
+      {/* TOC Sidebar */}
+      <Sheet open={tocOpen} onOpenChange={setTocOpen}>
+        <SheetContent
+          side="left"
+          className={cn(
+            "w-[300px] sm:w-[400px] p-0",
+            theme === ThemeType.Dark
+              ? "bg-gray-900 border-gray-700"
+              : "bg-white border-gray-200"
+          )}
+        >
+          <SheetHeader
+            className={cn(
+              "p-4 border-b sticky top-0 z-10",
+              theme === ThemeType.Dark
+                ? "border-gray-700 bg-gray-900"
+                : "border-gray-200 bg-white"
+            )}
+          >
+            <SheetTitle className={getTextColor()}>
+              Table of Contents
+            </SheetTitle>
+          </SheetHeader>
+          <div
+            className={cn(
+              "overflow-y-auto h-[calc(100vh-73px)]",
+              // Enhanced TOC styling with better padding and hover states
+              "[&_a]:block [&_a]:py-3 [&_a]:px-4 [&_a]:cursor-pointer",
+              "[&_a]:transition-all [&_a]:duration-200",
+              "[&_a]:border-b [&_a]:font-medium",
+              theme === ThemeType.Dark
+                ? "[&_a]:text-gray-300 [&_a:hover]:bg-gray-800 [&_a:hover]:text-white [&_a]:border-gray-800 [&_a:hover]:pl-6"
+                : "[&_a]:text-gray-700 [&_a:hover]:bg-gray-100 [&_a:hover]:text-black [&_a]:border-gray-100 [&_a:hover]:pl-6"
+            )}
+          >
+            <Document
+              file={convertFileSrc(book.filePath)}
+              options={pdfOptions}
+              onLoadSuccess={onDocumentLoadSuccess}
+            >
+              <Outline onItemClick={onItemClick} />
+            </Document>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
