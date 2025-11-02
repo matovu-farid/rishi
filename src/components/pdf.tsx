@@ -295,7 +295,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
 
       {/* Main PDF Viewer Area */}
       <div
-        className="flex items-center justify-center    overflow-hidden"
+        className="flex items-center justify-center overflow-hidden px-2 py-1"
         style={{ height: "100vh" }}
       >
         <Document
@@ -325,7 +325,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
               <Page
                 pageNumber={pageNumber}
                 height={pdfHeight}
-                className=" rounded"
+                className=" rounded shadow-lg"
                 renderTextLayer={true}
                 renderAnnotationLayer={true}
                 canvasBackground="white"
@@ -334,7 +334,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                 <Page
                   pageNumber={pageNumber + 1}
                   height={pdfHeight}
-                  className="rounded"
+                  className="rounded shadow-lg"
                   renderTextLayer={true}
                   renderAnnotationLayer={true}
                   canvasBackground="white"
