@@ -1,0 +1,5 @@
+[Log] Object (pdf.tsx, line 843)
+
+data: {items: Array, styles: Object, lang: null}
+
+Object Prototype

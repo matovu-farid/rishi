@@ -2,7 +2,13 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 
 import { Link } from "@tanstack/react-router";
-import React, { useEffect, useState, useMemo } from "react";
+import React, {
+  useEffect,
+  useState,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import { Button } from "@components/ui/Button";
 import { IconButton } from "@components/ui/IconButton";
 import { Menu } from "@components/ui/Menu";
@@ -14,7 +20,11 @@ import { updateBookLocation } from "@/modules/books";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Document, Page, Outline, pdfjs } from "react-pdf";
-import type { DocumentInitParameters } from "pdfjs-dist/types/src/display/api";
+import type {
+  DocumentInitParameters,
+  TextContent,
+  TextMarkedContent,
+} from "pdfjs-dist/types/src/display/api";
 import {
   Sheet,
   SheetContent,
@@ -30,12 +40,15 @@ import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 import createIReactReaderTheme from "@/themes/readerThemes";
 import { NavigationArrows } from "./react-reader/components";
+import { TextItem } from "pdfjs-dist/types/src/display/api";
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
   import.meta.url
 ).toString();
+
+const MIN_PARAGRAPH_LENGTH = 50;
 
 export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const [theme, setTheme] = useState<ThemeType>(ThemeType.White);
@@ -322,34 +335,26 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
           {isDualPage && pageNumber < numPages ? (
             // Dual-page view - side by side with gap
             <div className="flex items-center gap-3">
-              <Page
+              <PageComponent
+                key={pageNumber}
                 pageNumber={pageNumber}
-                height={pdfHeight}
-                className=" rounded shadow-lg"
-                renderTextLayer={true}
-                renderAnnotationLayer={true}
-                canvasBackground="white"
+                pdfHeight={pdfHeight}
               />
               {pageNumber + 1 <= numPages && (
-                <Page
+                <PageComponent
+                  key={pageNumber + 1}
                   pageNumber={pageNumber + 1}
-                  height={pdfHeight}
-                  className="rounded shadow-lg"
-                  renderTextLayer={true}
-                  renderAnnotationLayer={true}
-                  canvasBackground="white"
+                  pdfHeight={pdfHeight}
                 />
               )}
             </div>
           ) : (
             // Single page view
-            <Page
+
+            <PageComponent
+              key={pageNumber}
               pageNumber={pageNumber}
-              height={pdfHeight}
-              className="shadow-lg rounded"
-              renderTextLayer={true}
-              renderAnnotationLayer={true}
-              canvasBackground="white"
+              pdfHeight={pdfHeight}
             />
           )}
         </Document>
@@ -401,5 +406,188 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
         </SheetContent>
       </Sheet>
     </div>
+  );
+}
+
+type Transform = [number, number, number, number, number, number];
+type Paragraph = {
+  text: string;
+  dimensions: {
+    top: number;
+    bottom: number;
+  };
+};
+export function PageComponent({
+  pageNumber,
+  pdfHeight,
+}: {
+  pageNumber: number;
+  pdfHeight: number;
+}) {
+  const [pageData, setPageData] = useState<TextContent | null>(null);
+  const defaultDimensions = {
+    bottom: Number.MAX_SAFE_INTEGER,
+    top: Number.MIN_SAFE_INTEGER,
+  };
+  const paragraghSoFar = useRef<Paragraph>({
+    text: "",
+    dimensions: defaultDimensions,
+  });
+  const paragraphsSoFar = useRef<Paragraph[]>([]);
+  function isInsideParagraph(
+    wordTransform: Transform,
+    paragraphTransform: Paragraph
+  ) {
+    const isBelowOrEqualTop =
+      wordTransform[5] <= paragraphTransform.dimensions.top;
+    const isAboveOrEqualBottom =
+      wordTransform[5] >= paragraphTransform.dimensions.bottom;
+    return isBelowOrEqualTop && isAboveOrEqualBottom;
+  }
+
+  useEffect(() => {
+    if (pageData) {
+      console.log({ pageData });
+      const items = pageData.items;
+      let headerGot = false;
+      function isTextItem(
+        item: TextItem | TextMarkedContent
+      ): item is TextItem {
+        return "str" in item;
+      }
+
+      let previousItem: TextItem | null = null;
+      for (let item of items) {
+        if (!isTextItem(item)) continue;
+
+        const text = item.str;
+        let textSoFar = paragraghSoFar.current?.text || "";
+
+        const isVerticallySpaced =
+          previousItem &&
+          Math.abs(previousItem.transform[5] - item.transform[5]) > 12 &&
+          item.hasEOL;
+        const isThereText = textSoFar.trim().length > 0;
+        const areParagraphsEmpty = paragraphsSoFar.current.length === 0;
+        const isParagraphTooShort = textSoFar.length < MIN_PARAGRAPH_LENGTH;
+        const isHeader =
+          areParagraphsEmpty && isParagraphTooShort && !headerGot;
+
+        if (isVerticallySpaced && isThereText) {
+          if (isHeader) {
+            paragraghSoFar.current = {
+              text: "",
+              dimensions: defaultDimensions,
+            };
+            headerGot = true;
+            continue;
+          }
+          // if (isParagraphTooShort) {
+          //   const lastParagraph = paragraphsSoFar.current.pop();
+
+          //   paragraghSoFar.current = {
+          //     text: lastParagraph?.text || "" + "\n" + text,
+          //     dimensions: {
+          //       top: Math.max(
+          //         item.transform[5],
+          //         lastParagraph?.dimensions.top || Number.MIN_SAFE_INTEGER
+          //       ),
+          //       // bottom: item.transform[5] - item.height,
+          //       bottom: item.transform[5],
+          //     },
+          //   };
+          // }
+
+          paragraphsSoFar.current.push(paragraghSoFar.current);
+          // reset the paragraph so far
+          paragraghSoFar.current = {
+            text: "",
+            dimensions: defaultDimensions,
+          };
+        }
+        previousItem = item;
+
+        paragraghSoFar.current = {
+          text: paragraghSoFar.current.text + text,
+          dimensions: {
+            top: Math.max(
+              item.transform[5],
+              paragraghSoFar.current.dimensions.top
+            ),
+            bottom: Math.min(
+              // item.transform[5] - item.height,
+              item.transform[5],
+              paragraghSoFar.current.dimensions.bottom
+            ),
+          },
+        };
+      }
+
+      paragraphsSoFar.current.push(paragraghSoFar.current);
+
+      paragraphsSoFar.current = paragraphsSoFar.current
+        .filter((paragraph) => paragraph.text.trim().length > 0)
+        // remove paragraphs that are too short
+        .reduce<Paragraph[]>((acc, paragraph) => {
+          const isParagraphTooShort =
+            paragraph.text.trim().length < MIN_PARAGRAPH_LENGTH;
+          // if the paragraph is not too short, add it to the accumulator
+          if (!isParagraphTooShort) {
+            acc.push(paragraph);
+            return acc;
+          }
+
+          const lastParagraph = acc.pop();
+          // if there is no last paragraph, add the paragraph to the accumulator
+          if (!lastParagraph) {
+            acc.push(paragraph);
+            return acc;
+          }
+          // merge the paragraph with the last paragraph
+          lastParagraph.text = lastParagraph.text + "\n" + paragraph.text;
+          lastParagraph.dimensions = {
+            top: Math.max(
+              paragraph.dimensions.top,
+              lastParagraph.dimensions.top
+            ),
+            bottom: Math.min(
+              paragraph.dimensions.bottom,
+              lastParagraph.dimensions.bottom
+            ),
+          };
+          acc.push(lastParagraph);
+
+          return acc;
+        }, []);
+
+      console.log({ paragraphsSoFar: paragraphsSoFar.current });
+    }
+  }, [pageData]);
+  return (
+    <Page
+      pageNumber={pageNumber}
+      key={paragraphsSoFar.current.length}
+      customTextRenderer={({
+        str,
+
+        transform,
+      }) => {
+        if (
+          isInsideParagraph(transform as Transform, paragraphsSoFar.current[0])
+        ) {
+          return `<mark>${str}</mark>`;
+        }
+
+        return str;
+      }}
+      height={pdfHeight}
+      className=" rounded shadow-lg"
+      renderTextLayer={true}
+      renderAnnotationLayer={true}
+      canvasBackground="white"
+      onGetTextSuccess={(data) => {
+        setPageData(data);
+      }}
+    />
   );
 }
