@@ -19,6 +19,8 @@ import { Rendition } from "epubjs/types";
 import { updateBookLocation } from "@/modules/books";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { BookData } from "@/generated";
+import { PlayerControlInterface } from "@/models/player_control";
+import { EpubPlayerControl } from "@/models/epub_player_contol";
 
 function cn(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
@@ -33,6 +35,7 @@ function updateTheme(rendition: Rendition, theme: ThemeType) {
 
 export function EpubView({ book }: { book: BookData }): React.JSX.Element {
   const rendition = useRef<Rendition | undefined>(undefined);
+  const playerControl = useRef<PlayerControlInterface | undefined>(undefined);
   const [renditionState, setRenditionState] = useState<Rendition | null>();
   const [theme, setTheme] = useState<ThemeType>(ThemeType.White);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -154,13 +157,17 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
             updateTheme(_rendition, theme);
             rendition.current = _rendition;
             setRenditionState(_rendition);
+
+            playerControl.current = new EpubPlayerControl({
+              rendition: _rendition,
+            });
           }}
         />
       </div>
       {/* TTS Controls - Bottom Center */}
       <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-50">
-        {renditionState && (
-          <TTSControls bookId={book.id} rendition={renditionState} />
+        {playerControl.current && (
+          <TTSControls bookId={book.id} playerControl={playerControl.current} />
         )}
       </div>
     </div>

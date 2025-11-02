@@ -17,15 +17,16 @@ import { PlayingState } from "@/stores/ttsStore";
 import { Player, PlayerEvent } from "@/models/Player";
 import type Rendition from "epubjs/types/rendition";
 import { useDebug } from "@/hooks/useDebug";
+import { PlayerControlInterface } from "@/models/player_control";
 interface TTSControlsProps {
   bookId: string;
-  rendition: Rendition;
+  playerControl: PlayerControlInterface;
   disabled?: boolean;
 }
 
 export function TTSControls({
   bookId,
-  rendition,
+  playerControl,
   disabled = false,
 }: TTSControlsProps) {
   const [showError, setShowError] = useState(false);
@@ -33,7 +34,7 @@ export function TTSControls({
   const [hasShownError, setHasShownError] = useState(false);
 
   const error = errors.join("\n");
-  const [player] = useState<Player>(new Player(rendition, bookId));
+  const [player] = useState<Player>(new Player(playerControl, bookId));
   const [playingState, setPlayingState] = useState<PlayingState>(
     player.getPlayingState()
   );

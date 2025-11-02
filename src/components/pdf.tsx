@@ -41,6 +41,7 @@ import "react-pdf/dist/Page/TextLayer.css";
 import createIReactReaderTheme from "@/themes/readerThemes";
 import { NavigationArrows } from "./react-reader/components";
 import { TextItem } from "pdfjs-dist/types/src/display/api";
+import { usePdfParagraphStore } from "@/stores/paragraph";
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -50,26 +51,35 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 
 const MIN_PARAGRAPH_LENGTH = 50;
 
-export function PdfView({ book }: { book: BookData }): React.JSX.Element {
-  const [theme, setTheme] = useState<ThemeType>(ThemeType.White);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [tocOpen, setTocOpen] = useState(false);
+export function usePdfNavigation(bookId: string) {
+  const { pageNumber, setPageNumber } = usePdfParagraphStore();
+  const [numPages, setNumPages] = useState<number>(0);
+
   const [windowSize, setWindowSize] = useState({
     width: typeof window !== "undefined" ? window.innerWidth : 1024,
     height: typeof window !== "undefined" ? window.innerHeight : 768,
   });
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  const pdfHeight = windowSize.height - 120; // 60px top + 60px bottom
   // Configure PDF.js options with CDN fallback for better font and image support
-  const pdfOptions = useMemo<DocumentInitParameters>(
-    () => ({
-      cMapPacked: true,
 
-      verbosity: 0,
-    }),
-    []
-  );
+  const updateBookLocationMutation = useMutation({
+    mutationFn: async ({
+      bookId,
+      location,
+    }: {
+      bookId: string;
+      location: string;
+    }) => {
+      await updateBookLocation(bookId, location);
+    },
 
+    onError(error) {
+      toast.error("Can not change book page");
+      console.log({ error });
+    },
+  });
   // Track window resize and fullscreen changes
   useEffect(() => {
     const handleResize = () => {
@@ -112,6 +122,70 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
       clearInterval(fullscreenCheckInterval);
     };
   }, []);
+
+  // Determine if we should show dual-page view
+  const shouldShowDualPage = () => {
+    // Don't show dual-page in fullscreen mode (Books app behavior)
+    if (isFullscreen) return false;
+
+    // Show dual-page for medium and large views (>= 768px)
+    // This includes 1024x770 (default medium size) and larger
+    return windowSize.width >= 768;
+  };
+
+  const isDualPage = shouldShowDualPage();
+  const pageIncrement = isDualPage ? 2 : 1;
+
+  function changePage(offset: number) {
+    const newPageNumber = pageNumber + offset;
+    if (newPageNumber >= 1 && newPageNumber <= numPages) {
+      setPageNumber(newPageNumber);
+      updateBookLocationMutation.mutate({
+        bookId: bookId,
+        location: newPageNumber.toString(),
+      });
+    }
+  }
+
+  function previousPage() {
+    changePage(-pageIncrement);
+  }
+
+  function nextPage() {
+    changePage(pageIncrement);
+  }
+  return {
+    previousPage,
+    nextPage,
+    setNumPages,
+    numPages,
+    isDualPage,
+    pdfHeight,
+  };
+}
+
+export function PdfView({ book }: { book: BookData }): React.JSX.Element {
+  const [theme, setTheme] = useState<ThemeType>(ThemeType.White);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [tocOpen, setTocOpen] = useState(false);
+
+  // Configure PDF.js options with CDN fallback for better font and image support
+  const pdfOptions = useMemo<DocumentInitParameters>(
+    () => ({
+      cMapPacked: true,
+
+      verbosity: 0,
+    }),
+    []
+  );
+  const {
+    previousPage,
+    nextPage,
+    setNumPages,
+    numPages,
+    isDualPage,
+    pdfHeight,
+  } = usePdfNavigation(book.id);
 
   const handleThemeChange = (newTheme: ThemeType) => {
     setTheme(newTheme);
@@ -157,36 +231,10 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     }
   };
 
-  const [numPages, setNumPages] = useState<number>(0);
-  const [pageNumber, setPageNumber] = useState<number>(1);
+  // TODO: Add page number to a zustand store and use it to track the current page
+  // or add a current paragraph and track that across pages. like 10000 ff * pageNumber + paragraphIndex
 
-  // Determine if we should show dual-page view
-  const shouldShowDualPage = () => {
-    // Don't show dual-page in fullscreen mode (Books app behavior)
-    if (isFullscreen) return false;
-
-    // Show dual-page for medium and large views (>= 768px)
-    // This includes 1024x770 (default medium size) and larger
-    return windowSize.width >= 768;
-  };
-
-  const isDualPage = shouldShowDualPage();
-  const pageIncrement = isDualPage ? 2 : 1;
-
-  function changePage(offset: number) {
-    setPageNumber((prevPageNumber) => {
-      const newPageNumber = prevPageNumber + offset;
-      if (newPageNumber >= 1 && newPageNumber <= numPages) {
-        // Update book location when page changes
-        updateBookLocationMutation.mutate({
-          bookId: book.id,
-          location: newPageNumber.toString(),
-        });
-        return newPageNumber;
-      }
-      return prevPageNumber;
-    });
-  }
+  const { pageNumber, setPageNumber } = usePdfParagraphStore();
 
   function onItemClick({ pageNumber: itemPageNumber }: { pageNumber: number }) {
     setPageNumber(itemPageNumber);
@@ -196,14 +244,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
       bookId: book.id,
       location: itemPageNumber.toString(),
     });
-  }
-
-  function previousPage() {
-    changePage(-pageIncrement);
-  }
-
-  function nextPage() {
-    changePage(pageIncrement);
   }
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }): void {
@@ -218,7 +258,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   }
 
   // Calculate available height for PDF (viewport - top bar - bottom bar)
-  const pdfHeight = windowSize.height - 120; // 60px top + 60px bottom
 
   return (
     <div
@@ -336,15 +375,19 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
             // Dual-page view - side by side with gap
             <div className="flex items-center gap-3">
               <PageComponent
+                bookId={book.id}
                 key={pageNumber}
-                pageNumber={pageNumber}
+                thispageNumber={pageNumber}
                 pdfHeight={pdfHeight}
+                relativePageNumber={0}
               />
               {pageNumber + 1 <= numPages && (
                 <PageComponent
+                  bookId={book.id}
                   key={pageNumber + 1}
-                  pageNumber={pageNumber + 1}
+                  thispageNumber={pageNumber + 1}
                   pdfHeight={pdfHeight}
+                  relativePageNumber={1}
                 />
               )}
             </div>
@@ -352,9 +395,11 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
             // Single page view
 
             <PageComponent
+              bookId={book.id}
               key={pageNumber}
-              pageNumber={pageNumber}
+              thispageNumber={pageNumber}
               pdfHeight={pdfHeight}
+              relativePageNumber={0}
             />
           )}
         </Document>
@@ -417,14 +462,46 @@ type Paragraph = {
     bottom: number;
   };
 };
+
+const PARAGRAPH_INDEX_PER_PAGE = 10000;
 export function PageComponent({
-  pageNumber,
+  bookId,
+  thispageNumber: pageNumber,
   pdfHeight,
+  relativePageNumber,
 }: {
-  pageNumber: number;
+  bookId: string;
+  thispageNumber: number;
   pdfHeight: number;
+  relativePageNumber: number;
 }) {
   const [pageData, setPageData] = useState<TextContent | null>(null);
+  const {
+    pageNumber: currentPageNumber,
+    setCurrentParagraphIndex,
+    setCurrentParagraph,
+    currentParagraphIndex,
+  } = usePdfParagraphStore();
+  const index = currentParagraphIndex % PARAGRAPH_INDEX_PER_PAGE;
+  const isActivePage = pageNumber === currentPageNumber;
+  const { nextPage } = usePdfNavigation(bookId);
+
+  // This fills the current paragraph in the store when the paragraph index changes
+  useEffect(() => {
+    if (!isActivePage) return;
+    if (index >= paragraphsSoFar.current.length) {
+      setCurrentParagraph("");
+      if (pageNumber == 0) {
+        setCurrentParagraphIndex(PARAGRAPH_INDEX_PER_PAGE * (pageNumber - 1));
+      } else {
+        // go to next page
+        nextPage();
+      }
+      return;
+    }
+    setCurrentParagraph(paragraphsSoFar.current[index].text);
+  }, [index, currentPageNumber]);
+
   const defaultDimensions = {
     bottom: Number.MAX_SAFE_INTEGER,
     top: Number.MIN_SAFE_INTEGER,

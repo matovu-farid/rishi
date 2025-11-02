@@ -98,7 +98,7 @@ export function getCurrentViewParagraphs(
 export async function getNextViewParagraphs(
   rendition: Rendition,
   options = { minLength: 50 }
-) {
+): Promise<ParagraphWithCFI[]> {
   const { minLength = 50 } = options;
   if (!rendition.manager) {
     return [];
@@ -163,7 +163,7 @@ export async function getNextViewParagraphs(
 export async function getPreviousViewParagraphs(
   rendition: Rendition,
   options = { minLength: 50 }
-) {
+): Promise<ParagraphWithCFI[]> {
   const { minLength = 50 } = options;
   if (!rendition.manager) {
     return [];
