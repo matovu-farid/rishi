@@ -225,7 +225,7 @@ function FileDrop(): React.JSX.Element {
                         deleteBookMutation.mutate({ book });
                       }}
                       color="error"
-                      className="bg-white p-1 z-10 shadow-3xl drop-shadow-lg cursor-pointer"
+                      className="bg-white p-0 z-10 drop-shadow cursor-pointer"
                     >
                       <Trash2 size={20} />
                     </IconButton>
