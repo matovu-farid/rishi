@@ -14,6 +14,7 @@ import {
   storeBook,
 } from "@/modules/books";
 import { useTauriDragDrop } from "./hooks/use-tauri-drag-drop";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Add this helper function
 function bytesToBlobUrl(bytes: number[]): string {
@@ -21,6 +22,33 @@ function bytesToBlobUrl(bytes: number[]): string {
   const blob = new Blob([uint8Array], { type: "image/jpeg" }); // Change type if needed
   return URL.createObjectURL(blob);
 }
+
+// Animation variants for book items
+const bookVariants = {
+  initial: {
+    opacity: 0,
+    scale: 0.8,
+    y: 20,
+  },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.8,
+  },
+};
+
+const containerVariants = {
+  animate: {
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
 function FileDrop(): React.JSX.Element {
   const queryClient = useQueryClient();
   const {
@@ -146,7 +174,11 @@ function FileDrop(): React.JSX.Element {
         </Button>
       </div>
 
-      <div
+      <motion.div
+        layout
+        variants={containerVariants}
+        initial="animate"
+        animate="animate"
         style={
           books && books.length > 0
             ? {
@@ -165,45 +197,59 @@ function FileDrop(): React.JSX.Element {
         {isDragging && (!books || books.length === 0) ? (
           <p>Drop the files here ...</p>
         ) : books && books.length > 0 ? (
-          books.map((book) => (
-            <div key={book.id} className="p-2 grid relative">
-              <div
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
+          <AnimatePresence mode="popLayout">
+            {books.map((book) => (
+              <motion.div
+                key={book.id}
+                layout
+                variants={bookVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={{
+                  duration: 0.4,
+                  ease: "easeOut",
                 }}
-                className="rounded-3xl bg-transparent"
+                className="p-2 grid relative"
               >
-                <div className="absolute top-0 right-0">
-                  <IconButton
-                    onClick={() => {
-                      deleteBookMutation.mutate({ book });
-                    }}
-                    color="error"
-                    className="bg-white p-1"
-                  >
-                    <Trash2 size={20} />
-                  </IconButton>
-                </div>
-
-                <Link
-                  to="/books/$id"
-                  params={{ id: book.id }}
-                  className="rounded-3xl bg-transparent shadow-2xl overflow-hidden"
+                <div
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  className="rounded-3xl bg-transparent"
                 >
-                  <img
-                    className="object-fill"
-                    src={bytesToBlobUrl(book.cover)}
-                    width={200}
-                    alt="cover image"
-                  />
-                </Link>
-              </div>
-              <div className="text-teal-500 justify-center p-2 overflow-hidden text-ellipsis whitespace-nowrap text-sm">
-                {book.title}
-              </div>
-            </div>
-          ))
+                  <div className="absolute top-0 right-0">
+                    <IconButton
+                      onClick={() => {
+                        deleteBookMutation.mutate({ book });
+                      }}
+                      color="error"
+                      className="bg-white p-1"
+                    >
+                      <Trash2 size={20} />
+                    </IconButton>
+                  </div>
+
+                  <Link
+                    to="/books/$id"
+                    params={{ id: book.id }}
+                    className="rounded-3xl bg-transparent shadow-2xl overflow-hidden"
+                  >
+                    <img
+                      className="object-fill"
+                      src={bytesToBlobUrl(book.cover)}
+                      width={200}
+                      alt="cover image"
+                    />
+                  </Link>
+                </div>
+                <div className="text-teal-500 justify-center p-2 overflow-hidden text-ellipsis whitespace-nowrap text-sm">
+                  {book.title}
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         ) : (
           <div className="text-center">
             <p className="mb-4">No books yet. Add your first book!</p>
@@ -212,7 +258,7 @@ function FileDrop(): React.JSX.Element {
             </p>
           </div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }
