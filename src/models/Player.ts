@@ -58,7 +58,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
 
     this.playerControl = playerControl;
     this.setPlayingState(PlayingState.Stopped);
-    this.setParagraphIndex(0);
+    void this.setParagraphIndex(0);
 
     this.bookId = bookId;
 
@@ -66,7 +66,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
       this.audioElement = new Audio();
       this.audioElement.addEventListener("ended", this.handleEnded);
       this.audioElement.addEventListener("error", this.handleError);
-      this.resetParagraphs();
+      void this.resetParagraphs();
     });
     this.playerControl.onLocationChanged(() => {
       void this.handleLocationChanged();
@@ -93,10 +93,10 @@ export class Player extends EventEmitter<PlayerEventMap> {
       paragraphs: await this.playerControl.getCurrentViewParagraphs(),
     });
     if (this.direction === Direction.Backward)
-      this.setParagraphIndex(
+      await this.setParagraphIndex(
         (await this.playerControl.getCurrentViewParagraphs()).length - 1
       );
-    else this.setParagraphIndex(0);
+    else await this.setParagraphIndex(0);
     return Promise.all([
       this.playerControl.getNextViewParagraphs().then((nextPageParagraphs) => {
         this.nextPageParagraphs = nextPageParagraphs || [];
@@ -130,6 +130,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
   private handleEnded = async () => {
     try {
       const currentParagraph = await this.getCurrentParagraph();
+      console.log("🔴 handleEnded", { currentParagraph });
       if (!currentParagraph) return;
       await this.playerControl.removeHighlight(currentParagraph.index);
     } catch (error) {
@@ -422,7 +423,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
     if (this.playingState === PlayingState.Stopped) return;
     this.audioElement.pause();
     this.audioElement.currentTime = 0;
-    this.setParagraphIndex(0);
+    await this.setParagraphIndex(0);
 
     const currentParagraph = await this.getCurrentParagraph();
     if (!currentParagraph) return;
@@ -508,7 +509,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
     // first remove the current paragraph highlight and pause audio
     await this.stop();
 
-    this.setParagraphIndex(index);
+    await this.setParagraphIndex(index);
 
     await this.play();
   };

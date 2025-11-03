@@ -102,15 +102,15 @@ export function usePdfNavigation(bookId: string) {
     window.addEventListener("resize", handleResize);
 
     // Check fullscreen on resize as well
-    const handleResizeAndFullscreen = () => {
+    const handleResizeAndFullscreen = async () => {
       handleResize();
-      checkFullscreen();
+      await checkFullscreen();
     };
 
     window.addEventListener("resize", handleResizeAndFullscreen);
 
     // Initial check
-    checkFullscreen();
+    void checkFullscreen();
 
     // Poll for fullscreen changes (Tauri doesn't have an event for this)
     const fullscreenCheckInterval = setInterval(checkFullscreen, 500);

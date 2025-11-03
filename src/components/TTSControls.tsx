@@ -15,7 +15,6 @@ import { toast } from "react-toastify";
 import { useEffect, useState } from "react";
 import { PlayingState } from "@/stores/ttsStore";
 import { Player, PlayerEvent } from "@/models/Player";
-import type Rendition from "epubjs/types/rendition";
 import { useDebug } from "@/hooks/useDebug";
 import { PlayerControlInterface } from "@/models/player_control";
 interface TTSControlsProps {
@@ -99,8 +98,8 @@ export function TTSControls({
     await player.next();
   };
 
-  const handleShowErrorDetails = () => {
-    const detailedInfo = player.getDetailedErrorInfo();
+  const  handleShowErrorDetails = async () => {
+    const detailedInfo = await player.getDetailedErrorInfo();
     console.log("📊 Detailed Error Information:", detailedInfo);
 
     // Create a formatted error message

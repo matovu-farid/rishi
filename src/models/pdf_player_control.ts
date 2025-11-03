@@ -15,6 +15,7 @@ import {
 //TODO: Implement the methods
 export class PdfPlayerControl implements PlayerControlInterface {
   private bookId: string;
+  private hasFiredInitialRender: boolean = false;
   constructor(bookId: string) {
     this.bookId = bookId;
   }
@@ -63,7 +64,27 @@ export class PdfPlayerControl implements PlayerControlInterface {
     await customStore.set(previousPageAtom, this.bookId);
   }
   onRender(callback: () => void) {
-    customStore.sub(isRenderedAtom, callback);
+    // If already fired, don't subscribe again
+    if (this.hasFiredInitialRender) {
+      return;
+    }
+
+    // Check if already rendered - fire immediately if so
+    const isRendered = customStore.get(isRenderedAtom);
+    if (isRendered) {
+      this.hasFiredInitialRender = true;
+      callback();
+      return;
+    }
+
+    // Otherwise, wait for first render and fire only once
+    customStore.sub(isRenderedAtom, () => {
+      const isRendered = customStore.get(isRenderedAtom);
+      if (isRendered && !this.hasFiredInitialRender) {
+        this.hasFiredInitialRender = true;
+        callback();
+      }
+    });
   }
   onLocationChanged(callback: () => void) {
     customStore.sub(pageNumberAtom, callback);
