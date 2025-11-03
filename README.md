@@ -17,6 +17,16 @@ A cross-platform EPUB and PDF reader with offline-friendly Text-to-Speech (TTS),
 
 Watch the app in action: [YouTube demo](https://youtu.be/vcWcpEGsof8)
 
+## Screenshots
+
+### Library View
+
+![Rishi Library](./screenshots/library.png)
+
+### Reading View
+
+![Rishi Book Reader](./screenshots/book.png)
+
 ## Supported Formats
 
 - `.epub`
