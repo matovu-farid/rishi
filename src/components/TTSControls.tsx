@@ -98,13 +98,11 @@ export function TTSControls({
     await player.next();
   };
 
-  const  handleShowErrorDetails = async () => {
+  const handleShowErrorDetails = async () => {
     const detailedInfo = await player.getDetailedErrorInfo();
-    console.log("📊 Detailed Error Information:", detailedInfo);
 
     // Create a formatted error message
     const errorInfo = JSON.stringify(detailedInfo, null, 2);
-    console.log("📊 Formatted Error Info:\n", errorInfo);
 
     // Show a toast with the basic info
     toast.info(

@@ -62,7 +62,6 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
 
     onError(error) {
       toast.error("Can not change book page");
-      console.log({ error });
     },
   });
 

@@ -63,33 +63,18 @@ export class TTSService extends EventEmitter {
   ): Promise<string> {
     const requestId = `${bookId}-${cfiRange}`;
 
-    console.log(">>> Service: Request audio", {
-      requestId,
-      bookId,
-      cfiRange,
-      textLength: text.length,
-      textPreview: text.substring(0, 50) + "...",
-      priority,
-    });
+    
 
     try {
       // Check if request is already active
       if (this.activeRequests.has(requestId)) {
-        console.log(
-          ">>> Service: Request already active, waiting for completion",
-          {
-            requestId,
-          }
-        );
+    
 
         // Return a promise that will resolve when the active request completes
         return new Promise((resolve, reject) => {
           const onAudioReady = (event: AudioReadyEvent) => {
             if (event.bookId === bookId && event.cfiRange === cfiRange) {
-              console.log(">>> Service: Active request completed", {
-                requestId,
-                audioPath: event.audioPath,
-              });
+             
               this.cleanupPendingListener(requestId);
               resolve(event.audioPath);
             }
@@ -128,20 +113,15 @@ export class TTSService extends EventEmitter {
       }
 
       // Check cache first
-      console.log(">>> Service: Checking cache", { requestId });
+
       const cached = await ttsCache.getCachedAudio(bookId, cfiRange);
 
       if (cached.exists) {
-        console.log(">>> Service: Cache hit", {
-          requestId,
-          cachedPath: cached.path,
-        });
+       
         return cached.path;
       }
 
-      console.log(">>> Service: Cache miss, queuing for generation", {
-        requestId,
-      });
+     
 
       // Track active request
       this.activeRequests.add(requestId);
@@ -154,10 +134,7 @@ export class TTSService extends EventEmitter {
         priority
       );
 
-      console.log(">>> Service: Audio generation completed", {
-        requestId,
-        audioPath,
-      });
+     
 
       return audioPath;
     } catch (error) {
@@ -196,7 +173,6 @@ export class TTSService extends EventEmitter {
    * Get audio path if cached
    */
   async getAudioPath(bookId: string, cfiRange: string): Promise<string | null> {
-    console.log(">>> Service: Get audio path");
     const cached = await ttsCache.getCachedAudio(bookId, cfiRange);
     return cached.exists ? cached.path : null;
   }
@@ -228,9 +204,7 @@ export class TTSService extends EventEmitter {
       this.activeRequests.delete(requestId);
       ttsQueue.cancelRequest(requestId);
     }
-    console.log(
-      `Cancelled ${requestsToCancel.length} requests for book ${bookId}`
-    );
+
   }
 
   /**

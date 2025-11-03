@@ -38,7 +38,6 @@ export class TTSCache {
 
     try {
       await fs.mkdir(cacheDir, { recursive: true });
-      console.log("Cache directory ensured at:", cacheDir);
     } catch (error) {
       console.error("Failed to create public directory:", error);
       throw new Error(`Failed to create public directory: ${error}`);
@@ -59,36 +58,16 @@ export class TTSCache {
     bookId: string,
     cfiRange: string
   ): Promise<string> {
-    console.log(">>> Cache: Get audio file path", {
-      bookId,
-      cfiRange: cfiRange.substring(0, 50) + "...",
-    });
-
     try {
       const bookCacheDir = await this.getBookCacheDir(bookId);
       const exists = await fs.exists(bookCacheDir);
 
-      console.log(">>> Cache: Book cache dir status", {
-        bookCacheDir,
-        exists,
-      });
-
       if (!exists) {
-        console.log(">>> Cache: Creating book cache directory", {
-          bookCacheDir,
-        });
         await fs.mkdir(bookCacheDir, { recursive: true });
-        console.log(">>> Cache: Book cache directory created");
       }
 
       const hashedCfi = md5(cfiRange);
       const filePath = await path.join(bookCacheDir, `${hashedCfi}.mp3`);
-
-      console.log(">>> Cache: Generated file path", {
-        filePath,
-        hashedCfi,
-        bookId,
-      });
 
       return filePath;
     } catch (error) {
@@ -115,31 +94,13 @@ export class TTSCache {
     bookId: string,
     cfiRange: string
   ): Promise<CachedAudioInfo> {
-    console.log(">>> Cache: Get cached audio", {
-      bookId,
-      cfiRange: cfiRange.substring(0, 50) + "...",
-    });
-
     try {
       const filePath = await this.getAudioFilePath(bookId, cfiRange);
       const exists = await fs.exists(filePath);
 
-      console.log(">>> Cache: File check result", {
-        filePath,
-        exists,
-        bookId,
-      });
-
       if (exists) {
         try {
-          const stats = await fs.stat(filePath);
-          console.log(">>> Cache: Cached file stats", {
-            filePath,
-            size: stats.size,
-            mtime: stats.mtime,
-          });
-
-      
+          await fs.stat(filePath);
         } catch (statsError) {
           console.error(">>> Cache: Failed to get file stats", {
             filePath,
@@ -180,37 +141,17 @@ export class TTSCache {
     cfiRange: string,
     audioData: Uint8Array
   ): Promise<string> {
-    console.log(">>> Cache: Save cached audio", {
-      bookId,
-      cfiRange: cfiRange.substring(0, 50) + "...",
-      audioDataSize: audioData.length,
-    });
-
     try {
       const filePath = await this.getAudioFilePath(bookId, cfiRange);
 
-      console.log(">>> Cache: Saving to file path", {
-        bookId,
-        cfiRange: cfiRange.substring(0, 50) + "...",
-        filePath,
-        cacheDir: this.cacheDir,
-        audioDataSize: audioData.length,
-      });
-
       // Check cache size before saving
-      console.log(">>> Cache: Checking cache size before save");
-      await this.checkAndCleanupCache();
 
-      // Save audio buffer to file
-      console.log(">>> Cache: Writing audio data to file", {
-        filePath,
-        dataSize: audioData.length,
-      });
+      await this.checkAndCleanupCache();
 
       await fs.writeFile(filePath, audioData);
 
       // Verify file was created
-      console.log(">>> Cache: Verifying file was written");
+
       const exists = await fs.exists(filePath);
 
       if (!exists) {
@@ -218,12 +159,6 @@ export class TTSCache {
       }
 
       const stats = await fs.stat(filePath);
-      console.log(">>> Cache: File created successfully", {
-        path: filePath,
-        size: stats.size,
-        expectedSize: audioData.length,
-        sizeMismatch: stats.size !== audioData.length,
-      });
 
       if (stats.size === 0) {
         throw new Error("File was created but is empty (0 bytes)");
@@ -332,9 +267,6 @@ export class TTSCache {
       const totalSizeMB = totalSizeBytes / (1024 * 1024);
 
       if (totalSizeMB > this.MAX_CACHE_SIZE_MB * this.CACHE_CLEANUP_THRESHOLD) {
-        console.log(
-          `Cache size (${totalSizeMB.toFixed(2)}MB) exceeds threshold, cleaning up...`
-        );
         await this.cleanupOldestFiles();
       }
     } catch (error) {
@@ -382,7 +314,6 @@ export class TTSCache {
           const fileSize = (await fs.stat(fileStat.path)).size;
           await fs.remove(fileStat.path);
           currentSize -= fileSize;
-          console.log(`Removed old cache file: ${fileStat.path}`);
         } catch (error) {
           console.warn(`Failed to remove cache file ${fileStat.path}:`, error);
         }

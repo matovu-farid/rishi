@@ -72,7 +72,6 @@ export class TTSQueue extends EventEmitter {
     text: string,
     priority = 0 // 0 is normal priority, 1 is high priority, 2 is highest priority
   ): Promise<string> {
-    console.log(">>> Queue: Request audio");
     this.emit(TTSQueueEvents.REQUEST_AUDIO, {
       bookId,
       cfiRange,
@@ -85,7 +84,6 @@ export class TTSQueue extends EventEmitter {
 
     // Check for duplicate request
     if (this.pendingRequests.has(requestId)) {
-      console.log(`Duplicate request detected, listening for: ${requestId}`);
       return new Promise((resolve, reject) => {
         // Listen for audio-ready events and filter by requestId
         const handleAudioReady = (data: {
@@ -146,7 +144,6 @@ export class TTSQueue extends EventEmitter {
   }
 
   private async processBatch(): Promise<void> {
-    console.log(">>> Queue: Process batch");
     this.isProcessing = true;
     const batchSize = 5;
     while (this.queue.size() > 0) {
@@ -163,11 +160,9 @@ export class TTSQueue extends EventEmitter {
    * Process the queue sequentially
    */
   private async processQueue(batch: QueueItem[]): Promise<void> {
-    console.log(">>> Queue: Process queue");
     const promises = batch.map(async (item) => {
       // Check if request is too old and should be cancelled
       if (Date.now() - item.timestamp > this.REQUEST_TIMEOUT_MS) {
-        console.log(`Request timeout, cancelling: ${item.requestId}`);
         this.pendingRequests.delete(item.requestId);
         item.reject(new Error("Request timeout"));
         return;
@@ -177,22 +172,8 @@ export class TTSQueue extends EventEmitter {
       this.activeRequests.set(item.requestId, item);
 
       try {
-        console.log(">>> Queue: Starting audio generation", {
-          requestId: item.requestId,
-          cfiRange: item.cfiRange,
-        });
-
         // TODO: Check if this can be optimized as a stream
         const audioData = await this.generateAudio(item);
-        console.log(">>> Queue: Generated audio buffer", {
-          requestId: item.requestId,
-          bufferSize: audioData.length,
-        });
-
-        // Save directly to cache
-        console.log(">>> Queue: Saving audio to cache", {
-          requestId: item.requestId,
-        });
 
         const audioPath = await ttsCache.saveCachedAudio(
           item.bookId,
@@ -200,19 +181,9 @@ export class TTSQueue extends EventEmitter {
           audioData
         );
 
-        console.log(">>> Queue: Saved audio to cache", {
-          requestId: item.requestId,
-          audioPath,
-          bookId: item.bookId,
-          cfiRange: item.cfiRange,
-        });
-
         // Clean up tracking
         this.pendingRequests.delete(item.requestId);
         this.activeRequests.delete(item.requestId);
-        console.log(">>> Queue: Cleaned up tracking", {
-          requestId: item.requestId,
-        });
 
         // Resolve the promise and emit events
         item.resolve(audioPath);
@@ -222,9 +193,6 @@ export class TTSQueue extends EventEmitter {
           bookId: item.bookId,
           cfiRange: item.cfiRange,
           audioPath,
-          requestId: item.requestId,
-        });
-        console.log(">>> Queue: Emitted audio-ready event", {
           requestId: item.requestId,
         });
       } catch (error) {
@@ -248,7 +216,7 @@ export class TTSQueue extends EventEmitter {
           item.retryCount < this.MAX_RETRIES &&
           this.isRetryableError(error)
         ) {
-          console.log(
+          console.warn(
             `Retrying request ${item.requestId} (attempt ${item.retryCount + 1})`
           );
           item.retryCount++;
@@ -294,15 +262,6 @@ export class TTSQueue extends EventEmitter {
   private async generateAudio(item: QueueItem): Promise<Uint8Array> {
     const url = `http://${this.openaiProxyUrl}/v1/audio/speech`;
 
-    console.log(">>> Queue: Generating audio", {
-      url,
-      requestId: item.requestId,
-      textLength: item.text.length,
-      textPreview: item.text.substring(0, 100) + "...",
-      priority: item.priority,
-      retryCount: item.retryCount,
-    });
-
     try {
       const requestBody = {
         model: "tts-1",
@@ -312,25 +271,12 @@ export class TTSQueue extends EventEmitter {
         speed: 1.0,
       };
 
-      console.log(">>> Queue: Sending request", {
-        requestId: item.requestId,
-        bodySize: JSON.stringify(requestBody).length,
-      });
-
       const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(requestBody),
-      });
-
-      console.log(">>> Queue: Response received", {
-        requestId: item.requestId,
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        headers: Object.fromEntries(response.headers.entries()),
       });
 
       if (!response.ok) {
@@ -350,10 +296,6 @@ export class TTSQueue extends EventEmitter {
 
       // Convert response to buffer
       const audioData = await response.bytes();
-      console.log(">>> Queue: Converted response to buffer", {
-        requestId: item.requestId,
-        bufferSize: audioData.length,
-      });
 
       if (audioData.length === 0) {
         throw new Error("OpenAI TTS API returned empty audio buffer");
@@ -411,8 +353,6 @@ export class TTSQueue extends EventEmitter {
       clearTimeout(timeout);
     }
     this.pendingTimeouts.clear();
-
-    console.log("TTS queue cleared");
   }
 
   /**

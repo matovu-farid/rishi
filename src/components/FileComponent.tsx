@@ -68,7 +68,6 @@ function FileDrop(): React.JSX.Element {
 
     onError(error) {
       toast.error("Can't remove book");
-      console.log({ error });
     },
     onSuccess() {
       void queryClient.invalidateQueries({ queryKey: ["books"] });
@@ -88,7 +87,6 @@ function FileDrop(): React.JSX.Element {
 
     onError(error) {
       toast.error("Can't upload book");
-      console.log({ error });
     },
     onSuccess() {
       void queryClient.invalidateQueries({ queryKey: ["books"] });
@@ -108,7 +106,6 @@ function FileDrop(): React.JSX.Element {
 
     onError(error) {
       toast.error("Can't upload book");
-      console.log({ error });
     },
     onSuccess() {
       void queryClient.invalidateQueries({ queryKey: ["books"] });
@@ -132,7 +129,6 @@ function FileDrop(): React.JSX.Element {
   const handleChooseFiles = async () => {
     try {
       const filePaths: string[] = await chooseFiles();
-      console.log({ filePaths });
       processFilePaths(filePaths);
     } catch (error) {
       toast.error("Can't open file picker");
@@ -144,7 +140,6 @@ function FileDrop(): React.JSX.Element {
   const { isDragging } = useTauriDragDrop({
     allowedExtensions: [".epub", ".pdf"],
     onFilesDropped: (filePaths) => {
-      console.log({ filePaths });
       processFilePaths(filePaths);
     },
   });

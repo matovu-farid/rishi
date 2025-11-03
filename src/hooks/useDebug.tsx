@@ -23,7 +23,6 @@ export const useDebug = (player: Player) => {
   }, [onPlayingStateChanged]);
   useEffect(() => {
     if (isDebugging) return;
-    console.log(debugPlayingState.current.join("->"));
   }, [isDebugging]);
   return {
     isDebugging,

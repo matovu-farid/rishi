@@ -239,7 +239,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
     this.setPlayingState(PlayingState.Playing);
 
     if ((await this.playerControl.getCurrentViewParagraphs()).length === 0) {
-      console.log(
+      console.warn(
         "🎵 No paragraphs on page (likely an image page) - pausing briefly then moving to next page"
       );
       // Give user 2 seconds to view the image, then move to next page
@@ -257,7 +257,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
 
     // Check if paragraph has no text (e.g., image-only content)
     if (!currentParagraph.text.trim()) {
-      console.log(
+      console.warn(
         "🎵 No text in paragraph (likely an image) - pausing briefly then moving to next paragraph"
       );
       await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -344,16 +344,10 @@ export class Player extends EventEmitter<PlayerEventMap> {
       });
     });
 
-    console.log("▶️ Starting audio playback:", {
-      src: this.audioElement.src,
-      paragraphIndex: this.currentParagraphIndex,
-      paragraphText: currentParagraph.text.substring(0, 100) + "...",
-    });
+   
 
     await this.audioElement.play();
     this.setPlayingState(PlayingState.Playing);
-
-    console.log("✅ Audio playback started successfully");
 
     // Prefetch next paragraphs
 
@@ -459,11 +453,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
       await this.moveToPreviousPage();
       return;
     }
-    console.log(`>>> Player: updateParagaph`, {
-      index,
-      paragraphsLength: (await this.playerControl.getCurrentViewParagraphs())
-        .length,
-    });
+
     if (index >= (await this.playerControl.getCurrentViewParagraphs()).length) {
       await this.moveToNextPage();
       return;
@@ -581,22 +571,13 @@ export class Player extends EventEmitter<PlayerEventMap> {
     priority: number,
     skipCache = false
   ) {
-    console.log(">>> Player: Request audio", {
-      paragraphIndex: this.currentParagraphIndex,
-      cfiRange: paragraph.index,
-      textPreview: paragraph.text.substring(0, 50) + "...",
-      priority,
-    });
-
     if (skipCache === false) {
       if (!paragraph.text.trim()) {
-        console.log(">>> Player: Empty paragraph text, skipping audio request");
         return null;
       }
 
       const cached = this.audioCache.get(paragraph.index);
       if (cached) {
-        console.log(">>> Player: Using memory cached audio", { cached });
         return cached;
       }
 
@@ -610,7 +591,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
 
         if (diskCached) {
           this.addToAudioCache(paragraph.index, diskCached);
-          console.log(">>> Player: Added disk cached audio to memory cache");
+
           return diskCached;
         }
       } catch (error) {
@@ -631,7 +612,6 @@ export class Player extends EventEmitter<PlayerEventMap> {
       }
 
       // Request new audio via React Query mutation
-      console.log(">>> Player: Requesting new audio from TTS service");
     }
     try {
       const audioPath = await requestTTSAudio(
@@ -648,7 +628,6 @@ export class Player extends EventEmitter<PlayerEventMap> {
 
       // Update cache
       this.addToAudioCache(paragraph.index, audioPath);
-      console.log(">>> Player: Added new audio to memory cache");
 
       return audioPath;
     } catch (error) {

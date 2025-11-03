@@ -78,7 +78,6 @@ export function usePdfNavigation(bookId: string) {
 
     onError(error) {
       toast.error("Can not change book page");
-      console.log({ error });
     },
   });
   // Track window resize and fullscreen changes
@@ -206,7 +205,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
 
     onError(error) {
       toast.error("Can not change book page");
-      console.log({ error });
     },
   });
 
@@ -454,7 +452,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
 
 type Transform = [number, number, number, number, number, number];
 type Paragraph = ParagraphWithIndex & {
-
   dimensions: {
     top: number;
     bottom: number;
@@ -527,7 +524,6 @@ export function PageComponent({
 
   useEffect(() => {
     if (pageData) {
-      console.log({ pageData });
       const items = pageData.items;
       let headerGot = false;
       function isTextItem(
@@ -552,10 +548,12 @@ export function PageComponent({
         const isParagraphTooShort = textSoFar.length < MIN_PARAGRAPH_LENGTH;
         const isHeader =
           areParagraphsEmpty && isParagraphTooShort && !headerGot;
-          const currentIdx = paragraphsSoFarArray.current.length;
-          const pargraphIdx = (pageNumber * PARAGRAPH_INDEX_PER_PAGE + currentIdx).toString()
+        const currentIdx = paragraphsSoFarArray.current.length;
+        const pargraphIdx = (
+          pageNumber * PARAGRAPH_INDEX_PER_PAGE +
+          currentIdx
+        ).toString();
         if (isVerticallySpaced && isThereText) {
-      
           if (isHeader) {
             paragraghSoFar.current = {
               index: pargraphIdx,
@@ -565,7 +563,6 @@ export function PageComponent({
             headerGot = true;
             continue;
           }
-        
 
           paragraphsSoFarArray.current.push(paragraghSoFar.current);
           // reset the paragraph so far
@@ -630,8 +627,6 @@ export function PageComponent({
 
           return acc;
         }, []);
-
-      console.log({ paragraphsSoFar: paragraphsSoFarArray.current });
     }
   }, [pageData]);
   return (
@@ -644,7 +639,10 @@ export function PageComponent({
         transform,
       }) => {
         if (
-          isInsideParagraph(transform as Transform, paragraphsSoFarArray.current[0])
+          isInsideParagraph(
+            transform as Transform,
+            paragraphsSoFarArray.current[0]
+          )
         ) {
           return `<mark>${str}</mark>`;
         }
