@@ -20,14 +20,40 @@ export const currentViewPagesAtom = atom<number[]>([]);
 export const previousViewPagesAtom = atom<number[]>([]);
 export const nextViewPagesAtom = atom<number[]>([]);
 export const pageCountAtom = atom(0);
+
 export const paragraphsAtom = atomWithImmer<{
   [pageNumber: number]: Paragraph[];
 }>({});
 
+export const resetParaphStateAtom = atom(null, (get, set) => {
+  set(pageNumberAtom, 1);
+  set(isDualPageAtom, true);
+  set(currentViewPagesAtom, []);
+  set(previousViewPagesAtom, []);
+  set(nextViewPagesAtom, []);
+  set(pageCountAtom, 0);
+  set(paragraphsAtom, {});
+  set(highlightedParagraphArrayIndexAtom, 0);
+  set(highlightedParagraphGlobalIndexAtom, "");
+  set(isHighlightingAtom, false);
+  set(renderedAtom, false);
+  set(isRenderedPageStateAtom, {});
+});
 export const getCurrentViewParagraphsAtom = atom((get) => {
-  return get(currentViewPagesAtom)
+  const paragraphs = get(currentViewPagesAtom)
     .map((pageNumber) => get(paragraphsAtom)[pageNumber])
-    .flat();
+    .flat()
+    .filter((p): p is Paragraph => p !== undefined);
+
+  // Deduplicate by index, keeping the first occurrence as a safety measure
+  const seen = new Set<string>();
+  return paragraphs.filter((paragraph) => {
+    if (seen.has(paragraph.index)) {
+      return false;
+    }
+    seen.add(paragraph.index);
+    return true;
+  });
 });
 
 export const highlightedParagraphArrayIndexAtom = atom(0);
@@ -59,7 +85,6 @@ export const highlightedParagraphAtom = atom((get) => {
   ];
 });
 
-
 export const highlightedPageAtom = atom((get) => {
   const highlightedParagraph = get(highlightedParagraphAtom);
   const paragraphs = get(paragraphsAtom);
@@ -80,14 +105,36 @@ export const highlightedPageAtom = atom((get) => {
 });
 
 export const getNextViewParagraphsAtom = atom((get) => {
-  return get(nextViewPagesAtom)
+  const paragraphs = get(nextViewPagesAtom)
     .map((pageNumber) => get(paragraphsAtom)[pageNumber])
-    .flat();
+    .flat()
+    .filter((p): p is Paragraph => p !== undefined);
+
+  // Deduplicate by index, keeping the first occurrence as a safety measure
+  const seen = new Set<string>();
+  return paragraphs.filter((paragraph) => {
+    if (seen.has(paragraph.index)) {
+      return false;
+    }
+    seen.add(paragraph.index);
+    return true;
+  });
 });
 export const getPreviousViewParagraphsAtom = atom((get) => {
-  return get(previousViewPagesAtom)
+  const paragraphs = get(previousViewPagesAtom)
     .map((pageNumber) => get(paragraphsAtom)[pageNumber])
-    .flat();
+    .flat()
+    .filter((p): p is Paragraph => p !== undefined);
+
+  // Deduplicate by index, keeping the first occurrence as a safety measure
+  const seen = new Set<string>();
+  return paragraphs.filter((paragraph) => {
+    if (seen.has(paragraph.index)) {
+      return false;
+    }
+    seen.add(paragraph.index);
+    return true;
+  });
 });
 
 export const setParagraphsAtom = atom(
@@ -144,6 +191,7 @@ export const isRenderedPageAtom = atom(
   }
 );
 export const isRenderedAtom = atom((get) => {
+ 
   return get(currentViewPagesAtom)
     .map((pageNumber) => get(isRenderedPageAtom)[pageNumber])
     .every((rendered) => rendered);

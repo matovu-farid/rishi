@@ -50,6 +50,7 @@ import {
   Paragraph,
   previousPageAtom,
   previousViewPagesAtom,
+  resetParaphStateAtom,
   setParagraphsAtom,
 } from "@/stores/paragraph-atoms";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -153,6 +154,14 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const [menuOpen, setMenuOpen] = useState(false);
   const [tocOpen, setTocOpen] = useState(false);
 
+  const resetParaphState = useSetAtom(resetParaphStateAtom);
+
+  useEffect(() => {
+    return () => {
+      resetParaphState();
+    };
+  }, []);
+
   // Configure PDF.js options with CDN fallback for better font and image support
   const pdfOptions = useMemo<DocumentInitParameters>(
     () => ({
@@ -220,14 +229,20 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const setPreviousViewPages = useSetAtom(previousViewPagesAtom);
   const setNextViewPages = useSetAtom(nextViewPagesAtom);
   const [numPages, setPageCount] = useAtom(pageCountAtom);
-  const playerControl = useRef<PlayerControlInterface | undefined>(undefined);
+  const [playerControl, setPlayerControl] = useState<
+    PlayerControlInterface | undefined
+  >(undefined);
   const isRendered = useAtomValue(isRenderedAtom);
+  const bookId = book.id;
 
   useEffect(() => {
     if (isRendered) {
-      playerControl.current = new PdfPlayerControl(book.id);
+      setPlayerControl(new PdfPlayerControl(bookId));
     }
-  }, [isRendered]);
+    return () => {
+      setPlayerControl(undefined);
+    };
+  }, [isRendered, bookId]);
 
   useEffect(() => {
     if (isDualPage) {
@@ -458,11 +473,8 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
         </Document>
         {/* TTS Controls - Bottom Center */}
         <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-50">
-          {playerControl.current && (
-            <TTSControls
-              bookId={book.id}
-              playerControl={playerControl.current}
-            />
+          {playerControl && (
+            <TTSControls bookId={book.id} playerControl={playerControl} />
           )}
         </div>
       </div>
@@ -516,6 +528,14 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
 }
 
 type Transform = [number, number, number, number, number, number];
+const getParagraphThreshold = (item: TextItem): number => {
+  // If height is available, use 1.5x the height
+  if ("height" in item && typeof item.height === "number" && item.height > 0) {
+    return item.height * 1.5;
+  }
+  // Fallback to dynamic calculation or default
+  return 12;
+};
 
 const PARAGRAPH_INDEX_PER_PAGE = 10000;
 export function PageComponent({
@@ -543,7 +563,7 @@ export function PageComponent({
   const paragraphsSoFarArray = useRef<Paragraph[]>([]);
   function isInsideParagraph(wordTransform: Transform) {
     const highlightedPageNumber = Math.floor(
-      Number(highlightedParagraph.index) / 10000
+      Number(highlightedParagraph.index) / PARAGRAPH_INDEX_PER_PAGE
     );
     if (highlightedPageNumber !== pageNumber) return false;
     const isBelowOrEqualTop =
@@ -560,6 +580,14 @@ export function PageComponent({
 
   useEffect(() => {
     if (pageData) {
+      // Reset arrays for this page parse
+      paragraphsSoFarArray.current = [];
+      paragraghSoFar.current = {
+        index: "",
+        text: "",
+        dimensions: defaultDimensions,
+      };
+
       const items = pageData.items;
       let headerGot = false;
       function isTextItem(
@@ -577,22 +605,26 @@ export function PageComponent({
 
         const isVerticallySpaced =
           previousItem &&
-          Math.abs(previousItem.transform[5] - item.transform[5]) > 12 &&
+          Math.abs(previousItem.transform[5] - item.transform[5]) >
+            getParagraphThreshold(item) &&
           item.hasEOL;
         const isThereText = textSoFar.trim().length > 0;
         const areParagraphsEmpty = paragraphsSoFarArray.current.length === 0;
         const isParagraphTooShort = textSoFar.length < MIN_PARAGRAPH_LENGTH;
         const isHeader =
           areParagraphsEmpty && isParagraphTooShort && !headerGot;
-        const currentIdx = paragraphsSoFarArray.current.length;
-        const pargraphIdx = (
-          pageNumber * PARAGRAPH_INDEX_PER_PAGE +
-          currentIdx
-        ).toString();
+
         if (isVerticallySpaced && isThereText) {
           if (isHeader) {
+            // Skip the header - don't push it, just reset for next paragraph
+            // Next paragraph will get index based on current array length
+            const nextIdx = paragraphsSoFarArray.current.length;
+            const nextPargraphIdx = (
+              pageNumber * PARAGRAPH_INDEX_PER_PAGE +
+              nextIdx
+            ).toString();
             paragraghSoFar.current = {
-              index: pargraphIdx,
+              index: nextPargraphIdx,
               text: "",
               dimensions: defaultDimensions,
             };
@@ -601,6 +633,12 @@ export function PageComponent({
           }
 
           paragraphsSoFarArray.current.push(paragraghSoFar.current);
+          // Calculate index AFTER push, so it's incremented correctly
+          const currentIdx = paragraphsSoFarArray.current.length;
+          const pargraphIdx = (
+            pageNumber * PARAGRAPH_INDEX_PER_PAGE +
+            currentIdx
+          ).toString();
           // reset the paragraph so far
           paragraghSoFar.current = {
             index: pargraphIdx,
@@ -609,6 +647,13 @@ export function PageComponent({
           };
         }
         previousItem = item;
+
+        // Calculate index on each iteration for the accumulating paragraph
+        const currentIdx = paragraphsSoFarArray.current.length;
+        const pargraphIdx = (
+          pageNumber * PARAGRAPH_INDEX_PER_PAGE +
+          currentIdx
+        ).toString();
 
         paragraghSoFar.current = {
           index: pargraphIdx,
