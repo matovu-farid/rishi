@@ -138,7 +138,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
 
     // advanceToNextParagraphRef.current?.() // Use ref to avoid stale closure
     await this.next();
-    this.audioElement.removeEventListener("ended", this.handleEnded);
+    // Don't remove listener here - play() manages listener lifecycle
   };
   private handleError = async (e: Event) => {
     const audioElement = e.target as HTMLAudioElement;
@@ -181,7 +181,6 @@ export class Player extends EventEmitter<PlayerEventMap> {
     console.error("🔴 Error message added:", errorMsg);
 
     this.setPlayingState(PlayingState.Stopped);
-    this.audioElement.removeEventListener("error", this.handleError);
   };
 
   private getMediaErrorName(code: number): string {
