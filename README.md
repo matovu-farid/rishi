@@ -1,6 +1,32 @@
 # Rishi
 
-A cross-platform EPUB reader built with Tauri.
+A cross-platform EPUB and PDF reader with offline-friendly Text-to-Speech (TTS), built with Tauri.
+
+## Features
+
+- **Library management**: Add books via file picker or drag-and-drop; persistent storage; delete from library
+- **Reading progress**: Auto-saves and resumes per book
+- **Text-to-Speech (TTS)**: Play/pause/stop, previous/next paragraph, background generation queue, local audio cache (provider-agnostic)
+- **Themes**: Multiple reader themes (light/dark variants)
+- **Navigation**: Keyboard arrows and touch swipe; table of contents for EPUB
+- **EPUB reader**: Continuous layout with customizable styles
+- **PDF reader**: Single/dual-page viewing, outline navigation, selectable text layer
+- **Cross-platform**: macOS, Windows, and Linux
+
+## Demo
+
+Watch the app in action: [YouTube demo](https://youtu.be/vcWcpEGsof8)
+
+## Supported Formats
+
+- `.epub`
+- `.pdf`
+
+## Usage
+
+1. Open the app and add books using the Add button (file picker) or drag-and-drop `.epub`/`.pdf` files into the window
+2. Select a book from the library to start reading; progress is saved automatically
+3. Use the TTS controls at the bottom of the reader to listen to the current paragraph and navigate between paragraphs
 
 ## Building from Source
 
