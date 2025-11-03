@@ -7,6 +7,8 @@ import {
 } from "@/modules/ipc_handel_functions";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { ParagraphWithIndex, PlayerControlInterface } from "./player_control";
+import { customStore } from "@/stores/jotai";
+import { paragraphsForCurrentViewPlayerReceivedAtom } from "@/stores/paragraph-atoms";
 export enum PlayingState {
   Playing = "playing",
   Paused = "paused",
@@ -64,6 +66,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
       this.audioElement = new Audio();
       this.audioElement.addEventListener("ended", this.handleEnded);
       this.audioElement.addEventListener("error", this.handleError);
+      this.resetParagraphs();
     });
     this.playerControl.onLocationChanged(() => {
       void this.handleLocationChanged();
@@ -74,20 +77,25 @@ export class Player extends EventEmitter<PlayerEventMap> {
 
     // this.nextPageParagraphs = [];
     // this.previousPageParagraphs = [];
-    this.resetParagraphs();
   }
   private async clearHighlights() {
-    for (const paragraph of this.paragraphs) {
+    for (const paragraph of await this.playerControl.getCurrentViewParagraphs()) {
       await this.unhighlightParagraph(paragraph);
     }
   }
-  private resetParagraphs() {
-    this.playerControl.getCurrentViewParagraphs().then((paragraphs) => {
-      this.paragraphs = paragraphs || [];
+  private async resetParagraphs() {
+    customStore.set(
+      paragraphsForCurrentViewPlayerReceivedAtom,
+      await this.playerControl.getCurrentViewParagraphs()
+    );
+
+    console.log({
+      paragraphs: await this.playerControl.getCurrentViewParagraphs(),
     });
-    console.log({ paragraphs: this.paragraphs });
     if (this.direction === Direction.Backward)
-      this.setParagraphIndex(this.paragraphs.length - 1);
+      this.setParagraphIndex(
+        (await this.playerControl.getCurrentViewParagraphs()).length - 1
+      );
     else this.setParagraphIndex(0);
     return Promise.all([
       this.playerControl.getNextViewParagraphs().then((nextPageParagraphs) => {
@@ -121,7 +129,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
   }
   private handleEnded = async () => {
     try {
-      const currentParagraph = this.getCurrentParagraph();
+      const currentParagraph = await this.getCurrentParagraph();
       if (!currentParagraph) return;
       await this.playerControl.removeHighlight(currentParagraph.index);
     } catch (error) {
@@ -131,10 +139,10 @@ export class Player extends EventEmitter<PlayerEventMap> {
     // advanceToNextParagraphRef.current?.() // Use ref to avoid stale closure
     await this.next();
   };
-  private handleError = (e: Event) => {
+  private handleError = async (e: Event) => {
     const audioElement = e.target as HTMLAudioElement;
     const mediaError = audioElement.error;
-
+    const currentParagraph = await this.getCurrentParagraph();
     // Detailed error information
     const errorDetails = {
       timestamp: new Date().toISOString(),
@@ -151,11 +159,11 @@ export class Player extends EventEmitter<PlayerEventMap> {
             errorName: this.getMediaErrorName(mediaError.code),
           }
         : null,
-      currentParagraph: this.getCurrentParagraph()
+      currentParagraph: currentParagraph
         ? {
             index: this.currentParagraphIndex,
-            text: this.getCurrentParagraph()?.text.substring(0, 100) + "...",
-            cfiRange: this.getCurrentParagraph()?.index,
+            text: currentParagraph?.text.substring(0, 100) + "...",
+            cfiRange: currentParagraph?.index,
           }
         : null,
     };
@@ -204,19 +212,22 @@ export class Player extends EventEmitter<PlayerEventMap> {
     };
     return stateNames[state] || `UNKNOWN_STATE (${state})`;
   }
-  public getCurrentParagraph() {
+  public async getCurrentParagraph() {
     if (this.currentParagraphIndex < 0) {
       this.currentParagraphIndex = 0;
     }
-    if (this.currentParagraphIndex >= this.paragraphs.length) {
-      this.currentParagraphIndex = this.paragraphs.length - 1;
+    if (
+      this.currentParagraphIndex >=
+      (await this.playerControl.getCurrentViewParagraphs()).length
+    ) {
+      this.currentParagraphIndex =
+        (await this.playerControl.getCurrentViewParagraphs()).length - 1;
     }
-    return this.paragraphs[this.currentParagraphIndex];
+    return (await this.playerControl.getCurrentViewParagraphs())[
+      this.currentParagraphIndex
+    ];
   }
 
-  public setParagraphs(paragraphs: ParagraphWithIndex[]) {
-    this.paragraphs = paragraphs;
-  }
   public async play(maxRetries: number = 3): Promise<void> {
     let attempt = 0;
     let skipCache = false;
@@ -235,7 +246,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
         });
 
         // Ensure a clean retry
-        const currentParagraph = this.getCurrentParagraph();
+        const currentParagraph = await this.getCurrentParagraph();
         if (currentParagraph) this.audioCache.delete(currentParagraph.index);
         this.audioElement.pause();
         this.audioElement.src = "";
@@ -251,7 +262,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
     if (this.playingState === PlayingState.Playing) return;
     this.setPlayingState(PlayingState.Playing);
 
-    if (this.paragraphs.length === 0) {
+    if ((await this.playerControl.getCurrentViewParagraphs()).length === 0) {
       console.log(
         "🎵 No paragraphs on page (likely an image page) - pausing briefly then moving to next page"
       );
@@ -261,7 +272,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
       return;
     }
 
-    const currentParagraph = this.getCurrentParagraph();
+    const currentParagraph = await this.getCurrentParagraph();
     if (!currentParagraph) {
       console.error("🎵 No current paragraph available");
       this.errors.push("No current paragraph available to play");
@@ -314,7 +325,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
         this.audioElement?.removeEventListener("error", handleError);
         resolve(undefined);
       };
-      const handleError = (e: Event) => {
+      const handleError = async (e: Event) => {
         const audioElement = e.target as HTMLAudioElement;
         const mediaError = audioElement.error;
 
@@ -345,7 +356,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
 
         this.audioElement?.removeEventListener("canplaythrough", handleCanPlay);
         this.audioElement?.removeEventListener("error", handleError);
-        const p = this.getCurrentParagraph();
+        const p = await this.getCurrentParagraph();
         if (p) this.audioCache.delete(p.index);
         reject(new Error(JSON.stringify(errorDetails)));
       };
@@ -387,18 +398,24 @@ export class Player extends EventEmitter<PlayerEventMap> {
     });
     this.setPlayingState(PlayingState.Playing);
   }
+  private async getCurrentViewParagraphs() {
+    return await this.playerControl.getCurrentViewParagraphs();
+  }
 
-  public setParagraphIndex(index: number) {
+  public async setParagraphIndex(index: number) {
+    const currentViewParagraphsLength = (await this.getCurrentViewParagraphs())
+      .length;
+
     if (index < 0) {
       index = 0;
     }
-    if (index >= this.paragraphs.length) {
-      index = this.paragraphs.length - 1;
+    if (index >= currentViewParagraphsLength) {
+      index = currentViewParagraphsLength - 1;
     }
     this.currentParagraphIndex = index;
     this.emit(PlayerEvent.PARAGRAPH_INDEX_CHANGED, {
       index,
-      paragraph: this.getCurrentParagraph(),
+      paragraph: await this.getCurrentParagraph(),
     });
   }
   public async stop() {
@@ -407,7 +424,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
     this.audioElement.currentTime = 0;
     this.setParagraphIndex(0);
 
-    const currentParagraph = this.getCurrentParagraph();
+    const currentParagraph = await this.getCurrentParagraph();
     if (!currentParagraph) return;
     const audioPath = convertFileSrc(
       (await this.requestAudio(currentParagraph, this.getNextPriority())) || ""
@@ -461,12 +478,22 @@ export class Player extends EventEmitter<PlayerEventMap> {
   private updateParagaph = async (index: number) => {
     // bounds checks
     if (index < 0) {
-      return this.moveToPreviousPage();
+      await this.moveToPreviousPage();
+      return;
     }
-    if (index >= this.paragraphs.length) {
-      return this.moveToNextPage();
+    console.log(`>>> Player: updateParagaph`, {
+      index,
+      paragraphsLength: (await this.playerControl.getCurrentViewParagraphs())
+        .length,
+    });
+    if (index >= (await this.playerControl.getCurrentViewParagraphs()).length) {
+      await this.moveToNextPage();
+      return;
     }
-    if (index == this.paragraphs.length - 1) {
+    if (
+      index ==
+      (await this.playerControl.getCurrentViewParagraphs()).length - 1
+    ) {
       // Request audio for the next paragraphs of the next page
       if (this.playingState === PlayingState.Playing) {
         void this.prefetchNextPageAudio(3);
@@ -510,7 +537,8 @@ export class Player extends EventEmitter<PlayerEventMap> {
     return this.errors;
   }
 
-  public getDetailedErrorInfo() {
+  public async getDetailedErrorInfo() {
+    const currentParagraph = await this.getCurrentParagraph();
     return {
       errors: this.errors,
       audioElementState: {
@@ -536,11 +564,12 @@ export class Player extends EventEmitter<PlayerEventMap> {
       currentState: {
         playingState: this.playingState,
         paragraphIndex: this.currentParagraphIndex,
-        totalParagraphs: this.paragraphs.length,
-        currentParagraph: this.getCurrentParagraph()
+        totalParagraphs: (await this.playerControl.getCurrentViewParagraphs())
+          .length,
+        currentParagraph: currentParagraph
           ? {
-              text: this.getCurrentParagraph()?.text.substring(0, 100) + "...",
-              cfiRange: this.getCurrentParagraph()?.index,
+              text: currentParagraph?.text.substring(0, 100) + "...",
+              cfiRange: currentParagraph?.index,
             }
           : null,
       },
@@ -669,8 +698,13 @@ export class Player extends EventEmitter<PlayerEventMap> {
   private async prefetchAudio(startIndex: number, count: number) {
     for (let i = 0; i < count; i++) {
       const index = startIndex + i;
-      if (index < this.paragraphs.length && index >= 0) {
-        const paragraph = this.paragraphs[index];
+      if (
+        index < (await this.playerControl.getCurrentViewParagraphs()).length &&
+        index >= 0
+      ) {
+        const paragraph = (await this.playerControl.getCurrentViewParagraphs())[
+          index
+        ];
         await this.requestAudio(paragraph, this.priority - 1).catch((error) => {
           console.warn(`Prefetch failed for paragraph ${index}:`, error);
         }); // Fix: Add error logging for prefetch failures

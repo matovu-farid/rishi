@@ -19,6 +19,13 @@ export class PdfPlayerControl implements PlayerControlInterface {
     this.bookId = bookId;
   }
   async waitUntilRendered(): Promise<void> {
+    // Check current state first - if already rendered, resolve immediately
+    const isRendered = customStore.get(isRenderedAtom);
+    if (isRendered) {
+      return Promise.resolve();
+    }
+
+    // Otherwise, wait for it to become true
     return new Promise((resolve) => {
       customStore.sub(isRenderedAtom, () => {
         const isRendered = customStore.get(isRenderedAtom);

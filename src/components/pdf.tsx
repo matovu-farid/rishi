@@ -48,6 +48,7 @@ import {
   pageCountAtom,
   pageNumberAtom,
   Paragraph,
+  paragraphsForCurrentViewPlayerReceivedAtom,
   previousPageAtom,
   previousViewPagesAtom,
   resetParaphStateAtom,
@@ -229,6 +230,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const setPreviousViewPages = useSetAtom(previousViewPagesAtom);
   const setNextViewPages = useSetAtom(nextViewPagesAtom);
   const [numPages, setPageCount] = useAtom(pageCountAtom);
+  useAtom(paragraphsForCurrentViewPlayerReceivedAtom);
   const [playerControl, setPlayerControl] = useState<
     PlayerControlInterface | undefined
   >(undefined);
