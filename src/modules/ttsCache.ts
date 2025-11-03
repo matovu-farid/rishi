@@ -19,7 +19,7 @@ export class TTSCache {
   private readonly CACHE_CLEANUP_THRESHOLD = 0.8; // Cleanup when 80% full
 
   constructor() {
-    this.init();
+    void this.init();
   }
   async init() {
     this.cacheDir = await path.join(await path.appDataDir(), PUBLIC, TTS_CACHE);
