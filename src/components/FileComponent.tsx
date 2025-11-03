@@ -225,7 +225,7 @@ function FileDrop(): React.JSX.Element {
                         deleteBookMutation.mutate({ book });
                       }}
                       color="error"
-                      className="bg-white p-1"
+                      className="bg-white p-1 z-10 shadow-3xl drop-shadow-lg cursor-pointer"
                     >
                       <Trash2 size={20} />
                     </IconButton>
@@ -234,10 +234,10 @@ function FileDrop(): React.JSX.Element {
                   <Link
                     to="/books/$id"
                     params={{ id: book.id }}
-                    className="rounded-3xl bg-transparent shadow-2xl overflow-hidden"
+                    className="rounded-3xl bg-transparent  overflow-hidden"
                   >
                     <img
-                      className="object-fill"
+                      className="object-fill shadow-3xl drop-shadow-lg"
                       src={bytesToBlobUrl(book.cover)}
                       width={200}
                       alt="cover image"
