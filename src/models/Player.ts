@@ -1,6 +1,5 @@
 import EventEmitter from "events";
 // @ts-ignore
-import { EVENTS } from "epubjs/src/utils/constants";
 import {
   getTTSAudioPath,
   requestTTSAudio,
@@ -43,7 +42,6 @@ export interface ErrorsChangedEvent {
 export class Player extends EventEmitter<PlayerEventMap> {
   private playingState: PlayingState = PlayingState.Stopped;
   private currentParagraphIndex: number = 0;
-  private paragraphs: ParagraphWithIndex[] = [];
   private bookId: string;
   private audioCache: Map<string, string>;
   private priority: number;
@@ -64,8 +62,9 @@ export class Player extends EventEmitter<PlayerEventMap> {
 
     this.playerControl.onRender(() => {
       this.audioElement = new Audio();
-      this.audioElement.addEventListener("ended", this.handleEnded);
-      this.audioElement.addEventListener("error", this.handleError);
+      (window as any).audioElement = this.audioElement;
+
+      console.log("🔴 onRender", { audioElement: this.audioElement });
       void this.resetParagraphs();
     });
     this.playerControl.onLocationChanged(() => {
@@ -89,9 +88,6 @@ export class Player extends EventEmitter<PlayerEventMap> {
       await this.playerControl.getCurrentViewParagraphs()
     );
 
-    console.log({
-      paragraphs: await this.playerControl.getCurrentViewParagraphs(),
-    });
     if (this.direction === Direction.Backward)
       await this.setParagraphIndex(
         (await this.playerControl.getCurrentViewParagraphs()).length - 1
@@ -128,17 +124,21 @@ export class Player extends EventEmitter<PlayerEventMap> {
     this.audioElement.src = "";
   }
   private handleEnded = async () => {
-    try {
-      const currentParagraph = await this.getCurrentParagraph();
-      console.log("🔴 handleEnded", { currentParagraph });
-      if (!currentParagraph) return;
-      await this.playerControl.removeHighlight(currentParagraph.index);
-    } catch (error) {
-      console.warn("Failed to remove highlight:", error);
-    }
+    debugger;
+    // try {
+    //   const currentParagraph = await this.getCurrentParagraph();
+    //   console.log("🔴 handleEnded", { currentParagraph });
+    //   if (currentParagraph) {
+    //     await this.playerControl.removeHighlight(currentParagraph.index);
+    //   }
+    // } catch (error) {
+    //   console.warn("Failed to remove highlight:", error);
+    // }
+    await this.clearHighlights();
 
     // advanceToNextParagraphRef.current?.() // Use ref to avoid stale closure
     await this.next();
+    this.audioElement.removeEventListener("ended", this.handleEnded);
   };
   private handleError = async (e: Event) => {
     const audioElement = e.target as HTMLAudioElement;
@@ -181,6 +181,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
     console.error("🔴 Error message added:", errorMsg);
 
     this.setPlayingState(PlayingState.Stopped);
+    this.audioElement.removeEventListener("error", this.handleError);
   };
 
   private getMediaErrorName(code: number): string {
@@ -230,6 +231,14 @@ export class Player extends EventEmitter<PlayerEventMap> {
   }
 
   public async play(maxRetries: number = 3): Promise<void> {
+    // Remove any existing listeners first to prevent accumulation
+    this.audioElement.removeEventListener("ended", this.handleEnded);
+    this.audioElement.removeEventListener("error", this.handleError);
+
+    // Add listeners using the bound method references directly
+    this.audioElement.addEventListener("ended", this.handleEnded);
+    this.audioElement.addEventListener("error", this.handleError);
+
     let attempt = 0;
     let skipCache = false;
 

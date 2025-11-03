@@ -39,7 +39,6 @@ export class PdfPlayerControl implements PlayerControlInterface {
   async getCurrentViewParagraphs(): Promise<ParagraphWithIndex[]> {
     await this.waitUntilRendered();
     const currentViewParagraphs = customStore.get(getCurrentViewParagraphsAtom);
-    console.log({ currentViewParagraphs });
 
     return currentViewParagraphs;
   }
