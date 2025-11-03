@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useDropzone } from "react-dropzone";
 import Loader from "./Loader";
 import { Link } from "@tanstack/react-router";
 import { toast } from "react-toastify";
@@ -14,6 +13,7 @@ import {
   copyBookToAppData,
   storeBook,
 } from "@/modules/books";
+import { useTauriDragDrop } from "./hooks/use-tauri-drag-drop";
 
 // Add this helper function
 function bytesToBlobUrl(bytes: number[]): string {
@@ -87,30 +87,39 @@ function FileDrop(): React.JSX.Element {
     },
   });
 
+  // Extract file processing logic to be reusable
+  const processFilePaths = (filePaths: string[]) => {
+    if (filePaths.length > 0) {
+      filePaths.forEach((filePath) => {
+        if (filePath.endsWith(".epub")) {
+          storeBookDataMutation.mutate({ filePath });
+        } else if (filePath.endsWith(".pdf")) {
+          storePdfMutation.mutate({ filePath });
+        }
+      });
+    }
+  };
+
   // Handle native file picker (recommended approach)
   const handleChooseFiles = async () => {
     try {
       const filePaths: string[] = await chooseFiles();
       console.log({ filePaths });
-      if (filePaths.length > 0) {
-        filePaths.forEach((filePath) => {
-          // getCoverImageMutation.mutate({ filePath });
-          if (filePath.endsWith(".epub")) {
-            storeBookDataMutation.mutate({ filePath });
-          } else if (filePath.endsWith(".pdf")) {
-            storePdfMutation.mutate({ filePath });
-          }
-        });
-      }
+      processFilePaths(filePaths);
     } catch (error) {
       toast.error("Can't open file picker");
       console.error(error);
     }
   };
 
-  // Handle drag and drop (uses Electron's File.path property)
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({});
+  // Handle drag and drop using Tauri native API
+  const { isDragging } = useTauriDragDrop({
+    allowedExtensions: [".epub", ".pdf"],
+    onFilesDropped: (filePaths) => {
+      console.log({ filePaths });
+      processFilePaths(filePaths);
+    },
+  });
   if (isError)
     return (
       <div className="w-full h-full place-items-center grid">
@@ -152,11 +161,8 @@ function FileDrop(): React.JSX.Element {
             ? "w-full h-screen p-5 gap-[30px] place-items-baseline cursor-pointer"
             : "grid place-items-center gap-3 rounded-3xl w-[50vw] h-[50vh] p-5 mx-auto"
         }
-        {...getRootProps()}
       >
-        <input {...getInputProps()} className="p-5 cursor-pointer" />
-
-        {isDragActive && (!books || books.length === 0) ? (
+        {isDragging && (!books || books.length === 0) ? (
           <p>Drop the files here ...</p>
         ) : books && books.length > 0 ? (
           books.map((book) => (
@@ -202,7 +208,7 @@ function FileDrop(): React.JSX.Element {
           <div className="text-center">
             <p className="mb-4">No books yet. Add your first book!</p>
             <p className="text-sm text-gray-500">
-              You can also drag and drop EPUB files here
+              You can also drag and drop EPUB or PDF files here
             </p>
           </div>
         )}
