@@ -292,11 +292,6 @@ export class Player extends EventEmitter<PlayerEventMap> {
 
     await new Promise((resolve, reject) => {
       const handleCanPlay = () => {
-        console.log("✅ Audio ready to play:", {
-          src: this.audioElement.src,
-          duration: this.audioElement.duration,
-          paragraphIndex: this.currentParagraphIndex,
-        });
         this.audioElement?.removeEventListener("canplaythrough", handleCanPlay);
         this.audioElement?.removeEventListener("error", handleError);
         resolve(undefined);
@@ -343,8 +338,6 @@ export class Player extends EventEmitter<PlayerEventMap> {
         once: true,
       });
     });
-
-   
 
     await this.audioElement.play();
     this.setPlayingState(PlayingState.Playing);
@@ -584,10 +577,6 @@ export class Player extends EventEmitter<PlayerEventMap> {
       // Check disk cache via direct API call
       try {
         const diskCached = await getTTSAudioPath(this.bookId, paragraph.index);
-        console.log(">>> Player: Disk cache result", {
-          diskCached,
-          exists: !!diskCached,
-        });
 
         if (diskCached) {
           this.addToAudioCache(paragraph.index, diskCached);
@@ -620,11 +609,6 @@ export class Player extends EventEmitter<PlayerEventMap> {
         paragraph.text,
         priority
       );
-
-      console.log(">>> Player: Received audio path from TTS service", {
-        audioPath,
-        cfiRange: paragraph.index,
-      });
 
       // Update cache
       this.addToAudioCache(paragraph.index, audioPath);
