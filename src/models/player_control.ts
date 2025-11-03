@@ -10,7 +10,4 @@ export type PlayerControlInterface = {
   highlightParagraph: (index: string) => Promise<void>;
   moveToNextPage: () => Promise<void>;
   moveToPreviousPage: () => Promise<void>;
-  onRender: (callback: () => void) => void;
-  onLocationChanged: (callback: () => void) => void;
-
 };

@@ -60,19 +60,9 @@ export class Player extends EventEmitter<PlayerEventMap> {
 
     this.bookId = bookId;
 
-    this.playerControl.onRender(() => {
-      this.audioElement = new Audio();
-      (window as any).audioElement = this.audioElement;
-
-      console.log("🔴 onRender", { audioElement: this.audioElement });
-      void this.resetParagraphs();
-    });
-
     this.audioCache = new Map();
     this.priority = 3;
     this.errors = [];
-
-
   }
   private async clearHighlights() {
     for (const paragraph of await this.playerControl.getCurrentViewParagraphs()) {

@@ -8,14 +8,12 @@ import {
   isHighlightingAtom,
   isRenderedAtom,
   nextPageAtom,
-  pageNumberAtom,
   previousPageAtom,
 } from "@/stores/paragraph-atoms";
 
 //TODO: Implement the methods
 export class PdfPlayerControl implements PlayerControlInterface {
   private bookId: string;
-  private hasFiredInitialRender: boolean = false;
   constructor(bookId: string) {
     this.bookId = bookId;
   }
@@ -61,55 +59,5 @@ export class PdfPlayerControl implements PlayerControlInterface {
   }
   async moveToPreviousPage() {
     await customStore.set(previousPageAtom, this.bookId);
-  }
-  onRender(callback: () => void) {
-    // If already fired, don't subscribe again
-    if (this.hasFiredInitialRender) {
-      return;
-    }
-
-    // Check if already rendered - fire immediately if so
-    const isRendered = customStore.get(isRenderedAtom);
-    if (isRendered) {
-      this.hasFiredInitialRender = true;
-      callback();
-      return;
-    }
-
-    // Otherwise, wait for first render and fire only once
-    customStore.sub(isRenderedAtom, () => {
-      const isRendered = customStore.get(isRenderedAtom);
-      if (isRendered && !this.hasFiredInitialRender) {
-        this.hasFiredInitialRender = true;
-        callback();
-      }
-    });
-  }
-  onLocationChanged(callback: () => void) {
-    customStore.sub(pageNumberAtom, callback);
-  }
-
-  async waitForPageChange(): Promise<void> {
-    return new Promise((resolve) => {
-      // Create an initial snapshot of current paragraphs
-      const oldParagraphs = customStore.get(getCurrentViewParagraphsAtom);
-
-      // Wait for paragraphs to actually change
-      const unsubscribe = customStore.sub(getCurrentViewParagraphsAtom, () => {
-        const newParagraphs = customStore.get(getCurrentViewParagraphsAtom);
-
-        // Check if paragraphs have actually changed (different length or content)
-        if (newParagraphs !== oldParagraphs && newParagraphs.length > 0) {
-          unsubscribe?.();
-          resolve();
-        }
-      });
-
-      // Safety timeout after 2 seconds
-      setTimeout(() => {
-        unsubscribe?.();
-        resolve();
-      }, 2000);
-    });
   }
 }

@@ -3,7 +3,6 @@ import { ParagraphWithIndex, PlayerControlInterface } from "./player_control";
 import type Rendition from "epubjs/types/rendition";
 
 // @ts-ignore
-import { EVENTS } from "epubjs/src/utils/constants";
 
 import {
   getCurrentViewParagraphs,
@@ -17,30 +16,11 @@ export class EpubPlayerControl implements PlayerControlInterface {
 
   constructor({ rendition }: { rendition: Rendition }) {
     this.rendition = rendition;
-
-    // this.rendition.once(EVENTS.RENDITION.RENDERED, () => {
-    //   //   this.audioElement = new Audio();
-    //   //   this.audioElement.addEventListener("ended", this.handleEnded);
-    //   //   this.audioElement.addEventListener("error", this.handleError);
-    //   onRender();
-    // });
-    // this.rendition.on(EVENTS.RENDITION.LOCATION_CHANGED, () => {
-    //   void onLocationChanged();
-    // });
   }
   async highlightParagraph(index: string): Promise<void> {
     await highlightRange(this.rendition, index);
   }
-  onRender(callback: () => void): void {
-    this.rendition.on(EVENTS.RENDITION.RENDERED, () => {
-      callback();
-    });
-  }
-  onLocationChanged(callback: () => void): void {
-    this.rendition.on(EVENTS.RENDITION.LOCATION_CHANGED, () => {
-      callback();
-    });
-  }
+
   async getCurrentViewParagraphs(): Promise<ParagraphWithIndex[]> {
     return getCurrentViewParagraphs(this.rendition).map((paragraph) => ({
       text: paragraph.text,
