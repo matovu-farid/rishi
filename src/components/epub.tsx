@@ -66,10 +66,6 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
     },
   });
 
-  // Create stable debounced function that uses the latest mutation
-  const mutationRef = useRef(updateBookLocationMutation);
-  mutationRef.current = updateBookLocationMutation;
-
   // Update rendition state when ref becomes available
   useEffect(() => {
     rendition.current?.on("rendered", () => {
