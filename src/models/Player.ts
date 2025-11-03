@@ -6,8 +6,6 @@ import {
 } from "@/modules/ipc_handel_functions";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { ParagraphWithIndex, PlayerControlInterface } from "./player_control";
-import { customStore } from "@/stores/jotai";
-import { paragraphsForCurrentViewPlayerReceivedAtom } from "@/stores/paragraph-atoms";
 export enum PlayingState {
   Playing = "playing",
   Paused = "paused",

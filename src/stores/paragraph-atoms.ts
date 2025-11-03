@@ -196,16 +196,8 @@ export const isRenderedAtom = atom((get) => {
     .every((rendered) => rendered);
 });
 
-export const paragraphsForCurrentViewPlayerReceivedAtom = atom(
-  [],
-  (get, set, paragraphs: ParagraphWithIndex[]) => {
-    set(paragraphsForCurrentViewPlayerReceivedAtom, paragraphs);
-  }
-);
-
 // debug label
-paragraphsForCurrentViewPlayerReceivedAtom.debugLabel =
-  "player paragraphs for current view received";
+
 highlightedParagraphArrayIndexAtom.debugLabel =
   "highlightedParagraphArrayIndexAtom";
 currentParagraphAtom.debugLabel = "currentParagraphAtom";
