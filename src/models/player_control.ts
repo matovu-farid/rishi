@@ -3,7 +3,7 @@ export type ParagraphWithIndex = {
   index: string;
 };
 export type PlayerControlInterface = {
-  getCurrentViewParagraphs: () => ParagraphWithIndex[];
+  getCurrentViewParagraphs: () => Promise<ParagraphWithIndex[]>;
   getNextViewParagraphs: () => Promise<ParagraphWithIndex[]>;
   getPreviousViewParagraphs: () => Promise<ParagraphWithIndex[]>;
   removeHighlight: (index: string) => Promise<void>;

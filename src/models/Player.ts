@@ -48,11 +48,12 @@ export class Player extends EventEmitter<PlayerEventMap> {
   private errors: string[] = [];
   private audioElement: HTMLAudioElement = new Audio();
   private direction: Direction = Direction.Forward;
-  private nextPageParagraphs: ParagraphWithIndex[];
-  private previousPageParagraphs: ParagraphWithIndex[];
+  private nextPageParagraphs: ParagraphWithIndex[] = [];
+  private previousPageParagraphs: ParagraphWithIndex[] = [];
   private playerControl: PlayerControlInterface;
   constructor(playerControl: PlayerControlInterface, bookId: string) {
     super();
+
     this.playerControl = playerControl;
     this.setPlayingState(PlayingState.Stopped);
     this.setParagraphIndex(0);
@@ -71,8 +72,9 @@ export class Player extends EventEmitter<PlayerEventMap> {
     this.priority = 3;
     this.errors = [];
 
-    this.nextPageParagraphs = [];
-    this.previousPageParagraphs = [];
+    // this.nextPageParagraphs = [];
+    // this.previousPageParagraphs = [];
+    this.resetParagraphs();
   }
   private async clearHighlights() {
     for (const paragraph of this.paragraphs) {
@@ -80,7 +82,10 @@ export class Player extends EventEmitter<PlayerEventMap> {
     }
   }
   private resetParagraphs() {
-    this.paragraphs = this.playerControl.getCurrentViewParagraphs() || [];
+    this.playerControl.getCurrentViewParagraphs().then((paragraphs) => {
+      this.paragraphs = paragraphs || [];
+    });
+    console.log({ paragraphs: this.paragraphs });
     if (this.direction === Direction.Backward)
       this.setParagraphIndex(this.paragraphs.length - 1);
     else this.setParagraphIndex(0);

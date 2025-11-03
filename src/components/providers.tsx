@@ -1,8 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { PropsWithChildren } from "react";
+import { type JSX, PropsWithChildren } from "react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { Provider } from "jotai";
+import { DevTools } from "jotai-devtools";
+import "jotai-devtools/styles.css";
+import { customStore } from "@/stores/jotai";
 
 export const queryClient = new QueryClient();
 
@@ -10,7 +14,11 @@ function Providers({ children }: PropsWithChildren): JSX.Element {
   return (
     <div>
       <QueryClientProvider client={queryClient}>
-        {children}
+        <Provider store={customStore}>
+          <DevTools store={customStore} />
+          {children}
+        </Provider>
+
         <ReactQueryDevtools initialIsOpen={false} />
       </QueryClientProvider>
       <ToastContainer />

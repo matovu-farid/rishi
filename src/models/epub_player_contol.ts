@@ -41,7 +41,7 @@ export class EpubPlayerControl implements PlayerControlInterface {
       callback();
     });
   }
-  getCurrentViewParagraphs(): ParagraphWithIndex[] {
+  async getCurrentViewParagraphs(): Promise<ParagraphWithIndex[]> {
     return getCurrentViewParagraphs(this.rendition).map((paragraph) => ({
       text: paragraph.text,
       index: paragraph.cfiRange,

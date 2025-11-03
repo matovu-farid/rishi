@@ -2,7 +2,13 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 
 import { Link } from "@tanstack/react-router";
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, {
+  useEffect,
+  useState,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import { Button } from "@components/ui/Button";
 import { IconButton } from "@components/ui/IconButton";
 import { Menu } from "@components/ui/Menu";
@@ -35,26 +41,8 @@ import "react-pdf/dist/Page/TextLayer.css";
 import createIReactReaderTheme from "@/themes/readerThemes";
 import { NavigationArrows } from "./react-reader/components";
 import { TextItem } from "pdfjs-dist/types/src/display/api";
-import { PlayerControlInterface } from "@/models/player_control";
-import {
-  currentViewPagesAtom,
-  highlightedParagraphAtom,
-  isDualPageAtom,
-  isHighlightingAtom,
-  isRenderedAtom,
-  isRenderedPageAtom,
-  nextPageAtom,
-  nextViewPagesAtom,
-  pageCountAtom,
-  pageNumberAtom,
-  Paragraph,
-  previousPageAtom,
-  previousViewPagesAtom,
-  setParagraphsAtom,
-} from "@/stores/paragraph-atoms";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { TTSControls } from "./TTSControls";
-import { PdfPlayerControl } from "@/models/pdf_player_control";
+import { usePdfParagraphStore } from "@/stores/paragraph";
+import { ParagraphWithIndex } from "@/models/player_control";
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -65,7 +53,8 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 const MIN_PARAGRAPH_LENGTH = 50;
 
 export function usePdfNavigation(bookId: string) {
-  const [numPages, setNumPages] = useAtom(pageCountAtom);
+  const { pageNumber, setPageNumber } = usePdfParagraphStore();
+  const [numPages, setNumPages] = useState<number>(0);
 
   const [windowSize, setWindowSize] = useState({
     width: typeof window !== "undefined" ? window.innerWidth : 1024,
@@ -76,6 +65,22 @@ export function usePdfNavigation(bookId: string) {
   const pdfHeight = windowSize.height - 120; // 60px top + 60px bottom
   // Configure PDF.js options with CDN fallback for better font and image support
 
+  const updateBookLocationMutation = useMutation({
+    mutationFn: async ({
+      bookId,
+      location,
+    }: {
+      bookId: string;
+      location: string;
+    }) => {
+      await updateBookLocation(bookId, location);
+    },
+
+    onError(error) {
+      toast.error("Can not change book page");
+      console.log({ error });
+    },
+  });
   // Track window resize and fullscreen changes
   useEffect(() => {
     const handleResize = () => {
@@ -130,14 +135,26 @@ export function usePdfNavigation(bookId: string) {
   };
 
   const isDualPage = shouldShowDualPage();
-  const setIsDualPage = useSetAtom(isDualPageAtom);
-  setIsDualPage(isDualPage);
+  const pageIncrement = isDualPage ? 2 : 1;
 
-  const previousPageSetter = useSetAtom(previousPageAtom);
-  const previousPage = () => previousPageSetter(bookId);
-  const nextPageSetter = useSetAtom(nextPageAtom);
-  const nextPage = () => nextPageSetter(bookId);
+  function changePage(offset: number) {
+    const newPageNumber = pageNumber + offset;
+    if (newPageNumber >= 1 && newPageNumber <= numPages) {
+      setPageNumber(newPageNumber);
+      updateBookLocationMutation.mutate({
+        bookId: bookId,
+        location: newPageNumber.toString(),
+      });
+    }
+  }
 
+  function previousPage() {
+    changePage(-pageIncrement);
+  }
+
+  function nextPage() {
+    changePage(pageIncrement);
+  }
   return {
     previousPage,
     nextPage,
@@ -165,7 +182,8 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const {
     previousPage,
     nextPage,
-
+    setNumPages,
+    numPages,
     isDualPage,
     pdfHeight,
   } = usePdfNavigation(book.id);
@@ -214,32 +232,10 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     }
   };
 
-  const [pageNumber, setPageNumber] = useAtom(pageNumberAtom);
+  // TODO: Add page number to a zustand store and use it to track the current page
+  // or add a current paragraph and track that across pages. like 10000 ff * pageNumber + paragraphIndex
 
-  const setCurrentViewPages = useSetAtom(currentViewPagesAtom);
-  const setPreviousViewPages = useSetAtom(previousViewPagesAtom);
-  const setNextViewPages = useSetAtom(nextViewPagesAtom);
-  const [numPages, setPageCount] = useAtom(pageCountAtom);
-  const playerControl = useRef<PlayerControlInterface | undefined>(undefined);
-  const isRendered = useAtomValue(isRenderedAtom);
-
-  useEffect(() => {
-    if (isRendered) {
-      playerControl.current = new PdfPlayerControl(book.id);
-    }
-  }, [isRendered]);
-
-  useEffect(() => {
-    if (isDualPage) {
-      setCurrentViewPages([pageNumber, pageNumber + 1]);
-      setPreviousViewPages([pageNumber - 1, pageNumber - 2]);
-      setNextViewPages([pageNumber + 2, pageNumber + 3]);
-    } else {
-      setCurrentViewPages([pageNumber]);
-      setPreviousViewPages([pageNumber - 1]);
-      setNextViewPages([pageNumber + 1]);
-    }
-  }, [pageNumber]);
+  const { pageNumber, setPageNumber } = usePdfParagraphStore();
 
   function onItemClick({ pageNumber: itemPageNumber }: { pageNumber: number }) {
     setPageNumber(itemPageNumber);
@@ -252,7 +248,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   }
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }): void {
-    setPageCount(numPages);
+    setNumPages(numPages);
     // If book has saved location, restore it
     if (book.current_location) {
       const savedPage = parseInt(book.current_location, 10);
@@ -379,93 +375,34 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
           {isDualPage && pageNumber < numPages ? (
             // Dual-page view - side by side with gap
             <div className="flex items-center gap-3">
-              {/* Hidden pages for previous view */}
-              {pageNumber >= 2 && (
-                <PageComponent
-                  key={pageNumber - 2}
-                  thispageNumber={pageNumber - 2}
-                  pdfHeight={pdfHeight}
-                  isHidden={true}
-                />
-              )}
-              {pageNumber >= 1 && (
-                <PageComponent
-                  key={pageNumber - 1}
-                  thispageNumber={pageNumber - 1}
-                  pdfHeight={pdfHeight}
-                  isHidden={true}
-                />
-              )}
               <PageComponent
+                bookId={book.id}
                 key={pageNumber}
                 thispageNumber={pageNumber}
                 pdfHeight={pdfHeight}
-                isHidden={false}
               />
               {pageNumber + 1 <= numPages && (
                 <PageComponent
+                  bookId={book.id}
                   key={pageNumber + 1}
                   thispageNumber={pageNumber + 1}
                   pdfHeight={pdfHeight}
-                  isHidden={false}
-                />
-              )}
-              {/* Hidden pages for next view */}
-              {pageNumber + 2 <= numPages && (
-                <PageComponent
-                  key={pageNumber + 2}
-                  thispageNumber={pageNumber + 2}
-                  pdfHeight={pdfHeight}
-                  isHidden={true}
-                />
-              )}
-              {pageNumber + 3 <= numPages && (
-                <PageComponent
-                  key={pageNumber + 3}
-                  thispageNumber={pageNumber + 3}
-                  pdfHeight={pdfHeight}
-                  isHidden={true}
                 />
               )}
             </div>
           ) : (
             // Single page view
-            <>
-              {pageNumber >= 1 && (
-                <PageComponent
-                  key={pageNumber - 1}
-                  thispageNumber={pageNumber - 1}
-                  pdfHeight={pdfHeight}
-                  isHidden={true}
-                />
-              )}
-              <PageComponent
-                key={pageNumber}
-                thispageNumber={pageNumber}
-                pdfHeight={pdfHeight}
-                isHidden={false}
-              />
-              {pageNumber + 1 <= numPages && (
-                <PageComponent
-                  key={pageNumber + 1}
-                  thispageNumber={pageNumber + 1}
-                  pdfHeight={pdfHeight}
-                  isHidden={false}
-                />
-              )}
-            </>
-          )}
-        </Document>
-        {/* TTS Controls - Bottom Center */}
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-50">
-          {playerControl.current && (
-            <TTSControls
+
+            <PageComponent
               bookId={book.id}
-              playerControl={playerControl.current}
+              key={pageNumber}
+              thispageNumber={pageNumber}
+              pdfHeight={pdfHeight}
             />
           )}
-        </div>
+        </Document>
       </div>
+
       {/* TOC Sidebar */}
       <Sheet open={tocOpen} onOpenChange={setTocOpen}>
         <SheetContent
@@ -516,20 +453,56 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
 }
 
 type Transform = [number, number, number, number, number, number];
+type Paragraph = ParagraphWithIndex & {
+
+  dimensions: {
+    top: number;
+    bottom: number;
+  };
+};
 
 const PARAGRAPH_INDEX_PER_PAGE = 10000;
 export function PageComponent({
+  bookId,
   thispageNumber: pageNumber,
   pdfHeight,
-  isHidden = false,
 }: {
+  bookId: string;
   thispageNumber: number;
   pdfHeight: number;
-  isHidden: boolean;
 }) {
   const [pageData, setPageData] = useState<TextContent | null>(null);
-  const isHighlighting = useAtomValue(isHighlightingAtom);
-  const setParagraphs = useSetAtom(setParagraphsAtom);
+  const {
+    pageNumber: currentPageNumber,
+    setCurrentParagraphIndex,
+    setCurrentParagraph,
+    currentParagraphIndex,
+  } = usePdfParagraphStore();
+  const index = currentParagraphIndex % PARAGRAPH_INDEX_PER_PAGE;
+  const isActivePage = pageNumber === currentPageNumber;
+  const { nextPage } = usePdfNavigation(bookId);
+  const defaultParagraph = { index: "", text: "" };
+
+  // This fills the current paragraph in the store when the paragraph index changes
+  useEffect(() => {
+    if (!isActivePage) return;
+    if (index >= paragraphsSoFarArray.current.length) {
+      setCurrentParagraph(defaultParagraph);
+      if (pageNumber == 0) {
+        setCurrentParagraphIndex(PARAGRAPH_INDEX_PER_PAGE * (pageNumber - 1));
+      } else {
+        // go to next page
+        nextPage();
+      }
+      return;
+    }
+    const pargraphGlobalIdx =
+      pageNumber * PARAGRAPH_INDEX_PER_PAGE + currentParagraphIndex;
+    setCurrentParagraph({
+      index: pargraphGlobalIdx.toString(),
+      text: paragraphsSoFarArray.current[index].text,
+    });
+  }, [index, currentPageNumber]);
 
   const defaultDimensions = {
     bottom: Number.MAX_SAFE_INTEGER,
@@ -541,25 +514,20 @@ export function PageComponent({
     dimensions: defaultDimensions,
   });
   const paragraphsSoFarArray = useRef<Paragraph[]>([]);
-  function isInsideParagraph(wordTransform: Transform) {
-    const highlightedPageNumber = Math.floor(
-      Number(highlightedParagraph.index) / 10000
-    );
-    if (highlightedPageNumber !== pageNumber) return false;
+  function isInsideParagraph(
+    wordTransform: Transform,
+    paragraphTransform: Paragraph
+  ) {
     const isBelowOrEqualTop =
-      wordTransform[5] <= highlightedParagraph.dimensions.top;
+      wordTransform[5] <= paragraphTransform.dimensions.top;
     const isAboveOrEqualBottom =
-      wordTransform[5] >= highlightedParagraph.dimensions.bottom;
+      wordTransform[5] >= paragraphTransform.dimensions.bottom;
     return isBelowOrEqualTop && isAboveOrEqualBottom;
   }
-  const setIsRendered = useSetAtom(isRenderedPageAtom);
-
-  const isHiddenClass = isHidden ? " hidden" : "";
-
-  const highlightedParagraph = useAtomValue(highlightedParagraphAtom);
 
   useEffect(() => {
     if (pageData) {
+      console.log({ pageData });
       const items = pageData.items;
       let headerGot = false;
       function isTextItem(
@@ -584,12 +552,10 @@ export function PageComponent({
         const isParagraphTooShort = textSoFar.length < MIN_PARAGRAPH_LENGTH;
         const isHeader =
           areParagraphsEmpty && isParagraphTooShort && !headerGot;
-        const currentIdx = paragraphsSoFarArray.current.length;
-        const pargraphIdx = (
-          pageNumber * PARAGRAPH_INDEX_PER_PAGE +
-          currentIdx
-        ).toString();
+          const currentIdx = paragraphsSoFarArray.current.length;
+          const pargraphIdx = (pageNumber * PARAGRAPH_INDEX_PER_PAGE + currentIdx).toString()
         if (isVerticallySpaced && isThereText) {
+      
           if (isHeader) {
             paragraghSoFar.current = {
               index: pargraphIdx,
@@ -599,6 +565,7 @@ export function PageComponent({
             headerGot = true;
             continue;
           }
+        
 
           paragraphsSoFarArray.current.push(paragraghSoFar.current);
           // reset the paragraph so far
@@ -664,23 +631,20 @@ export function PageComponent({
           return acc;
         }, []);
 
-      setParagraphs(pageNumber, paragraphsSoFarArray.current);
-      setIsRendered(pageNumber);
+      console.log({ paragraphsSoFar: paragraphsSoFarArray.current });
     }
   }, [pageData]);
   return (
     <Page
       pageNumber={pageNumber}
-      key={pageNumber.toString()}
+      key={paragraphsSoFarArray.current.length}
       customTextRenderer={({
         str,
 
         transform,
       }) => {
         if (
-          isHighlighting &&
-          // isHighlighedPage() &&
-          isInsideParagraph(transform as Transform)
+          isInsideParagraph(transform as Transform, paragraphsSoFarArray.current[0])
         ) {
           return `<mark>${str}</mark>`;
         }
@@ -688,7 +652,7 @@ export function PageComponent({
         return str;
       }}
       height={pdfHeight}
-      className={" rounded shadow-lg  " + isHiddenClass}
+      className=" rounded shadow-lg"
       renderTextLayer={true}
       renderAnnotationLayer={true}
       canvasBackground="white"
