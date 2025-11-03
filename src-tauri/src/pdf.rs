@@ -19,7 +19,11 @@ pub fn get_bookData(filePath: &Path) -> Result<BookData, Box<dyn std::error::Err
 
     // Open PDF with lazy loading using pdf crate
     let file = &FileOptions::cached().open(path)?;
-    let dict = file.trailer.info_dict.as_ref().unwrap();
+    let dict = file
+        .trailer
+        .info_dict
+        .as_ref()
+        .ok_or("PDF file missing info dictionary")?;
     println!("{:#?}", dict);
     let title = dict
         .title
@@ -69,7 +73,7 @@ pub fn get_paragraphs(
     let page = file.get_page(pageNumber)?;
 
     // Get text from first page
-    let content = page.contents.as_ref().unwrap();
+    let content = page.contents.as_ref().ok_or("No content found")?;
     let ops = content.operations(&resolver)?;
 
     // Paragraph array to collect results
@@ -225,7 +229,7 @@ pub fn get_cover(file_path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>
     let images: Vec<_> = resources
         .xobjects
         .iter()
-        .map(|(_name, &r)| resolver.get(r).unwrap())
+        .filter_map(|(_name, &r)| resolver.get(r).ok())
         .filter(|o| matches!(**o, XObject::Image(_)))
         .collect();
 

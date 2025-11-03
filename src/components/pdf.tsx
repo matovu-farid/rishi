@@ -665,7 +665,9 @@ export function PageComponent({
         }, []);
 
       setParagraphs(pageNumber, paragraphsSoFarArray.current);
-      setIsRendered(pageNumber);
+      setIsRendered(pageNumber, true);
+    } else {
+      setIsRendered(pageNumber, false);
     }
   }, [pageData]);
   return (

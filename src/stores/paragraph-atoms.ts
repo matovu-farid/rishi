@@ -135,11 +135,11 @@ export const isRenderedPageAtom = atom(
       {} as { [pageNumber: number]: boolean }
     );
   },
-  (get, set, pageNumber: number) => {
+  (get, set, pageNumber: number, isRendered: boolean) => {
     const current = get(isRenderedPageStateAtom);
     set(isRenderedPageStateAtom, {
       ...current,
-      [pageNumber]: true,
+      [pageNumber]: isRendered,
     });
   }
 );

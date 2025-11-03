@@ -67,7 +67,7 @@ function BookView(): React.JSX.Element {
       </div>
     );
   if (book.kind === "pdf") {
-    return <PdfView book={book} />;
+    return <PdfView key={book.id} book={book} />;
   }
 
   return (
