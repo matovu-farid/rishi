@@ -67,15 +67,12 @@ export class Player extends EventEmitter<PlayerEventMap> {
       console.log("🔴 onRender", { audioElement: this.audioElement });
       void this.resetParagraphs();
     });
-    this.playerControl.onLocationChanged(() => {
-      void this.handleLocationChanged();
-    });
+
     this.audioCache = new Map();
     this.priority = 3;
     this.errors = [];
 
-    // this.nextPageParagraphs = [];
-    // this.previousPageParagraphs = [];
+
   }
   private async clearHighlights() {
     for (const paragraph of await this.playerControl.getCurrentViewParagraphs()) {
@@ -83,11 +80,6 @@ export class Player extends EventEmitter<PlayerEventMap> {
     }
   }
   private async resetParagraphs() {
-    customStore.set(
-      paragraphsForCurrentViewPlayerReceivedAtom,
-      await this.playerControl.getCurrentViewParagraphs()
-    );
-
     if (this.direction === Direction.Backward)
       await this.setParagraphIndex(
         (await this.playerControl.getCurrentViewParagraphs()).length - 1
@@ -124,21 +116,8 @@ export class Player extends EventEmitter<PlayerEventMap> {
     this.audioElement.src = "";
   }
   private handleEnded = async () => {
-    debugger;
-    // try {
-    //   const currentParagraph = await this.getCurrentParagraph();
-    //   console.log("🔴 handleEnded", { currentParagraph });
-    //   if (currentParagraph) {
-    //     await this.playerControl.removeHighlight(currentParagraph.index);
-    //   }
-    // } catch (error) {
-    //   console.warn("Failed to remove highlight:", error);
-    // }
     await this.clearHighlights();
-
-    // advanceToNextParagraphRef.current?.() // Use ref to avoid stale closure
     await this.next();
-    // Don't remove listener here - play() manages listener lifecycle
   };
   private handleError = async (e: Event) => {
     const audioElement = e.target as HTMLAudioElement;
@@ -480,9 +459,11 @@ export class Player extends EventEmitter<PlayerEventMap> {
   };
   private moveToNextPage = async () => {
     await this.playerControl.moveToNextPage();
+    await this.handleLocationChanged();
   };
   private moveToPreviousPage = async () => {
     await this.playerControl.moveToPreviousPage();
+    await this.handleLocationChanged();
   };
   private updateParagaph = async (index: number) => {
     // bounds checks

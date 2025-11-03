@@ -88,4 +88,28 @@ export class PdfPlayerControl implements PlayerControlInterface {
   onLocationChanged(callback: () => void) {
     customStore.sub(pageNumberAtom, callback);
   }
+
+  async waitForPageChange(): Promise<void> {
+    return new Promise((resolve) => {
+      // Create an initial snapshot of current paragraphs
+      const oldParagraphs = customStore.get(getCurrentViewParagraphsAtom);
+
+      // Wait for paragraphs to actually change
+      const unsubscribe = customStore.sub(getCurrentViewParagraphsAtom, () => {
+        const newParagraphs = customStore.get(getCurrentViewParagraphsAtom);
+
+        // Check if paragraphs have actually changed (different length or content)
+        if (newParagraphs !== oldParagraphs && newParagraphs.length > 0) {
+          unsubscribe?.();
+          resolve();
+        }
+      });
+
+      // Safety timeout after 2 seconds
+      setTimeout(() => {
+        unsubscribe?.();
+        resolve();
+      }, 2000);
+    });
+  }
 }
