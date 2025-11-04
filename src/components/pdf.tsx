@@ -57,12 +57,12 @@ import {
   resetParaphStateAtom,
   setParagraphsAtom,
   currentBookDataAtom,
-  playerControlAtom,
   isRenderedAtom,
 } from "@/stores/paragraph-atoms";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { TTSControls } from "./TTSControls";
 import { customStore } from "@/stores/jotai";
+import { playerControl } from "@/models/pdf_player_control";
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -170,7 +170,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const [tocOpen, setTocOpen] = useState(false);
   const [direction, setDirection] = useState<"left" | "right">("right");
   const setCurrentBookData = useSetAtom(currentBookDataAtom);
-  const playerControl = useAtomValue(playerControlAtom);
   const highlightedParagraph = useAtomValue(highlightedParagraphAtom);
   const isRendered = useAtomValue(isRenderedAtom);
   useEffect(() => {
@@ -402,22 +401,19 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
 
   const [pageNumber, setPageNumber] = useAtom(pageNumberAtom);
 
-  const setCurrentViewPages = useSetAtom(currentViewPagesAtom);
-  const setPreviousViewPages = useSetAtom(previousViewPagesAtom);
-  const setNextViewPages = useSetAtom(nextViewPagesAtom);
   const [numPages, setPageCount] = useAtom(pageCountAtom);
 
-  useEffect(() => {
-    if (isDualPage) {
-      setCurrentViewPages([pageNumber, pageNumber + 1]);
-      setPreviousViewPages([pageNumber - 1, pageNumber - 2]);
-      setNextViewPages([pageNumber + 2, pageNumber + 3]);
-    } else {
-      setCurrentViewPages([pageNumber]);
-      setPreviousViewPages([pageNumber - 1]);
-      setNextViewPages([pageNumber + 1]);
-    }
-  }, [pageNumber]);
+  // useEffect(() => {
+  //   if (isDualPage) {
+  //     setCurrentViewPages([pageNumber, pageNumber + 1]);
+  //     setPreviousViewPages([pageNumber - 1, pageNumber - 2]);
+  //     setNextViewPages([pageNumber + 2, pageNumber + 3]);
+  //   } else {
+  //     setCurrentViewPages([pageNumber]);
+  //     setPreviousViewPages([pageNumber - 1]);
+  //     setNextViewPages([pageNumber + 1]);
+  //   }
+  // }, [pageNumber]);
 
   function onItemClick({ pageNumber: itemPageNumber }: { pageNumber: number }) {
     // Determine direction based on page number comparison
@@ -651,13 +647,13 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
             )}
           </Document>
           {/* TTS Controls - Draggable */}
-          {playerControl && (
+          {
             <TTSControls
               key={book.id}
               bookId={book.id}
               playerControl={playerControl}
             />
-          )}
+          }
         </div>
         {/* TOC Sidebar */}
         <Sheet open={tocOpen} onOpenChange={setTocOpen}>

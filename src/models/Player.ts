@@ -5,7 +5,11 @@ import {
   requestTTSAudio,
 } from "@/modules/ipc_handel_functions";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { ParagraphWithIndex, PlayerControlInterface } from "./player_control";
+import {
+  ParagraphWithIndex,
+  PlayerControlEvent,
+  PlayerControlInterface,
+} from "./player_control";
 export enum PlayingState {
   Playing = "playing",
   Paused = "paused",
@@ -46,6 +50,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
   private errors: string[] = [];
   private audioElement: HTMLAudioElement = new Audio();
   private direction: Direction = Direction.Forward;
+  private currentViewParagraphs: ParagraphWithIndex[] = [];
   private nextPageParagraphs: ParagraphWithIndex[] = [];
   private previousPageParagraphs: ParagraphWithIndex[] = [];
   private playerControl: PlayerControlInterface;
@@ -61,28 +66,41 @@ export class Player extends EventEmitter<PlayerEventMap> {
     this.audioCache = new Map();
     this.priority = 3;
     this.errors = [];
+    void this.initialize();
+  }
+  async initialize(): Promise<void> {
+    await this.playerControl.initialize();
+    this.playerControl.on(
+      PlayerControlEvent.NEW_PARAGRAPHS_AVAILABLE,
+      (paragraphs: ParagraphWithIndex[]) => {
+        this.currentViewParagraphs = paragraphs;
+      }
+    );
+    this.playerControl.on(
+      PlayerControlEvent.NEXT_VIEW_PARAGRAPHS_AVAILABLE,
+      (paragraphs: ParagraphWithIndex[]) => {
+        this.nextPageParagraphs = paragraphs;
+      }
+    );
+    this.playerControl.on(
+      PlayerControlEvent.PREVIOUS_VIEW_PARAGRAPHS_AVAILABLE,
+      (paragraphs: ParagraphWithIndex[]) => {
+        this.previousPageParagraphs = paragraphs.reverse();
+      }
+    );
+    this.playerControl.on(PlayerControlEvent.PAGE_CHANGED, async () => {
+      await this.handleLocationChanged();
+    });
   }
   private async clearHighlights() {
-    for (const paragraph of await this.playerControl.getCurrentViewParagraphs()) {
+    for (const paragraph of this.currentViewParagraphs) {
       await this.unhighlightParagraph(paragraph);
     }
   }
   private async resetParagraphs() {
     if (this.direction === Direction.Backward)
-      await this.setParagraphIndex(
-        (await this.playerControl.getCurrentViewParagraphs()).length - 1
-      );
+      await this.setParagraphIndex(this.currentViewParagraphs.length - 1);
     else await this.setParagraphIndex(0);
-    return Promise.all([
-      this.playerControl.getNextViewParagraphs().then((nextPageParagraphs) => {
-        this.nextPageParagraphs = nextPageParagraphs || [];
-      }),
-      this.playerControl
-        .getPreviousViewParagraphs()
-        .then((previousPageParagraphs) => {
-          this.previousPageParagraphs = previousPageParagraphs?.reverse() || [];
-        }),
-    ]);
   }
 
   private handleLocationChanged = async () => {
@@ -184,16 +202,10 @@ export class Player extends EventEmitter<PlayerEventMap> {
     if (this.currentParagraphIndex < 0) {
       this.currentParagraphIndex = 0;
     }
-    if (
-      this.currentParagraphIndex >=
-      (await this.playerControl.getCurrentViewParagraphs()).length
-    ) {
-      this.currentParagraphIndex =
-        (await this.playerControl.getCurrentViewParagraphs()).length - 1;
+    if (this.currentParagraphIndex >= this.currentViewParagraphs.length) {
+      this.currentParagraphIndex = this.currentViewParagraphs.length - 1;
     }
-    return (await this.playerControl.getCurrentViewParagraphs())[
-      this.currentParagraphIndex
-    ];
+    return this.currentViewParagraphs[this.currentParagraphIndex];
   }
 
   public async play(maxRetries: number = 3): Promise<void> {
@@ -204,6 +216,13 @@ export class Player extends EventEmitter<PlayerEventMap> {
     // Add listeners using the bound method references directly
     this.audioElement.addEventListener("ended", this.handleEnded);
     this.audioElement.addEventListener("error", this.handleError);
+    console.log(
+      `>>> Player: currentViewParagraphs: ${this.currentViewParagraphs}`
+    );
+    console.log(`>>> Player: nextPageParagraphs: ${this.nextPageParagraphs}`);
+    console.log(
+      `>>> Player: previousPageParagraphs: ${this.previousPageParagraphs}`
+    );
 
     let attempt = 0;
     let skipCache = false;
@@ -238,7 +257,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
     if (this.playingState === PlayingState.Playing) return;
     this.setPlayingState(PlayingState.Playing);
 
-    if ((await this.playerControl.getCurrentViewParagraphs()).length === 0) {
+    if (this.currentViewParagraphs.length === 0) {
       console.warn(
         "🎵 No paragraphs on page (likely an image page) - pausing briefly then moving to next page"
       );
@@ -362,7 +381,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
     this.setPlayingState(PlayingState.Playing);
   }
   private async getCurrentViewParagraphs() {
-    return await this.playerControl.getCurrentViewParagraphs();
+    return this.currentViewParagraphs;
   }
 
   public async setParagraphIndex(index: number) {
@@ -433,12 +452,10 @@ export class Player extends EventEmitter<PlayerEventMap> {
     }
   };
   private moveToNextPage = async () => {
-    await this.playerControl.moveToNextPage();
-    await this.handleLocationChanged();
+    this.playerControl.emit(PlayerControlEvent.MOVE_TO_NEXT_PAGE);
   };
   private moveToPreviousPage = async () => {
-    await this.playerControl.moveToPreviousPage();
-    await this.handleLocationChanged();
+    this.playerControl.emit(PlayerControlEvent.MOVE_TO_PREVIOUS_PAGE);
   };
   private updateParagaph = async (index: number) => {
     // bounds checks
@@ -447,14 +464,11 @@ export class Player extends EventEmitter<PlayerEventMap> {
       return;
     }
 
-    if (index >= (await this.playerControl.getCurrentViewParagraphs()).length) {
+    if (index >= this.currentViewParagraphs.length) {
       await this.moveToNextPage();
       return;
     }
-    if (
-      index ==
-      (await this.playerControl.getCurrentViewParagraphs()).length - 1
-    ) {
+    if (index == this.currentViewParagraphs.length - 1) {
       // Request audio for the next paragraphs of the next page
       if (this.playingState === PlayingState.Playing) {
         void this.prefetchNextPageAudio(3);
@@ -525,8 +539,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
       currentState: {
         playingState: this.playingState,
         paragraphIndex: this.currentParagraphIndex,
-        totalParagraphs: (await this.playerControl.getCurrentViewParagraphs())
-          .length,
+        totalParagraphs: this.currentViewParagraphs.length,
         currentParagraph: currentParagraph
           ? {
               text: currentParagraph?.text.substring(0, 100) + "...",
@@ -554,10 +567,16 @@ export class Player extends EventEmitter<PlayerEventMap> {
   }
 
   private highlightParagraph(paragraph: ParagraphWithIndex) {
-    return this.playerControl.highlightParagraph(paragraph.index);
+    this.playerControl.emit(
+      PlayerControlEvent.HIGHLIGHT_PARAGRAPH,
+      paragraph.index
+    );
   }
   private async unhighlightParagraph(paragraph: ParagraphWithIndex) {
-    return await this.playerControl.removeHighlight(paragraph.index);
+    this.playerControl.emit(
+      PlayerControlEvent.REMOVE_HIGHLIGHT,
+      paragraph.index
+    );
   }
   public async requestAudio(
     paragraph: ParagraphWithIndex,
@@ -639,13 +658,8 @@ export class Player extends EventEmitter<PlayerEventMap> {
   private async prefetchAudio(startIndex: number, count: number) {
     for (let i = 0; i < count; i++) {
       const index = startIndex + i;
-      if (
-        index < (await this.playerControl.getCurrentViewParagraphs()).length &&
-        index >= 0
-      ) {
-        const paragraph = (await this.playerControl.getCurrentViewParagraphs())[
-          index
-        ];
+      if (index < this.currentViewParagraphs.length && index >= 0) {
+        const paragraph = this.currentViewParagraphs[index];
         await this.requestAudio(paragraph, this.priority - 1).catch((error) => {
           console.warn(`Prefetch failed for paragraph ${index}:`, error);
         }); // Fix: Add error logging for prefetch failures

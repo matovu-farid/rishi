@@ -4,7 +4,6 @@ import { atomWithImmer } from "jotai-immer";
 import { atom } from "jotai";
 import { updateBookLocation } from "@/modules/books";
 import { BookData } from "@/generated";
-import { PdfPlayerControl } from "@/models/pdf_player_control";
 
 export const currentParagraphAtom = atom<ParagraphWithIndex>({
   index: "",
@@ -16,18 +15,13 @@ export type Paragraph = ParagraphWithIndex & {
     bottom: number;
   };
 };
+
 export const currentBookDataAtom = atomWithImmer<BookData | null>(null);
-export const playerControlAtom = atom((get) => {
-  const book = get(currentBookDataAtom);
-  const isRendered = get(isRenderedAtom);
-  if (book && isRendered) {
-    return new PdfPlayerControl(book.id);
-  }
-  return null;
-});
+
 export const pageNumberAtom = atom(
   (get) => {
     try {
+      // block when no page data yet
       const book = get(currentBookDataAtom);
       if (book) {
         return parseInt(book.current_location, 10);
@@ -50,9 +44,30 @@ export const pageNumberAtom = atom(
   }
 );
 export const isDualPageAtom = atom(false);
-export const currentViewPagesAtom = atom<number[]>([]);
-export const previousViewPagesAtom = atom<number[]>([]);
-export const nextViewPagesAtom = atom<number[]>([]);
+export const currentViewPagesAtom = atom<number[]>((get) => {
+  const pageNumber = get(pageNumberAtom);
+  const isDualPage = get(isDualPageAtom);
+  if (isDualPage) {
+    return [pageNumber, pageNumber + 1];
+  }
+  return [pageNumber];
+});
+export const previousViewPagesAtom = atom<number[]>((get) => {
+  const pageNumber = get(pageNumberAtom);
+  const isDualPage = get(isDualPageAtom);
+  if (isDualPage) {
+    return [pageNumber - 1, pageNumber - 2];
+  }
+  return [pageNumber - 1];
+});
+export const nextViewPagesAtom = atom<number[]>((get) => {
+  const pageNumber = get(pageNumberAtom);
+  const isDualPage = get(isDualPageAtom);
+  if (isDualPage) {
+    return [pageNumber + 2, pageNumber + 3];
+  }
+  return [pageNumber + 1];
+});
 export const pageCountAtom = atom(0);
 
 export const paragraphsAtom = atomWithImmer<{
@@ -62,15 +77,11 @@ export const paragraphsAtom = atomWithImmer<{
 export const resetParaphStateAtom = atom(null, (_get, set) => {
   set(pageNumberAtom, 1);
   set(isDualPageAtom, false);
-  set(currentViewPagesAtom, []);
-  set(previousViewPagesAtom, []);
-  set(nextViewPagesAtom, []);
   set(pageCountAtom, 0);
   set(paragraphsAtom, {});
   set(highlightedParagraphArrayIndexAtom, 0);
   set(highlightedParagraphGlobalIndexAtom, "");
   set(isHighlightingAtom, false);
-  set(renderedAtom, false);
   set(isRenderedPageStateAtom, {});
 });
 export const getCurrentViewParagraphsAtom = atom((get) => {
@@ -183,6 +194,7 @@ export const setParagraphsAtom = atom(
 export const changePageAtom = atom(
   null,
   async (get, set, offset: number, bookId: string) => {
+    set(isRenderedPageStateAtom, {});
     const newPageNumber = get(pageNumberAtom) + offset;
     const numPages = get(pageCountAtom);
     if (newPageNumber >= 1 && newPageNumber <= numPages) {
@@ -203,7 +215,6 @@ export const nextPageAtom = atom(null, async (get, set, bookId: string) => {
   const pageIncrement = get(pageIncrementAtom);
   await set(changePageAtom, pageIncrement, bookId);
 });
-export const renderedAtom = atom(false);
 const isRenderedPageStateAtom = atom<{ [pageNumber: number]: boolean }>({});
 export const isRenderedPageAtom = atom(
   (get) => {
@@ -231,7 +242,6 @@ export const isRenderedAtom = atom((get) => {
 });
 
 // debug label
-playerControlAtom.debugLabel = "playerControlAtom";
 currentBookDataAtom.debugLabel = "currentBookDataAtom";
 highlightedParagraphArrayIndexAtom.debugLabel =
   "highlightedParagraphArrayIndexAtom";
@@ -256,7 +266,6 @@ changePageAtom.debugLabel = "changePageAtom";
 pageIncrementAtom.debugLabel = "pageIncrementAtom";
 previousPageAtom.debugLabel = "previousPageAtom";
 nextPageAtom.debugLabel = "nextPageAtom";
-renderedAtom.debugLabel = "renderedAtom";
 isRenderedPageStateAtom.debugLabel = "isRenderedPageStateAtom";
 isRenderedPageAtom.debugLabel = "isRenderedPageAtom";
 isRenderedAtom.debugLabel = "isRenderedAtom";

@@ -1,63 +1,105 @@
 import { customStore } from "@/stores/jotai";
-import { ParagraphWithIndex, PlayerControlInterface } from "./player_control";
 import {
+  ParagraphWithIndex,
+  PlayerControlEvent,
+  PlayerControlEventMap,
+  PlayerControlInterface,
+} from "./player_control";
+import {
+  currentBookDataAtom,
   getCurrentViewParagraphsAtom,
   getNextViewParagraphsAtom,
   getPreviousViewParagraphsAtom,
   highlightedParagraphGlobalIndexAtom,
   isHighlightingAtom,
-  isRenderedAtom,
   nextPageAtom,
+  pageNumberAtom,
   previousPageAtom,
 } from "@/stores/paragraph-atoms";
+import { EventEmitter } from "eventemitter3";
 
 //TODO: Implement the methods
-export class PdfPlayerControl implements PlayerControlInterface {
-  private bookId: string;
-  constructor(bookId: string) {
-    this.bookId = bookId;
+class PdfPlayerControl
+  extends EventEmitter<PlayerControlEventMap>
+  implements PlayerControlInterface
+{
+  constructor() {
+    super();
+    void this.initialize();
   }
-  async waitUntilRendered(): Promise<void> {
-    // Check current state first - if already rendered, resolve immediately
-    const isRendered = customStore.get(isRenderedAtom);
-    if (isRendered) {
-      return Promise.resolve();
-    }
+  async initialize(): Promise<void> {
+    customStore.sub(pageNumberAtom, () => {
+      this.emit(
+        PlayerControlEvent.PAGE_CHANGED,
+        customStore.get(pageNumberAtom).toString()
+      );
+    });
+    customStore.sub(getCurrentViewParagraphsAtom, () => {
+      this.emit(
+        PlayerControlEvent.NEW_PARAGRAPHS_AVAILABLE,
+        customStore.get(getCurrentViewParagraphsAtom)
+      );
+    });
 
-    // Otherwise, wait for it to become true
-    return new Promise((resolve) => {
-      customStore.sub(isRenderedAtom, () => {
-        const isRendered = customStore.get(isRenderedAtom);
-        if (isRendered) {
-          resolve();
-        }
-      });
+    customStore.sub(getNextViewParagraphsAtom, () => {
+      this.emit(
+        PlayerControlEvent.NEXT_VIEW_PARAGRAPHS_AVAILABLE,
+        customStore.get(getNextViewParagraphsAtom)
+      );
+    });
+    customStore.sub(getPreviousViewParagraphsAtom, () => {
+      this.emit(
+        PlayerControlEvent.PREVIOUS_VIEW_PARAGRAPHS_AVAILABLE,
+        customStore.get(getPreviousViewParagraphsAtom)
+      );
+    });
+    // listen
+    this.on(PlayerControlEvent.REMOVE_HIGHLIGHT, (index: string) => {
+      void this.removeHighlight(index);
+    });
+    this.on(PlayerControlEvent.HIGHLIGHT_PARAGRAPH, (index: string) => {
+      void this.highlightParagraph(index);
+    });
+    this.on(PlayerControlEvent.MOVE_TO_NEXT_PAGE, () => {
+      void this.moveToNextPage();
+      this.emit(
+        PlayerControlEvent.PAGE_CHANGED,
+        customStore.get(pageNumberAtom).toString()
+      );
+    });
+    this.on(PlayerControlEvent.MOVE_TO_PREVIOUS_PAGE, () => {
+      void this.moveToPreviousPage();
+      this.emit(
+        PlayerControlEvent.PAGE_CHANGED,
+        customStore.get(pageNumberAtom).toString()
+      );
     });
   }
-  async getCurrentViewParagraphs(): Promise<ParagraphWithIndex[]> {
-    await this.waitUntilRendered();
-    const currentViewParagraphs = customStore.get(getCurrentViewParagraphsAtom);
+  // async getCurrentViewParagraphs(): Promise<ParagraphWithIndex[]> {
+  //   const currentViewParagraphs = customStore.get(getCurrentViewParagraphsAtom);
 
-    return currentViewParagraphs;
-  }
-  async getNextViewParagraphs(): Promise<ParagraphWithIndex[]> {
-    await this.waitUntilRendered();
-    return customStore.get(getNextViewParagraphsAtom);
-  }
-  async getPreviousViewParagraphs(): Promise<ParagraphWithIndex[]> {
-    await this.waitUntilRendered();
-    return customStore.get(getPreviousViewParagraphsAtom);
-  }
+  //   return currentViewParagraphs;
+  // }
+  // async getNextViewParagraphs(): Promise<ParagraphWithIndex[]> {
+  //   return customStore.get(getNextViewParagraphsAtom);
+  // }
+  // async getPreviousViewParagraphs(): Promise<ParagraphWithIndex[]> {
+  //   return customStore.get(getPreviousViewParagraphsAtom);
+  // }
   async removeHighlight(index: string): Promise<void> {
-    return customStore.set(isHighlightingAtom, false);
+    customStore.set(isHighlightingAtom, false);
   }
   async highlightParagraph(index: string): Promise<void> {
     return customStore.set(highlightedParagraphGlobalIndexAtom, index);
   }
   async moveToNextPage() {
-    await customStore.set(nextPageAtom, this.bookId);
+    const book = customStore.get(currentBookDataAtom);
+    if (book) await customStore.set(nextPageAtom, book.id);
   }
   async moveToPreviousPage() {
-    await customStore.set(previousPageAtom, this.bookId);
+    const book = customStore.get(currentBookDataAtom);
+    if (book) await customStore.set(previousPageAtom, book.id);
   }
 }
+
+export const playerControl = new PdfPlayerControl();

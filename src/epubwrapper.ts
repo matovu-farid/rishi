@@ -285,6 +285,7 @@ export function getCurrentViewText(rendition: Rendition) {
     return null;
   }
 }
+
 export function highlightRange(
   rendition: Rendition,
   cfiRange: string,
