@@ -834,29 +834,8 @@ export function PageComponent({
             getParagraphThreshold(item) &&
           item.hasEOL;
         const isThereText = textSoFar.trim().length > 0;
-        const areParagraphsEmpty = paragraphsSoFarArray.current.length === 0;
-        const isParagraphTooShort = textSoFar.length < MIN_PARAGRAPH_LENGTH;
-        const isHeader =
-          areParagraphsEmpty && isParagraphTooShort && !headerGot;
 
         if (isVerticallySpaced && isThereText) {
-          if (isHeader) {
-            // Skip the header - don't push it, just reset for next paragraph
-            // Next paragraph will get index based on current array length
-            const nextIdx = paragraphsSoFarArray.current.length;
-            const nextPargraphIdx = (
-              pageNumber * PARAGRAPH_INDEX_PER_PAGE +
-              nextIdx
-            ).toString();
-            paragraghSoFar.current = {
-              index: nextPargraphIdx,
-              text: "",
-              dimensions: defaultDimensions,
-            };
-            headerGot = true;
-            continue;
-          }
-
           paragraphsSoFarArray.current.push(paragraghSoFar.current);
           // Calculate index AFTER push, so it's incremented correctly
           const currentIdx = paragraphsSoFarArray.current.length;
@@ -901,6 +880,11 @@ export function PageComponent({
 
       paragraphsSoFarArray.current = paragraphsSoFarArray.current
         .filter((paragraph) => paragraph.text.trim().length > 0)
+        // try best effort to remove headers
+        .filter(
+          (paragraph, index) =>
+            index !== 0 || paragraph.text.trim().length > MIN_PARAGRAPH_LENGTH
+        )
         // remove paragraphs that are too short
         .reduce<Paragraph[]>((acc, paragraph) => {
           const isParagraphTooShort =
