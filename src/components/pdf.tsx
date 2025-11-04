@@ -41,13 +41,11 @@ import createIReactReaderTheme from "@/themes/readerThemes";
 import { NavigationArrows, SwipeWrapper } from "./react-reader/components";
 import { type SwipeEventData } from "react-swipeable";
 import { TextItem } from "pdfjs-dist/types/src/display/api";
-import { PlayerControlInterface } from "@/models/player_control";
 import {
   currentViewPagesAtom,
   highlightedParagraphAtom,
   isDualPageAtom,
   isHighlightingAtom,
-  isRenderedAtom,
   isRenderedPageAtom,
   nextPageAtom,
   nextViewPagesAtom,
@@ -63,7 +61,6 @@ import {
 } from "@/stores/paragraph-atoms";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { TTSControls } from "./TTSControls";
-import { PdfPlayerControl } from "@/models/pdf_player_control";
 import { customStore } from "@/stores/jotai";
 
 // Configure PDF.js worker
