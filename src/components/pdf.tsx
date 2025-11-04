@@ -5,11 +5,9 @@ import { Link } from "@tanstack/react-router";
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Button } from "@components/ui/Button";
 import { IconButton } from "@components/ui/IconButton";
-import { Menu } from "@components/ui/Menu";
-import { Radio, RadioGroup } from "@components/ui/Radio";
 import { ThemeType } from "@/themes/common";
 import { themes } from "@/themes/themes";
-import { Palette, Menu as MenuIcon } from "lucide-react";
+import { Menu as MenuIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { updateBookLocation } from "@/modules/books";
 import { convertFileSrc } from "@tauri-apps/api/core";
@@ -110,7 +108,8 @@ export function usePdfNavigation(
         const appWindow = getCurrentWindow();
         const isCurrentlyFullscreen = await appWindow.isFullscreen();
         setIsFullscreen(isCurrentlyFullscreen);
-      } catch (_error) {
+      } catch (e) {
+        console.error("Error checking fullscreen:", e);
         // Fallback to browser detection
         setIsFullscreen(document.fullscreenElement !== null);
       }
@@ -163,8 +162,7 @@ export function usePdfNavigation(
 }
 
 export function PdfView({ book }: { book: BookData }): React.JSX.Element {
-  const [theme, setTheme] = useState<ThemeType>(ThemeType.White);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [theme] = useState<ThemeType>(ThemeType.White);
   const [tocOpen, setTocOpen] = useState(false);
   const [direction, setDirection] = useState<"left" | "right">("right");
 
@@ -205,11 +203,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     isFullscreen,
   } = usePdfNavigation(book.id, setDirection);
 
-  const handleThemeChange = (newTheme: ThemeType) => {
-    setTheme(newTheme);
-    setMenuOpen(false);
-  };
-
   // Setup View submenu in the app menu for PDF view
   const isDualPageRef = useRef(isDualPage);
 
@@ -219,7 +212,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   }, [isDualPage]);
 
   useEffect(() => {
-    let disposed = false;
     let previousAppMenu: TauriMenu | null = null;
     let viewSubmenu: Submenu | null = null;
     let twoPagesItem: CheckMenuItem | null = null;
@@ -276,7 +268,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     void setupMenu();
 
     return () => {
-      disposed = true;
       void (async () => {
         try {
           // Remove the two_pages item on cleanup
@@ -329,7 +320,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
       await updateBookLocation(bookId, location);
     },
 
-    onError(error) {
+    onError(_error) {
       toast.error("Can not change book page");
     },
   });
@@ -362,19 +353,15 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const setPreviousViewPages = useSetAtom(previousViewPagesAtom);
   const setNextViewPages = useSetAtom(nextViewPagesAtom);
   const [numPages, setPageCount] = useAtom(pageCountAtom);
-  const [playerControl, setPlayerControl] = useState<
-    PlayerControlInterface | undefined
-  >(undefined);
+
+  const playerControl = useRef<PlayerControlInterface | undefined>(undefined);
   const isRendered = useAtomValue(isRenderedAtom);
   const bookId = book.id;
 
   useEffect(() => {
     if (isRendered) {
-      setPlayerControl(new PdfPlayerControl(bookId));
+      playerControl.current = new PdfPlayerControl(bookId);
     }
-    return () => {
-      setPlayerControl(undefined);
-    };
   }, [isRendered, bookId]);
 
   useEffect(() => {
@@ -716,8 +703,12 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
             )}
           </Document>
           {/* TTS Controls - Draggable */}
-          {playerControl && (
-            <TTSControls bookId={book.id} playerControl={playerControl} />
+          {playerControl.current && (
+            <TTSControls
+              key={book.id}
+              bookId={book.id}
+              playerControl={playerControl.current}
+            />
           )}
         </div>
         {/* TOC Sidebar */}

@@ -67,6 +67,7 @@ function FileDrop(): React.JSX.Element {
     },
 
     onError(error) {
+      console.error("Error deleting book:", error);
       toast.error("Can't remove book");
     },
     onSuccess() {
@@ -86,6 +87,7 @@ function FileDrop(): React.JSX.Element {
     },
 
     onError(error) {
+      console.error("Error storing book:", error);
       toast.error("Can't upload book");
     },
     onSuccess() {
@@ -105,6 +107,7 @@ function FileDrop(): React.JSX.Element {
     },
 
     onError(error) {
+      console.error("Error storing PDF:", error);
       toast.error("Can't upload book");
     },
     onSuccess() {

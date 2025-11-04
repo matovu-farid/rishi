@@ -25,7 +25,7 @@ export const paragraphsAtom = atomWithImmer<{
   [pageNumber: number]: Paragraph[];
 }>({});
 
-export const resetParaphStateAtom = atom(null, (get, set) => {
+export const resetParaphStateAtom = atom(null, (_get, set) => {
   set(pageNumberAtom, 1);
   set(isDualPageAtom, false);
   set(currentViewPagesAtom, []);
