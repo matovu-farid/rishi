@@ -12,16 +12,33 @@ import {
   Info,
 } from "lucide-react";
 import { toast } from "react-toastify";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { PlayingState } from "@/stores/ttsStore";
 import { Player, PlayerEvent } from "@/models/Player";
 import { useDebug } from "@/hooks/useDebug";
 import { PlayerControlInterface } from "@/models/player_control";
+import { load } from "@tauri-apps/plugin-store";
+
 interface TTSControlsProps {
   bookId: string;
   playerControl: PlayerControlInterface;
   disabled?: boolean;
 }
+
+const STORE_PATH = "tts-controls-position.json";
+const POSITION_KEY = "position";
+
+// Get default position (center-bottom of screen)
+const getDefaultPosition = (): { x: number; y: number } => {
+  if (typeof window === "undefined") {
+    return { x: 0, y: 0 };
+  }
+
+  const defaultX = window.innerWidth / 2 - 150; // Approximate center, adjusted for component width
+  const defaultY = window.innerHeight - 128; // 8rem (32px) from bottom + some offset
+
+  return { x: defaultX, y: defaultY };
+};
 
 export function TTSControls({
   bookId,
@@ -31,6 +48,11 @@ export function TTSControls({
   const [showError, setShowError] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [hasShownError, setHasShownError] = useState(false);
+  const [position, setPosition] = useState(getDefaultPosition);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragRef = useRef<HTMLDivElement>(null);
+  const dragStartPos = useRef<{ x: number; y: number } | null>(null);
+  const dragOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const error = errors.join("\n");
   const [player] = useState<Player>(new Player(playerControl, bookId));
@@ -38,6 +60,34 @@ export function TTSControls({
     player.getPlayingState()
   );
   const { setIsDebugging, shouldDebug } = useDebug(player);
+
+  // Load saved position from Tauri Store on mount
+  useEffect(() => {
+    const loadPosition = async () => {
+      try {
+        const store = await load(STORE_PATH, { defaults: {}, autoSave: false });
+        const savedPosition = await store.get<{ x: number; y: number }>(
+          POSITION_KEY
+        );
+
+        if (
+          savedPosition &&
+          typeof savedPosition.x === "number" &&
+          typeof savedPosition.y === "number"
+        ) {
+          setPosition(savedPosition);
+        }
+      } catch (error) {
+        console.error(
+          "Failed to load TTS controls position from store:",
+          error
+        );
+        // Use default position if loading fails
+      }
+    };
+
+    void loadPosition();
+  }, []);
 
   useEffect(() => {
     player.on(PlayerEvent.PLAYING_STATE_CHANGED, setPlayingState);
@@ -101,9 +151,6 @@ export function TTSControls({
   const handleShowErrorDetails = async () => {
     const detailedInfo = await player.getDetailedErrorInfo();
 
-    // Create a formatted error message
-    const errorInfo = JSON.stringify(detailedInfo, null, 2);
-
     // Show a toast with the basic info
     toast.info(
       `Check console for detailed error information. Errors: ${detailedInfo.errors.length}`,
@@ -124,89 +171,236 @@ export function TTSControls({
     return <Play size={24} />;
   };
 
+  // Constrain position within viewport bounds
+  const constrainPosition = useCallback((x: number, y: number) => {
+    if (typeof window === "undefined") {
+      return { x: 0, y: 0 };
+    }
+
+    const componentWidth = 300; // Approximate component width
+    const componentHeight = 60; // Approximate component height
+
+    const minX = 0;
+    const minY = 0;
+    const maxX = window.innerWidth - componentWidth;
+    const maxY = window.innerHeight - componentHeight;
+
+    return {
+      x: Math.max(minX, Math.min(maxX, x)),
+      y: Math.max(minY, Math.min(maxY, y)),
+    };
+  }, []);
+
+  // Save position to Tauri Store
+  const savePosition = useCallback((x: number, y: number) => {
+    void (async () => {
+      try {
+        const store = await load(STORE_PATH, { defaults: {}, autoSave: false });
+        await store.set(POSITION_KEY, { x, y });
+        await store.save();
+      } catch (error) {
+        console.error("Failed to save TTS controls position to store:", error);
+      }
+    })();
+  }, []);
+
+  // Handle drag start
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      // Prevent dragging if clicking on buttons or interactive elements
+      const target = e.target as HTMLElement;
+      if (
+        target.closest("button") ||
+        target.closest("[role='button']") ||
+        target.tagName === "BUTTON"
+      ) {
+        return;
+      }
+
+      e.preventDefault();
+      e.stopPropagation(); // Prevent event from bubbling to underlying elements
+      setIsDragging(true);
+      dragStartPos.current = { x: e.clientX, y: e.clientY };
+      dragOffset.current = { x: position.x, y: position.y };
+    },
+    [position]
+  );
+
+  // Handle drag move
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isDragging || !dragStartPos.current) return;
+
+      e.preventDefault();
+      e.stopPropagation(); // Prevent event from bubbling to underlying elements
+
+      const deltaX = e.clientX - dragStartPos.current.x;
+      const deltaY = e.clientY - dragStartPos.current.y;
+
+      const newX = dragOffset.current.x + deltaX;
+      const newY = dragOffset.current.y + deltaY;
+
+      const constrained = constrainPosition(newX, newY);
+      setPosition(constrained);
+    },
+    [isDragging, constrainPosition]
+  );
+
+  // Handle drag end
+  const handleMouseUp = useCallback(
+    (e?: MouseEvent) => {
+      if (isDragging) {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation(); // Prevent event from bubbling to underlying elements
+        }
+        setIsDragging(false);
+        dragStartPos.current = null;
+        savePosition(position.x, position.y);
+      }
+    },
+    [isDragging, position, savePosition]
+  );
+
+  // Set up global mouse event listeners for dragging
+  useEffect(() => {
+    if (isDragging) {
+      const mouseMoveHandler = (e: MouseEvent) => handleMouseMove(e);
+      const mouseUpHandler = (e: MouseEvent) => handleMouseUp(e);
+
+      window.addEventListener("mousemove", mouseMoveHandler, {
+        passive: false,
+      });
+      window.addEventListener("mouseup", mouseUpHandler, { passive: false });
+      document.body.style.userSelect = "none"; // Prevent text selection while dragging
+
+      return () => {
+        window.removeEventListener("mousemove", mouseMoveHandler);
+        window.removeEventListener("mouseup", mouseUpHandler);
+        document.body.style.userSelect = "";
+      };
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+
+  // Constrain position when window is resized
+  useEffect(() => {
+    const handleResize = () => {
+      const constrained = constrainPosition(position.x, position.y);
+      if (constrained.x !== position.x || constrained.y !== position.y) {
+        setPosition(constrained);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [position, constrainPosition]);
+
   return (
     <>
-      <div className="flex items-center gap-4 px-6 py-3 bg-black/80 rounded-3xl backdrop-blur-lg shadow-lg border border-white/10">
-        {/* Volume Icon */}
-        <Volume2
-          size={20}
-          className={
-            playingState === PlayingState.Playing
-              ? "text-white"
-              : "text-white/70"
-          }
-        />
+      <div
+        ref={dragRef}
+        className="fixed z-50 tts-controls-drag-handle"
+        style={{
+          left: `${position.x}px`,
+          top: `${position.y}px`,
+          cursor: isDragging ? "grabbing" : "grab",
+        }}
+        onMouseDown={handleMouseDown}
+        onTouchStart={(e) => {
+          // Prevent touch events from bubbling to underlying swipe handlers
+          e.stopPropagation();
+        }}
+        onTouchMove={(e) => {
+          // Prevent touch events from bubbling to underlying swipe handlers
+          e.stopPropagation();
+        }}
+        onTouchEnd={(e) => {
+          // Prevent touch events from bubbling to underlying swipe handlers
+          e.stopPropagation();
+        }}
+      >
+        <div className="flex items-center gap-4 px-6 py-3 bg-black/80 rounded-3xl backdrop-blur-lg shadow-lg border border-white/10">
+          {/* Volume Icon */}
+          <Volume2
+            size={20}
+            className={
+              playingState === PlayingState.Playing
+                ? "text-white"
+                : "text-white/70"
+            }
+          />
 
-        {/* Previous Button */}
-        <IconButton
-          size="large"
-          onClick={handlePrev}
-          disabled={disabled || playingState === PlayingState.Loading}
-          className="text-white hover:bg-white/10 disabled:text-white/30"
-        >
-          <SkipBack size={24} />
-        </IconButton>
-
-        {/* Play/Pause Button */}
-        <IconButton
-          size="large"
-          onClick={handlePlay}
-          disabled={disabled}
-          className={`text-white hover:bg-white/10 disabled:text-white/30 ${
-            playingState === PlayingState.Playing
-              ? "text-white"
-              : "text-white/80"
-          }`}
-        >
-          {getPlayIcon()}
-        </IconButton>
-
-        {/* Next Button */}
-        <IconButton
-          size="large"
-          onClick={handleNext}
-          disabled={disabled || playingState === PlayingState.Loading}
-          className="text-white hover:bg-white/10 disabled:text-white/30"
-        >
-          <SkipForward size={24} />
-        </IconButton>
-
-        {/* Stop Button */}
-        <IconButton
-          size="large"
-          onClick={handleStop}
-          disabled={disabled || playingState !== PlayingState.Playing}
-          className="text-white hover:bg-white/10 disabled:text-white/30"
-        >
-          <Square size={24} />
-        </IconButton>
-
-        {/* Debug Button */}
-        {shouldDebug && (
+          {/* Previous Button */}
           <IconButton
             size="large"
-            onClick={() => setIsDebugging((isDebugging) => !isDebugging)}
+            onClick={handlePrev}
+            disabled={disabled || playingState === PlayingState.Loading}
+            className="text-white hover:bg-white/10 disabled:text-white/30"
+          >
+            <SkipBack size={24} />
+          </IconButton>
+
+          {/* Play/Pause Button */}
+          <IconButton
+            size="large"
+            onClick={handlePlay}
+            disabled={disabled}
+            className={`text-white hover:bg-white/10 disabled:text-white/30 ${
+              playingState === PlayingState.Playing
+                ? "text-white"
+                : "text-white/80"
+            }`}
+          >
+            {getPlayIcon()}
+          </IconButton>
+
+          {/* Next Button */}
+          <IconButton
+            size="large"
+            onClick={handleNext}
+            disabled={disabled || playingState === PlayingState.Loading}
+            className="text-white hover:bg-white/10 disabled:text-white/30"
+          >
+            <SkipForward size={24} />
+          </IconButton>
+
+          {/* Stop Button */}
+          <IconButton
+            size="large"
+            onClick={handleStop}
             disabled={disabled || playingState !== PlayingState.Playing}
             className="text-white hover:bg-white/10 disabled:text-white/30"
           >
-            <Bug size={24} />
+            <Square size={24} />
           </IconButton>
-        )}
 
-        {/* Error Icon with detailed info button (if there's an error) */}
-        {errors.length > 0 && (
-          <>
-            <AlertTriangle size={20} className="text-red-500" />
+          {/* Debug Button */}
+          {shouldDebug && (
             <IconButton
-              size="small"
-              onClick={handleShowErrorDetails}
-              className="text-red-500 hover:bg-red-500/10"
-              title="Show detailed error information"
+              size="large"
+              onClick={() => setIsDebugging((isDebugging) => !isDebugging)}
+              disabled={disabled || playingState !== PlayingState.Playing}
+              className="text-white hover:bg-white/10 disabled:text-white/30"
             >
-              <Info size={16} />
+              <Bug size={24} />
             </IconButton>
-          </>
-        )}
+          )}
+
+          {/* Error Icon with detailed info button (if there's an error) */}
+          {errors.length > 0 && (
+            <>
+              <AlertTriangle size={20} className="text-red-500" />
+              <IconButton
+                size="small"
+                onClick={handleShowErrorDetails}
+                className="text-red-500 hover:bg-red-500/10"
+                title="Show detailed error information"
+              >
+                <Info size={16} />
+              </IconButton>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Error Toast */}

@@ -226,12 +226,10 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
           )}
         </AnimatePresence>
       </div>
-      {/* TTS Controls - Bottom Center */}
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-50">
-        {playerControl.current && (
-          <TTSControls bookId={book.id} playerControl={playerControl.current} />
-        )}
-      </div>
+      {/* TTS Controls - Draggable */}
+      {playerControl.current && (
+        <TTSControls bookId={book.id} playerControl={playerControl.current} />
+      )}
     </div>
   );
 }

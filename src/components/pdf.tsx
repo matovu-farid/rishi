@@ -715,12 +715,10 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
               </AnimatePresence>
             )}
           </Document>
-          {/* TTS Controls - Bottom Center */}
-          <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
-            {playerControl && (
-              <TTSControls bookId={book.id} playerControl={playerControl} />
-            )}
-          </div>
+          {/* TTS Controls - Draggable */}
+          {playerControl && (
+            <TTSControls bookId={book.id} playerControl={playerControl} />
+          )}
         </div>
         {/* TOC Sidebar */}
         <Sheet open={tocOpen} onOpenChange={setTocOpen}>
