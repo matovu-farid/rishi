@@ -145,11 +145,31 @@ export class EpubView extends Component<IEpubViewProps, IEpubViewState> {
    * Destroys book instance and removes event listeners to prevent memory leaks
    */
   componentWillUnmount() {
-    if (this.book) {
-      this.book.destroy();
+    // First destroy rendition explicitly to clean up its event listeners
+    // This prevents the scroller.removeEventListener error
+    if (this.rendition) {
+      try {
+        this.rendition.destroy();
+      } catch (error) {
+        // Silently handle any errors during rendition cleanup
+        // The scroller may already be destroyed or not initialized
+        console.warn("Error destroying rendition:", error);
+      }
+      this.rendition = undefined;
     }
+
+    // Then destroy the book instance
+    if (this.book) {
+      try {
+        this.book.destroy();
+      } catch (error) {
+        // Silently handle any errors during book cleanup
+        console.warn("Error destroying book:", error);
+      }
+    }
+
     // Clean up all references
-    this.book = this.rendition = this.prevPage = this.nextPage = undefined;
+    this.book = this.prevPage = this.nextPage = undefined;
     document.removeEventListener("keyup", this.handleKeyPress, false);
   }
 
