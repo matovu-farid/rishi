@@ -74,7 +74,8 @@ export function usePdfNavigation(bookId: string) {
   });
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const pdfHeight = windowSize.height - 120; // 60px top + 60px bottom
+  const pdfHeight = windowSize.height - 10; // 60px top + 60px bottom
+  const pdfWidth = windowSize.width - 10;
   // Configure PDF.js options with CDN fallback for better font and image support
 
   // Track window resize and fullscreen changes
@@ -121,18 +122,8 @@ export function usePdfNavigation(bookId: string) {
   }, []);
 
   // Determine if we should show dual-page view
-  const shouldShowDualPage = () => {
-    // Don't show dual-page in fullscreen mode (Books app behavior)
-    if (isFullscreen) return false;
 
-    // Show dual-page for medium and large views (>= 768px)
-    // This includes 1024x770 (default medium size) and larger
-    return windowSize.width >= 768;
-  };
-
-  const isDualPage = shouldShowDualPage();
-  const setIsDualPage = useSetAtom(isDualPageAtom);
-  setIsDualPage(isDualPage);
+  const isDualPage = useAtomValue(isDualPageAtom);
 
   const previousPageSetter = useSetAtom(previousPageAtom);
   const previousPage = () => previousPageSetter(bookId);
@@ -146,6 +137,7 @@ export function usePdfNavigation(bookId: string) {
     numPages,
     isDualPage,
     pdfHeight,
+    pdfWidth,
   };
 }
 
@@ -176,7 +168,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     nextPage,
 
     isDualPage,
-    pdfHeight,
+    pdfWidth,
   } = usePdfNavigation(book.id);
 
   const handleThemeChange = (newTheme: ThemeType) => {
@@ -281,7 +273,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   return (
     <div
       className={cn(
-        "relative h-screen w-full overflow-hidden",
+        "relative h-screen w-full overflow-y-scroll pt-96",
         getBackgroundColor()
       )}
     >
@@ -294,14 +286,12 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
       {/* Fixed Top Bar */}
       <div
         className={cn(
-          "fixed top-0 left-0 right-0 z-50",
+          "fixed top-0 left-0 right-0  z-50 bg-transparent"
 
-          theme === ThemeType.Dark
-            ? "bg-gray-900/80  border-gray-700"
-            : "bg-white/80  border-gray-200"
+          //theme === ThemeType.Dark ? " border-gray-700" : " border-gray-200"
         )}
       >
-        <div className="flex items-center justify-between px-4 pt-1">
+        <div className="flex items-center justify-between px-4 pt-5">
           <IconButton
             onClick={() => setTocOpen(true)}
             className={cn(
@@ -314,44 +304,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
           </IconButton>
 
           <div className="flex items-center gap-2">
-            <Menu
-              trigger={
-                <IconButton
-                  className={cn(
-                    "hover:bg-transparent border-none",
-                    getTextColor()
-                  )}
-                >
-                  <Palette size={20} />
-                </IconButton>
-              }
-              open={menuOpen}
-              onOpen={() => setMenuOpen(true)}
-              onClose={() => setMenuOpen(false)}
-              anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-              theme={themes[theme]}
-            >
-              <div className="p-3">
-                <RadioGroup
-                  value={theme}
-                  onChange={(value) => handleThemeChange(value as ThemeType)}
-                  name="theme-selector"
-                  theme={themes[theme]}
-                >
-                  {(Object.keys(themes) as Array<keyof typeof themes>).map(
-                    (themeKey) => (
-                      <Radio
-                        key={themeKey}
-                        value={themeKey}
-                        label={themeKey}
-                        theme={themes[theme]}
-                      />
-                    )
-                  )}
-                </RadioGroup>
-              </div>
-            </Menu>
-
             <Link to="/">
               <Button
                 variant="ghost"
@@ -366,7 +318,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
 
       {/* Main PDF Viewer Area */}
       <div
-        className="flex items-center justify-center overflow-hidden px-2 py-1"
+        className="flex items-center justify-center  px-2 py-1"
         style={{ height: "100vh" }}
       >
         <Document
@@ -398,7 +350,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                 <PageComponent
                   key={pageNumber - 2}
                   thispageNumber={pageNumber - 2}
-                  pdfHeight={pdfHeight}
+                  pdfWidth={pdfWidth}
                   isHidden={true}
                 />
               )}
@@ -406,21 +358,21 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                 <PageComponent
                   key={pageNumber - 1}
                   thispageNumber={pageNumber - 1}
-                  pdfHeight={pdfHeight}
+                  pdfWidth={pdfWidth}
                   isHidden={true}
                 />
               )}
               <PageComponent
                 key={pageNumber}
                 thispageNumber={pageNumber}
-                pdfHeight={pdfHeight}
+                pdfWidth={pdfWidth}
                 isHidden={false}
               />
               {pageNumber + 1 <= numPages && (
                 <PageComponent
                   key={pageNumber + 1}
                   thispageNumber={pageNumber + 1}
-                  pdfHeight={pdfHeight}
+                  pdfWidth={pdfWidth}
                   isHidden={false}
                 />
               )}
@@ -429,7 +381,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                 <PageComponent
                   key={pageNumber + 2}
                   thispageNumber={pageNumber + 2}
-                  pdfHeight={pdfHeight}
+                  pdfWidth={pdfWidth}
                   isHidden={true}
                 />
               )}
@@ -437,7 +389,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                 <PageComponent
                   key={pageNumber + 3}
                   thispageNumber={pageNumber + 3}
-                  pdfHeight={pdfHeight}
+                  pdfWidth={pdfWidth}
                   isHidden={true}
                 />
               )}
@@ -449,29 +401,29 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                 <PageComponent
                   key={pageNumber - 1}
                   thispageNumber={pageNumber - 1}
-                  pdfHeight={pdfHeight}
+                  pdfWidth={pdfWidth}
                   isHidden={true}
                 />
               )}
               <PageComponent
                 key={pageNumber}
                 thispageNumber={pageNumber}
-                pdfHeight={pdfHeight}
+                pdfWidth={pdfWidth}
                 isHidden={false}
               />
               {pageNumber + 1 <= numPages && (
                 <PageComponent
                   key={pageNumber + 1}
                   thispageNumber={pageNumber + 1}
-                  pdfHeight={pdfHeight}
-                  isHidden={false}
+                  pdfWidth={pdfWidth}
+                  isHidden={true}
                 />
               )}
             </>
           )}
         </Document>
         {/* TTS Controls - Bottom Center */}
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-50">
+        <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
           {playerControl && (
             <TTSControls bookId={book.id} playerControl={playerControl} />
           )}
@@ -540,10 +492,12 @@ const PARAGRAPH_INDEX_PER_PAGE = 10000;
 export function PageComponent({
   thispageNumber: pageNumber,
   pdfHeight,
+  pdfWidth,
   isHidden = false,
 }: {
   thispageNumber: number;
-  pdfHeight: number;
+  pdfHeight?: number;
+  pdfWidth?: number;
   isHidden: boolean;
 }) {
   const [pageData, setPageData] = useState<TextContent | null>(null);
@@ -733,7 +687,8 @@ export function PageComponent({
 
         return str;
       }}
-      height={pdfHeight}
+      // height={pdfHeight}
+      width={pdfWidth}
       className={" rounded shadow-lg  " + isHiddenClass}
       renderTextLayer={true}
       renderAnnotationLayer={true}

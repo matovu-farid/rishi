@@ -15,7 +15,7 @@ export type Paragraph = ParagraphWithIndex & {
   };
 };
 export const pageNumberAtom = atom(1);
-export const isDualPageAtom = atom(true);
+export const isDualPageAtom = atom(false);
 export const currentViewPagesAtom = atom<number[]>([]);
 export const previousViewPagesAtom = atom<number[]>([]);
 export const nextViewPagesAtom = atom<number[]>([]);
@@ -27,7 +27,7 @@ export const paragraphsAtom = atomWithImmer<{
 
 export const resetParaphStateAtom = atom(null, (get, set) => {
   set(pageNumberAtom, 1);
-  set(isDualPageAtom, true);
+  set(isDualPageAtom, false);
   set(currentViewPagesAtom, []);
   set(previousViewPagesAtom, []);
   set(nextViewPagesAtom, []);
