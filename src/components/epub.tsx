@@ -4,7 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 
 import { Link } from "@tanstack/react-router";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Button } from "@components/ui/Button";
 import { IconButton } from "@components/ui/IconButton";
 import { Menu } from "@components/ui/Menu";
@@ -13,7 +13,6 @@ import { ThemeType } from "@/themes/common";
 import { themes } from "@/themes/themes";
 import createIReactReaderTheme from "@/themes/readerThemes";
 import { Palette } from "lucide-react";
-import { useState } from "react";
 import { TTSControls } from "@components/TTSControls";
 import { Rendition } from "epubjs/types";
 import { updateBookLocation } from "@/modules/books";
@@ -21,6 +20,7 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { BookData } from "@/generated";
 import { PlayerControlInterface } from "@/models/player_control";
 import { EpubPlayerControl } from "@/models/epub_player_contol";
+import { motion, AnimatePresence } from "framer-motion";
 
 function cn(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
@@ -39,11 +39,37 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
   const [renditionState, setRenditionState] = useState<Rendition | null>();
   const [theme, setTheme] = useState<ThemeType>(ThemeType.White);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState<string>(
+    book.current_location || "0"
+  );
+  const [direction, setDirection] = useState<"left" | "right">("right");
+  const navigationDirectionRef = useRef<"left" | "right">("right");
+  const [animationKey, setAnimationKey] = useState(0);
+  const animationTriggerRef = useRef(0);
+
   useEffect(() => {
     if (rendition.current) {
       updateTheme(rendition.current, theme);
     }
   }, [theme]);
+
+  // Track navigation direction by intercepting prev/next when rendition is available
+  useEffect(() => {
+    if (rendition.current) {
+      const originalPrev = rendition.current.prev;
+      const originalNext = rendition.current.next;
+
+      rendition.current.prev = function () {
+        navigationDirectionRef.current = "left";
+        return originalPrev.call(this);
+      };
+
+      rendition.current.next = function () {
+        navigationDirectionRef.current = "right";
+        return originalNext.call(this);
+      };
+    }
+  }, [renditionState]);
 
   const handleThemeChange = (newTheme: ThemeType) => {
     setTheme(newTheme);
@@ -60,7 +86,7 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
       await updateBookLocation(bookId, location);
     },
 
-    onError(error) {
+    onError(_error) {
       toast.error("Can not change book page");
     },
   });
@@ -90,7 +116,7 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
         <Link to="/">
           <Button
             variant="ghost"
-            className={cn("disabled:invisible", getTextColor())}
+            className={cn("disabled:invisible cursor-pointer", getTextColor())}
           >
             Back
           </Button>
@@ -129,8 +155,11 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
           </div>
         </Menu>
       </div>
-      <div style={{ height: "100vh" }}>
+      <div
+        style={{ height: "100vh", position: "relative", overflow: "hidden" }}
+      >
         <ReactReader
+          key={`reader-${book.id}`}
           loadingView={
             <div className="w-full h-screen grid items-center">
               <Loader />
@@ -138,8 +167,14 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
           }
           url={convertFileSrc(book.filePath)}
           title={book.title}
-          location={book.current_location || 0}
+          location={currentLocation || book.current_location || 0}
           locationChanged={(epubcfi: string) => {
+            // Use tracked navigation direction from intercepted prev/next calls
+            setDirection(navigationDirectionRef.current);
+            setCurrentLocation(epubcfi);
+            animationTriggerRef.current += 1;
+            setAnimationKey(animationTriggerRef.current);
+
             // Use debounced update to prevent race condition and excessive DB writes
             updateBookLocationMutation.mutate({
               bookId: book.id,
@@ -158,6 +193,38 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
             });
           }}
         />
+        <AnimatePresence>
+          {animationKey > 0 && (
+            <motion.div
+              key={animationKey}
+              initial={{
+                opacity: 0.3,
+                x: direction === "right" ? 30 : -30,
+              }}
+              animate={{
+                opacity: 0,
+                x: 0,
+              }}
+              exit={{
+                opacity: 0,
+              }}
+              transition={{
+                duration: 0.3,
+                ease: [0.4, 0, 0.2, 1],
+              }}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                pointerEvents: "none",
+                backgroundColor: themes[theme].background,
+                zIndex: 10,
+              }}
+            />
+          )}
+        </AnimatePresence>
       </div>
       {/* TTS Controls - Bottom Center */}
       <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-50">

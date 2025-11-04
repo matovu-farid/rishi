@@ -10,6 +10,7 @@ import { Radio, RadioGroup } from "@components/ui/Radio";
 import { ThemeType } from "@/themes/common";
 import { themes } from "@/themes/themes";
 import { Palette, Menu as MenuIcon } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { updateBookLocation } from "@/modules/books";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -73,7 +74,10 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 
 const MIN_PARAGRAPH_LENGTH = 50;
 
-export function usePdfNavigation(bookId: string) {
+export function usePdfNavigation(
+  bookId: string,
+  setDirection?: (dir: "left" | "right") => void
+) {
   const [numPages, setNumPages] = useAtom(pageCountAtom);
 
   const [windowSize, setWindowSize] = useState({
@@ -106,8 +110,7 @@ export function usePdfNavigation(bookId: string) {
         const appWindow = getCurrentWindow();
         const isCurrentlyFullscreen = await appWindow.isFullscreen();
         setIsFullscreen(isCurrentlyFullscreen);
-      } catch (error) {
-        console.error("Error checking fullscreen status:", error);
+      } catch (_error) {
         // Fallback to browser detection
         setIsFullscreen(document.fullscreenElement !== null);
       }
@@ -136,9 +139,15 @@ export function usePdfNavigation(bookId: string) {
   }, []);
 
   const previousPageSetter = useSetAtom(previousPageAtom);
-  const previousPage = () => previousPageSetter(bookId);
+  const previousPage = () => {
+    setDirection?.("left");
+    previousPageSetter(bookId);
+  };
   const nextPageSetter = useSetAtom(nextPageAtom);
-  const nextPage = () => nextPageSetter(bookId);
+  const nextPage = () => {
+    setDirection?.("right");
+    nextPageSetter(bookId);
+  };
 
   return {
     previousPage,
@@ -157,6 +166,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const [theme, setTheme] = useState<ThemeType>(ThemeType.White);
   const [menuOpen, setMenuOpen] = useState(false);
   const [tocOpen, setTocOpen] = useState(false);
+  const [direction, setDirection] = useState<"left" | "right">("right");
 
   const resetParaphState = useSetAtom(resetParaphStateAtom);
   const setIsDualPage = useSetAtom(isDualPageAtom);
@@ -184,7 +194,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     pdfHeight,
     dualPageWidth,
     isFullscreen,
-  } = usePdfNavigation(book.id);
+  } = usePdfNavigation(book.id, setDirection);
 
   const handleThemeChange = (newTheme: ThemeType) => {
     setTheme(newTheme);
@@ -371,6 +381,8 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   }, [pageNumber]);
 
   function onItemClick({ pageNumber: itemPageNumber }: { pageNumber: number }) {
+    // Determine direction based on page number comparison
+    setDirection(itemPageNumber > pageNumber ? "right" : "left");
     setPageNumber(itemPageNumber);
     setTocOpen(false);
     // Update book location when navigating via TOC
@@ -400,9 +412,11 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
           const { dir } = eventData;
           // Left swipe = next page, Right swipe = previous page
           if (dir === "Left") {
+            setDirection("right");
             void nextPage();
           }
           if (dir === "Right") {
+            setDirection("left");
             void previousPage();
           }
         },
@@ -453,7 +467,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
               <Link to="/">
                 <Button
                   variant="ghost"
-                  className={cn("shadow-sm", getTextColor())}
+                  className={cn("shadow-sm cursor-pointer", getTextColor())}
                 >
                   Back
                 </Button>
@@ -490,94 +504,124 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
           >
             {isDualPage && pageNumber < numPages ? (
               // Dual-page view - side by side with gap, using fixed height
-              <div className="flex items-center gap-3">
-                {/* Hidden pages for previous view */}
-                {pageNumber >= 2 && (
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={`dual-${pageNumber}`}
+                  initial={{
+                    opacity: 0,
+                    x: direction === "right" ? 100 : -100,
+                  }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: direction === "right" ? -100 : 100 }}
+                  transition={{
+                    duration: 0.3,
+                    ease: [0.4, 0, 0.2, 1],
+                  }}
+                  className="flex items-center gap-3"
+                >
+                  {/* Hidden pages for previous view */}
+                  {pageNumber >= 2 && (
+                    <PageComponent
+                      key={pageNumber - 2}
+                      thispageNumber={pageNumber - 2}
+                      pdfHeight={pdfHeight}
+                      pdfWidth={dualPageWidth}
+                      isHidden={true}
+                      isDualPage={true}
+                    />
+                  )}
+                  {pageNumber >= 1 && (
+                    <PageComponent
+                      key={pageNumber - 1}
+                      thispageNumber={pageNumber - 1}
+                      pdfHeight={pdfHeight}
+                      pdfWidth={dualPageWidth}
+                      isHidden={true}
+                      isDualPage={true}
+                    />
+                  )}
                   <PageComponent
-                    key={pageNumber - 2}
-                    thispageNumber={pageNumber - 2}
-                    pdfHeight={pdfHeight}
-                    pdfWidth={dualPageWidth}
-                    isHidden={true}
-                    isDualPage={true}
-                  />
-                )}
-                {pageNumber >= 1 && (
-                  <PageComponent
-                    key={pageNumber - 1}
-                    thispageNumber={pageNumber - 1}
-                    pdfHeight={pdfHeight}
-                    pdfWidth={dualPageWidth}
-                    isHidden={true}
-                    isDualPage={true}
-                  />
-                )}
-                <PageComponent
-                  key={pageNumber}
-                  thispageNumber={pageNumber}
-                  pdfHeight={pdfHeight}
-                  pdfWidth={dualPageWidth}
-                  isHidden={false}
-                  isDualPage={true}
-                />
-                {pageNumber + 1 <= numPages && (
-                  <PageComponent
-                    key={pageNumber + 1}
-                    thispageNumber={pageNumber + 1}
+                    key={pageNumber}
+                    thispageNumber={pageNumber}
                     pdfHeight={pdfHeight}
                     pdfWidth={dualPageWidth}
                     isHidden={false}
                     isDualPage={true}
                   />
-                )}
-                {/* Hidden pages for next view */}
-                {pageNumber + 2 <= numPages && (
-                  <PageComponent
-                    key={pageNumber + 2}
-                    thispageNumber={pageNumber + 2}
-                    pdfHeight={pdfHeight}
-                    pdfWidth={dualPageWidth}
-                    isHidden={true}
-                    isDualPage={true}
-                  />
-                )}
-                {pageNumber + 3 <= numPages && (
-                  <PageComponent
-                    key={pageNumber + 3}
-                    thispageNumber={pageNumber + 3}
-                    pdfHeight={pdfHeight}
-                    pdfWidth={dualPageWidth}
-                    isHidden={true}
-                    isDualPage={true}
-                  />
-                )}
-              </div>
+                  {pageNumber + 1 <= numPages && (
+                    <PageComponent
+                      key={pageNumber + 1}
+                      thispageNumber={pageNumber + 1}
+                      pdfHeight={pdfHeight}
+                      pdfWidth={dualPageWidth}
+                      isHidden={false}
+                      isDualPage={true}
+                    />
+                  )}
+                  {/* Hidden pages for next view */}
+                  {pageNumber + 2 <= numPages && (
+                    <PageComponent
+                      key={pageNumber + 2}
+                      thispageNumber={pageNumber + 2}
+                      pdfHeight={pdfHeight}
+                      pdfWidth={dualPageWidth}
+                      isHidden={true}
+                      isDualPage={true}
+                    />
+                  )}
+                  {pageNumber + 3 <= numPages && (
+                    <PageComponent
+                      key={pageNumber + 3}
+                      thispageNumber={pageNumber + 3}
+                      pdfHeight={pdfHeight}
+                      pdfWidth={dualPageWidth}
+                      isHidden={true}
+                      isDualPage={true}
+                    />
+                  )}
+                </motion.div>
+              </AnimatePresence>
             ) : (
               // Single page view
-              <>
-                {pageNumber >= 1 && (
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={`single-${pageNumber}`}
+                  initial={{
+                    opacity: 0,
+                    x: direction === "right" ? 100 : -100,
+                  }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: direction === "right" ? -100 : 100 }}
+                  transition={{
+                    duration: 0.3,
+                    ease: [0.4, 0, 0.2, 1],
+                  }}
+                  className="flex flex-col items-center"
+                >
+                  {pageNumber >= 1 && (
+                    <PageComponent
+                      key={pageNumber - 1}
+                      thispageNumber={pageNumber - 1}
+                      pdfWidth={pdfWidth}
+                      isHidden={true}
+                    />
+                  )}
                   <PageComponent
-                    key={pageNumber - 1}
-                    thispageNumber={pageNumber - 1}
+                    key={pageNumber}
+                    thispageNumber={pageNumber}
                     pdfWidth={pdfWidth}
-                    isHidden={true}
+                    isHidden={false}
                   />
-                )}
-                <PageComponent
-                  key={pageNumber}
-                  thispageNumber={pageNumber}
-                  pdfWidth={pdfWidth}
-                  isHidden={false}
-                />
-                {pageNumber + 1 <= numPages && (
-                  <PageComponent
-                    key={pageNumber + 1}
-                    thispageNumber={pageNumber + 1}
-                    pdfWidth={pdfWidth}
-                    isHidden={true}
-                  />
-                )}
-              </>
+                  {pageNumber + 1 <= numPages && (
+                    <PageComponent
+                      key={pageNumber + 1}
+                      thispageNumber={pageNumber + 1}
+                      pdfWidth={pdfWidth}
+                      isHidden={true}
+                    />
+                  )}
+                </motion.div>
+              </AnimatePresence>
             )}
           </Document>
           {/* TTS Controls - Bottom Center */}

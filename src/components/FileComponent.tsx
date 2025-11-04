@@ -162,6 +162,7 @@ function FileDrop(): React.JSX.Element {
       <div className="p-4 flex justify-end">
         <Button
           variant="ghost"
+          className="cursor-pointer"
           startIcon={<Plus size={20} />}
           onClick={handleChooseFiles}
         >
