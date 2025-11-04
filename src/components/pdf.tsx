@@ -8,7 +8,7 @@ import { IconButton } from "@components/ui/IconButton";
 import { ThemeType } from "@/themes/common";
 import { themes } from "@/themes/themes";
 import { Loader2, Menu as MenuIcon } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, animate } from "framer-motion";
 import { updateBookLocation } from "@/modules/books";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -177,7 +177,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     const container = scrollContainerRef.current;
     if (!container || !highlightedParagraph?.index) return;
 
-    // Gate until that page's tex layer has been rendered
+    // Gate until that page's text layer has been rendered
     if (!isRendered) return;
 
     const timeout = setTimeout(() => {
@@ -187,16 +187,32 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
       if (!el) return;
       console.log({ el });
 
-      // Option A: let the browser pick the correct scrollable ancestor
-      // (works well in modern browsers if your container has overflow-y: scroll)
-      el.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-        inline: "nearest",
+      // Calculate the target scroll position
+      const containerRect = container.getBoundingClientRect();
+      const elementRect = el.getBoundingClientRect();
+
+      // Current scroll position + element's position relative to container
+      const currentScrollTop = container.scrollTop;
+      const elementTopRelativeToContainer =
+        elementRect.top - containerRect.top + currentScrollTop;
+
+      // Calculate target scroll position to center the element
+      const targetScrollTop =
+        elementTopRelativeToContainer -
+        container.clientHeight / 2 +
+        elementRect.height / 2;
+
+      // Use framer-motion's animate for smooth scrolling
+      animate(container.scrollTop, targetScrollTop, {
+        duration: 0.8,
+        ease: [0.4, 0, 0.2, 1], // Custom easing curve for smoother feel
+        onUpdate: (latest) => {
+          container.scrollTop = latest;
+        },
       });
     }, 100);
     return () => clearTimeout(timeout);
-  }, [highlightedParagraph]);
+  }, [highlightedParagraph, isRendered]);
 
   // Set book data only when book prop changes, not on every render
   useEffect(() => {
