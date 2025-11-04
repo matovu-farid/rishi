@@ -141,12 +141,12 @@ export function usePdfNavigation(
   const previousPageSetter = useSetAtom(previousPageAtom);
   const previousPage = () => {
     setDirection?.("left");
-    previousPageSetter(bookId);
+    void previousPageSetter(bookId);
   };
   const nextPageSetter = useSetAtom(nextPageAtom);
   const nextPage = () => {
     setDirection?.("right");
-    nextPageSetter(bookId);
+    void nextPageSetter(bookId);
   };
 
   return {
@@ -167,6 +167,15 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const [menuOpen, setMenuOpen] = useState(false);
   const [tocOpen, setTocOpen] = useState(false);
   const [direction, setDirection] = useState<"left" | "right">("right");
+
+  // Ref for the scrollable container
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // Track if we're currently auto-scrolling to prevent conflicts
+  const isAutoScrollingRef = useRef(false);
+  // Track last scroll position to detect user scrolling
+  const lastScrollTopRef = useRef(0);
+  // Timeout for debouncing scroll detection
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const resetParaphState = useSetAtom(resetParaphStateAtom);
   const setIsDualPage = useSetAtom(isDualPageAtom);
@@ -403,6 +412,87 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     }
   }
 
+  // Auto-scroll functionality: detect when we reach the end of view and scroll up
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || isDualPage) {
+      // Don't auto-scroll in dual-page mode
+      return;
+    }
+
+    const handleScroll = () => {
+      // Clear any existing timeout
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+
+      // Only check if we're not currently auto-scrolling
+      if (isAutoScrollingRef.current) {
+        return;
+      }
+
+      const currentScrollTop = container.scrollTop;
+      const scrollHeight = container.scrollHeight;
+      const clientHeight = container.clientHeight;
+
+      // Calculate scroll position as a percentage (0 = top, 1 = bottom)
+      const scrollPercentage = (currentScrollTop + clientHeight) / scrollHeight;
+
+      // Threshold: trigger auto-scroll when within 15% of the bottom
+      const bottomThreshold = 0.85;
+      // Scroll amount: scroll up by 25% of viewport height
+      const scrollUpAmount = clientHeight * 0.25;
+
+      // Check if user scrolled down (not up) and we're near the bottom
+      const scrolledDown = currentScrollTop > lastScrollTopRef.current;
+      const nearBottom = scrollPercentage >= bottomThreshold;
+
+      if (scrolledDown && nearBottom && currentScrollTop > scrollUpAmount) {
+        // Debounce: wait a bit before auto-scrolling to avoid conflicts with user scrolling
+        scrollTimeoutRef.current = setTimeout(() => {
+          if (!isAutoScrollingRef.current) {
+            isAutoScrollingRef.current = true;
+            const targetScrollTop = currentScrollTop - scrollUpAmount;
+
+            // Smooth scroll to the target position
+            container.scrollTo({
+              top: targetScrollTop,
+              behavior: "smooth",
+            });
+
+            // Reset auto-scrolling flag after animation completes
+            setTimeout(() => {
+              isAutoScrollingRef.current = false;
+            }, 500); // Animation duration
+          }
+        }, 300); // Wait 300ms after user stops scrolling
+      }
+
+      // Update last scroll position
+      lastScrollTopRef.current = currentScrollTop;
+    };
+
+    // Reset scroll position when page changes
+    const resetScroll = () => {
+      if (container && !isAutoScrollingRef.current) {
+        container.scrollTop = 0;
+        lastScrollTopRef.current = 0;
+      }
+    };
+
+    container.addEventListener("scroll", handleScroll, { passive: true });
+
+    // Reset scroll when page number changes
+    resetScroll();
+
+    return () => {
+      container.removeEventListener("scroll", handleScroll);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, [pageNumber, isDualPage]);
+
   // Calculate available height for PDF (viewport - top bar - bottom bar)
 
   return (
@@ -429,6 +519,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
       onSwipeRight={() => void previousPage()}
     >
       <div
+        ref={scrollContainerRef}
         className={cn(
           "relative h-screen w-full overflow-y-scroll ",
           !isDualPage ? "pt-96" : "",
