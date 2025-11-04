@@ -212,7 +212,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
 
         // Find or create View submenu
         viewSubmenu = (await defaultMenu.get("view")) as Submenu | null;
-        console.log(await previousAppMenu?.items());
         if (!viewSubmenu) {
           viewSubmenu = await Submenu.new({
             id: "pdf",
