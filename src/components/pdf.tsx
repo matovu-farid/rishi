@@ -58,6 +58,7 @@ import {
   setParagraphsAtom,
   currentBookDataAtom,
   playerControlAtom,
+  isRenderedAtom,
 } from "@/stores/paragraph-atoms";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { TTSControls } from "./TTSControls";
@@ -160,12 +161,42 @@ export function usePdfNavigation(
   };
 }
 
+const getPageFromParagraphIndex = (index: string): number => {
+  return Math.floor(Number(index) / PARAGRAPH_INDEX_PER_PAGE);
+};
+
 export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const [theme] = useState<ThemeType>(ThemeType.White);
   const [tocOpen, setTocOpen] = useState(false);
   const [direction, setDirection] = useState<"left" | "right">("right");
   const setCurrentBookData = useSetAtom(currentBookDataAtom);
   const playerControl = useAtomValue(playerControlAtom);
+  const highlightedParagraph = useAtomValue(highlightedParagraphAtom);
+  const isRendered = useAtomValue(isRenderedAtom);
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || !highlightedParagraph?.index) return;
+
+    // Gate until that page's tex layer has been rendered
+    if (!isRendered) return;
+
+    const timeout = setTimeout(() => {
+      const el = [...container.querySelectorAll<HTMLElement>("mark")].find(
+        (mark) => mark.innerText
+      );
+      if (!el) return;
+      console.log({ el });
+
+      // Option A: let the browser pick the correct scrollable ancestor
+      // (works well in modern browsers if your container has overflow-y: scroll)
+      el.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+        inline: "nearest",
+      });
+    }, 100);
+    return () => clearTimeout(timeout);
+  }, [highlightedParagraph]);
 
   // Set book data only when book prop changes, not on every render
   useEffect(() => {
@@ -390,85 +421,85 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   }
 
   // Auto-scroll functionality: detect when we reach the end of view and scroll up
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container || isDualPage) {
-      // Don't auto-scroll in dual-page mode
-      return;
-    }
+  // useEffect(() => {
+  //   const container = scrollContainerRef.current;
+  //   if (!container || isDualPage) {
+  //     // Don't auto-scroll in dual-page mode
+  //     return;
+  //   }
 
-    const handleScroll = () => {
-      // Clear any existing timeout
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
+  //   const handleScroll = () => {
+  //     // Clear any existing timeout
+  //     if (scrollTimeoutRef.current) {
+  //       clearTimeout(scrollTimeoutRef.current);
+  //     }
 
-      // Only check if we're not currently auto-scrolling
-      if (isAutoScrollingRef.current) {
-        return;
-      }
+  //     // Only check if we're not currently auto-scrolling
+  //     if (isAutoScrollingRef.current) {
+  //       return;
+  //     }
 
-      const currentScrollTop = container.scrollTop;
-      const scrollHeight = container.scrollHeight;
-      const clientHeight = container.clientHeight;
+  //     const currentScrollTop = container.scrollTop;
+  //     const scrollHeight = container.scrollHeight;
+  //     const clientHeight = container.clientHeight;
 
-      // Calculate scroll position as a percentage (0 = top, 1 = bottom)
-      const scrollPercentage = (currentScrollTop + clientHeight) / scrollHeight;
+  //     // Calculate scroll position as a percentage (0 = top, 1 = bottom)
+  //     const scrollPercentage = (currentScrollTop + clientHeight) / scrollHeight;
 
-      // Threshold: trigger auto-scroll when within 15% of the bottom
-      const bottomThreshold = 0.85;
-      // Scroll amount: scroll up by 25% of viewport height
-      const scrollUpAmount = clientHeight * 0.25;
+  //     // Threshold: trigger auto-scroll when within 15% of the bottom
+  //     const bottomThreshold = 0.85;
+  //     // Scroll amount: scroll up by 25% of viewport height
+  //     const scrollUpAmount = clientHeight * 0.25;
 
-      // Check if user scrolled down (not up) and we're near the bottom
-      const scrolledDown = currentScrollTop > lastScrollTopRef.current;
-      const nearBottom = scrollPercentage >= bottomThreshold;
+  //     // Check if user scrolled down (not up) and we're near the bottom
+  //     const scrolledDown = currentScrollTop > lastScrollTopRef.current;
+  //     const nearBottom = scrollPercentage >= bottomThreshold;
 
-      if (scrolledDown && nearBottom && currentScrollTop > scrollUpAmount) {
-        // Debounce: wait a bit before auto-scrolling to avoid conflicts with user scrolling
-        scrollTimeoutRef.current = setTimeout(() => {
-          if (!isAutoScrollingRef.current) {
-            isAutoScrollingRef.current = true;
-            const targetScrollTop = currentScrollTop - scrollUpAmount;
+  //     if (scrolledDown && nearBottom && currentScrollTop > scrollUpAmount) {
+  //       // Debounce: wait a bit before auto-scrolling to avoid conflicts with user scrolling
+  //       scrollTimeoutRef.current = setTimeout(() => {
+  //         if (!isAutoScrollingRef.current) {
+  //           isAutoScrollingRef.current = true;
+  //           const targetScrollTop = currentScrollTop - scrollUpAmount;
 
-            // Smooth scroll to the target position
-            container.scrollTo({
-              top: targetScrollTop,
-              behavior: "smooth",
-            });
+  //           // Smooth scroll to the target position
+  //           container.scrollTo({
+  //             top: targetScrollTop,
+  //             behavior: "smooth",
+  //           });
 
-            // Reset auto-scrolling flag after animation completes
-            setTimeout(() => {
-              isAutoScrollingRef.current = false;
-            }, 500); // Animation duration
-          }
-        }, 300); // Wait 300ms after user stops scrolling
-      }
+  //           // Reset auto-scrolling flag after animation completes
+  //           setTimeout(() => {
+  //             isAutoScrollingRef.current = false;
+  //           }, 500); // Animation duration
+  //         }
+  //       }, 300); // Wait 300ms after user stops scrolling
+  //     }
 
-      // Update last scroll position
-      lastScrollTopRef.current = currentScrollTop;
-    };
+  //     // Update last scroll position
+  //     lastScrollTopRef.current = currentScrollTop;
+  //   };
 
-    // Reset scroll position when page changes
-    const resetScroll = () => {
-      if (container && !isAutoScrollingRef.current) {
-        container.scrollTop = 0;
-        lastScrollTopRef.current = 0;
-      }
-    };
+  //   // Reset scroll position when page changes
+  //   const resetScroll = () => {
+  //     if (container && !isAutoScrollingRef.current) {
+  //       container.scrollTop = 0;
+  //       lastScrollTopRef.current = 0;
+  //     }
+  //   };
 
-    container.addEventListener("scroll", handleScroll, { passive: true });
+  //   container.addEventListener("scroll", handleScroll, { passive: true });
 
-    // Reset scroll when page number changes
-    resetScroll();
+  //   // Reset scroll when page number changes
+  //   resetScroll();
 
-    return () => {
-      container.removeEventListener("scroll", handleScroll);
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
-    };
-  }, [pageNumber, isDualPage]);
+  //   return () => {
+  //     container.removeEventListener("scroll", handleScroll);
+  //     if (scrollTimeoutRef.current) {
+  //       clearTimeout(scrollTimeoutRef.current);
+  //     }
+  //   };
+  // }, [pageNumber, isDualPage]);
 
   // Calculate available height for PDF (viewport - top bar - bottom bar)
 
@@ -935,7 +966,8 @@ export function PageComponent({
           // isHighlighedPage() &&
           isInsideParagraph(transform as Transform)
         ) {
-          return `<mark>${str}</mark>`;
+          // return `<mark>${str}</mark>`;
+          return `<mark data-paragraph="${highlightedParagraph.index}">${str}</mark>`;
         }
 
         return str;
