@@ -81,12 +81,11 @@ export function usePdfNavigation(bookId: string) {
   });
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const pdfHeight = windowSize.height - 10; // 60px top + 60px bottom
-  const pdfWidth = windowSize.width - 10;
-
   // Determine if we should show dual-page view
   const isDualPage = useAtomValue(isDualPageAtom);
 
+  const pdfHeight = windowSize.height - 10; // 60px top + 60px bottom
+  const pdfWidth = windowSize.width - 10;
   // Calculate page dimensions: in dual-page mode, each page gets half the width
   const dualPageWidth = isDualPage ? (windowSize.width - 10) / 2 - 6 : pdfWidth; // 6px for gap between pages
 
@@ -149,6 +148,7 @@ export function usePdfNavigation(bookId: string) {
     pdfHeight,
     pdfWidth,
     dualPageWidth,
+    isFullscreen,
   };
 }
 
@@ -182,6 +182,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     pdfWidth,
     pdfHeight,
     dualPageWidth,
+    isFullscreen,
   } = usePdfNavigation(book.id);
 
   const handleThemeChange = (newTheme: ThemeType) => {
@@ -397,15 +398,17 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
       className={cn(
         "relative h-screen w-full overflow-y-scroll ",
         !isDualPage ? "pt-96" : "",
+        !isDualPage && isFullscreen ? "pt-[420px]" : "",
         getBackgroundColor()
       )}
     >
-      <NavigationArrows
-        onPrev={previousPage}
-        onNext={nextPage}
-        readerStyles={createIReactReaderTheme(themes[theme].readerTheme)}
-      />
-
+      <div className="z-100 absolute top-[48%]">
+        <NavigationArrows
+          onPrev={previousPage}
+          onNext={nextPage}
+          readerStyles={createIReactReaderTheme(themes[theme].readerTheme)}
+        />
+      </div>
       {/* Fixed Top Bar */}
       <div
         className={cn(
