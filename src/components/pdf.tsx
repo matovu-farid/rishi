@@ -161,7 +161,35 @@ export function usePdfNavigation(
   };
 }
 
-export function PdfView({ book }: { book: BookData }): React.JSX.Element {
+export function PdfView({ book }: { book: BookData }) {
+  const [playerControl, setPlayerControl] = useState<
+    PlayerControlInterface | undefined
+  >(undefined);
+  const isRendered = useAtomValue(isRenderedAtom);
+  const bookId = book.id;
+  useEffect(() => {
+    if (isRendered) {
+      const playerControl = new PdfPlayerControl(bookId);
+      setPlayerControl(playerControl);
+    }
+  }, [isRendered, bookId]);
+  return (
+    playerControl && (
+      <PdfViewInternal
+        key={book.id}
+        book={book}
+        playerControl={playerControl}
+      />
+    )
+  );
+}
+export function PdfViewInternal({
+  book,
+  playerControl,
+}: {
+  book: BookData;
+  playerControl: PlayerControlInterface;
+}): React.JSX.Element {
   const [theme] = useState<ThemeType>(ThemeType.White);
   const [tocOpen, setTocOpen] = useState(false);
   const [direction, setDirection] = useState<"left" | "right">("right");
@@ -353,16 +381,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const setPreviousViewPages = useSetAtom(previousViewPagesAtom);
   const setNextViewPages = useSetAtom(nextViewPagesAtom);
   const [numPages, setPageCount] = useAtom(pageCountAtom);
-
-  const playerControl = useRef<PlayerControlInterface | undefined>(undefined);
-  const isRendered = useAtomValue(isRenderedAtom);
-  const bookId = book.id;
-
-  useEffect(() => {
-    if (isRendered) {
-      playerControl.current = new PdfPlayerControl(bookId);
-    }
-  }, [isRendered, bookId]);
 
   useEffect(() => {
     if (isDualPage) {
@@ -703,13 +721,13 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
             )}
           </Document>
           {/* TTS Controls - Draggable */}
-          {playerControl.current && (
+          {
             <TTSControls
               key={book.id}
               bookId={book.id}
-              playerControl={playerControl.current}
+              playerControl={playerControl}
             />
-          )}
+          }
         </div>
         {/* TOC Sidebar */}
         <Sheet open={tocOpen} onOpenChange={setTocOpen}>
