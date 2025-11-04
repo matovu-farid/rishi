@@ -13,6 +13,12 @@ import { Palette, Menu as MenuIcon } from "lucide-react";
 import { updateBookLocation } from "@/modules/books";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import {
+  Menu as TauriMenu,
+  Submenu,
+  CheckMenuItem,
+} from "@tauri-apps/api/menu";
+import { ensureTray, setTrayMenu, clearTrayMenu } from "@components/lib/tray";
 import { Document, Page, Outline, pdfjs } from "react-pdf";
 import type {
   DocumentInitParameters,
@@ -56,6 +62,7 @@ import {
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { TTSControls } from "./TTSControls";
 import { PdfPlayerControl } from "@/models/pdf_player_control";
+import { customStore } from "@/stores/jotai";
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -76,6 +83,13 @@ export function usePdfNavigation(bookId: string) {
 
   const pdfHeight = windowSize.height - 10; // 60px top + 60px bottom
   const pdfWidth = windowSize.width - 10;
+
+  // Determine if we should show dual-page view
+  const isDualPage = useAtomValue(isDualPageAtom);
+
+  // Calculate page dimensions: in dual-page mode, each page gets half the width
+  const dualPageWidth = isDualPage ? (windowSize.width - 10) / 2 - 6 : pdfWidth; // 6px for gap between pages
+
   // Configure PDF.js options with CDN fallback for better font and image support
 
   // Track window resize and fullscreen changes
@@ -121,10 +135,6 @@ export function usePdfNavigation(bookId: string) {
     };
   }, []);
 
-  // Determine if we should show dual-page view
-
-  const isDualPage = useAtomValue(isDualPageAtom);
-
   const previousPageSetter = useSetAtom(previousPageAtom);
   const previousPage = () => previousPageSetter(bookId);
   const nextPageSetter = useSetAtom(nextPageAtom);
@@ -138,6 +148,7 @@ export function usePdfNavigation(bookId: string) {
     isDualPage,
     pdfHeight,
     pdfWidth,
+    dualPageWidth,
   };
 }
 
@@ -147,6 +158,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const [tocOpen, setTocOpen] = useState(false);
 
   const resetParaphState = useSetAtom(resetParaphStateAtom);
+  const setIsDualPage = useSetAtom(isDualPageAtom);
 
   useEffect(() => {
     return () => {
@@ -166,15 +178,125 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const {
     previousPage,
     nextPage,
-
     isDualPage,
     pdfWidth,
+    pdfHeight,
+    dualPageWidth,
   } = usePdfNavigation(book.id);
 
   const handleThemeChange = (newTheme: ThemeType) => {
     setTheme(newTheme);
     setMenuOpen(false);
   };
+
+  // Setup View submenu in the app menu for PDF view
+  const isDualPageRef = useRef(isDualPage);
+
+  // Keep ref in sync with current value
+  useEffect(() => {
+    isDualPageRef.current = isDualPage;
+  }, [isDualPage]);
+
+  useEffect(() => {
+    let disposed = false;
+    let previousAppMenu: TauriMenu | null = null;
+    let viewSubmenu: Submenu | null = null;
+    let twoPagesItem: CheckMenuItem | null = null;
+
+    const setupMenu = async () => {
+      try {
+        // Get the default app menu
+        const defaultMenu = await TauriMenu.default();
+        previousAppMenu = await defaultMenu.setAsAppMenu();
+
+        // Find or create View submenu
+        viewSubmenu = (await defaultMenu.get("view")) as Submenu | null;
+        console.log(await previousAppMenu?.items());
+        if (!viewSubmenu) {
+          viewSubmenu = await Submenu.new({
+            id: "pdf",
+            text: "pdf",
+          });
+          await defaultMenu.append(viewSubmenu);
+        }
+
+        // Remove existing two_pages item if it exists
+        const existingItem = await viewSubmenu.get("two_pages");
+        if (existingItem) {
+          await viewSubmenu.remove(existingItem);
+        }
+
+        // Create CheckMenuItem for Two Pages
+        // The action will toggle the current state by reading from the atom store
+        twoPagesItem = await CheckMenuItem.new({
+          id: "two_pages",
+          text: "Two Pages",
+          checked: isDualPageRef.current,
+          action: () => {
+            // Read current value from atom store and toggle
+            const current = customStore.get(isDualPageAtom);
+            setIsDualPage(!current);
+          },
+        });
+
+        await viewSubmenu.append(twoPagesItem);
+
+        // Set the modified menu as app menu
+        await defaultMenu.setAsAppMenu();
+
+        // Also set tray menu
+        await ensureTray();
+        await setTrayMenu(defaultMenu);
+      } catch (error) {
+        console.error("Error setting up menu:", error);
+        // ignore tray/menu errors in environments that don't support them
+      }
+    };
+
+    void setupMenu();
+
+    return () => {
+      disposed = true;
+      void (async () => {
+        try {
+          // Remove the two_pages item on cleanup
+          if (viewSubmenu && twoPagesItem) {
+            await viewSubmenu.remove(twoPagesItem);
+          }
+          // Restore previous menu
+          if (previousAppMenu) {
+            await previousAppMenu.setAsAppMenu();
+          } else {
+            const def = await TauriMenu.default();
+            await def.setAsAppMenu();
+          }
+          await clearTrayMenu();
+        } catch (error) {
+          console.error("Error cleaning up menu:", error);
+        }
+      })();
+    };
+  }, [setIsDualPage]); // Only run on mount/unmount, not when isDualPage changes
+
+  // Update checkbox state when isDualPage changes
+  useEffect(() => {
+    void (async () => {
+      try {
+        const defaultMenu = await TauriMenu.default();
+        const viewSubmenu = (await defaultMenu.get("view")) as Submenu | null;
+        if (viewSubmenu) {
+          const twoPagesItem = (await viewSubmenu.get(
+            "two_pages"
+          )) as CheckMenuItem | null;
+          if (twoPagesItem) {
+            await twoPagesItem.setChecked(isDualPage);
+          }
+        }
+      } catch {
+        // ignore errors
+      }
+    })();
+  }, [isDualPage]);
 
   const updateBookLocationMutation = useMutation({
     mutationFn: async ({
@@ -273,7 +395,8 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   return (
     <div
       className={cn(
-        "relative h-screen w-full overflow-y-scroll pt-96",
+        "relative h-screen w-full overflow-y-scroll ",
+        !isDualPage ? "pt-96" : "",
         getBackgroundColor()
       )}
     >
@@ -343,37 +466,45 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
           externalLinkRel="noopener noreferrer nofollow"
         >
           {isDualPage && pageNumber < numPages ? (
-            // Dual-page view - side by side with gap
+            // Dual-page view - side by side with gap, using fixed height
             <div className="flex items-center gap-3">
               {/* Hidden pages for previous view */}
               {pageNumber >= 2 && (
                 <PageComponent
                   key={pageNumber - 2}
                   thispageNumber={pageNumber - 2}
-                  pdfWidth={pdfWidth}
+                  pdfHeight={pdfHeight}
+                  pdfWidth={dualPageWidth}
                   isHidden={true}
+                  isDualPage={true}
                 />
               )}
               {pageNumber >= 1 && (
                 <PageComponent
                   key={pageNumber - 1}
                   thispageNumber={pageNumber - 1}
-                  pdfWidth={pdfWidth}
+                  pdfHeight={pdfHeight}
+                  pdfWidth={dualPageWidth}
                   isHidden={true}
+                  isDualPage={true}
                 />
               )}
               <PageComponent
                 key={pageNumber}
                 thispageNumber={pageNumber}
-                pdfWidth={pdfWidth}
+                pdfHeight={pdfHeight}
+                pdfWidth={dualPageWidth}
                 isHidden={false}
+                isDualPage={true}
               />
               {pageNumber + 1 <= numPages && (
                 <PageComponent
                   key={pageNumber + 1}
                   thispageNumber={pageNumber + 1}
-                  pdfWidth={pdfWidth}
+                  pdfHeight={pdfHeight}
+                  pdfWidth={dualPageWidth}
                   isHidden={false}
+                  isDualPage={true}
                 />
               )}
               {/* Hidden pages for next view */}
@@ -381,16 +512,20 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                 <PageComponent
                   key={pageNumber + 2}
                   thispageNumber={pageNumber + 2}
-                  pdfWidth={pdfWidth}
+                  pdfHeight={pdfHeight}
+                  pdfWidth={dualPageWidth}
                   isHidden={true}
+                  isDualPage={true}
                 />
               )}
               {pageNumber + 3 <= numPages && (
                 <PageComponent
                   key={pageNumber + 3}
                   thispageNumber={pageNumber + 3}
-                  pdfWidth={pdfWidth}
+                  pdfHeight={pdfHeight}
+                  pdfWidth={dualPageWidth}
                   isHidden={true}
+                  isDualPage={true}
                 />
               )}
             </div>
@@ -494,11 +629,13 @@ export function PageComponent({
   pdfHeight,
   pdfWidth,
   isHidden = false,
+  isDualPage = false,
 }: {
   thispageNumber: number;
   pdfHeight?: number;
   pdfWidth?: number;
   isHidden: boolean;
+  isDualPage?: boolean;
 }) {
   const [pageData, setPageData] = useState<TextContent | null>(null);
   const isHighlighting = useAtomValue(isHighlightingAtom);
@@ -687,8 +824,8 @@ export function PageComponent({
 
         return str;
       }}
-      // height={pdfHeight}
-      width={pdfWidth}
+      height={isDualPage ? pdfHeight : undefined}
+      width={isDualPage ? undefined : pdfWidth}
       className={" rounded shadow-lg  " + isHiddenClass}
       renderTextLayer={true}
       renderAnnotationLayer={true}
