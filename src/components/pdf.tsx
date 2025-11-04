@@ -39,7 +39,8 @@ import { BookData } from "@/generated";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 import createIReactReaderTheme from "@/themes/readerThemes";
-import { NavigationArrows } from "./react-reader/components";
+import { NavigationArrows, SwipeWrapper } from "./react-reader/components";
+import { type SwipeEventData } from "react-swipeable";
 import { TextItem } from "pdfjs-dist/types/src/display/api";
 import { PlayerControlInterface } from "@/models/player_control";
 import {
@@ -393,225 +394,246 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   // Calculate available height for PDF (viewport - top bar - bottom bar)
 
   return (
-    <div
-      className={cn(
-        "relative h-screen w-full overflow-y-scroll ",
-        !isDualPage ? "pt-96" : "",
-        !isDualPage && isFullscreen ? "pt-[420px]" : "",
-        getBackgroundColor()
-      )}
+    <SwipeWrapper
+      swipeProps={{
+        onSwiped: (eventData: SwipeEventData) => {
+          const { dir } = eventData;
+          // Left swipe = next page, Right swipe = previous page
+          if (dir === "Left") {
+            void nextPage();
+          }
+          if (dir === "Right") {
+            void previousPage();
+          }
+        },
+        onTouchStartOrOnMouseDown: ({ event }) => event.preventDefault(),
+        touchEventOptions: { passive: false },
+        preventScrollOnSwipe: true,
+        trackMouse: true, // Enable swipe with mouse drag
+      }}
+      onSwipeLeft={() => void nextPage()}
+      onSwipeRight={() => void previousPage()}
     >
-      <div className="z-100 absolute top-[48%]">
-        <NavigationArrows
-          onPrev={previousPage}
-          onNext={nextPage}
-          readerStyles={createIReactReaderTheme(themes[theme].readerTheme)}
-        />
-      </div>
-      {/* Fixed Top Bar */}
       <div
         className={cn(
-          "fixed top-0 left-0 right-0  z-50 bg-transparent"
-
-          //theme === ThemeType.Dark ? " border-gray-700" : " border-gray-200"
+          "relative h-screen w-full overflow-y-scroll ",
+          !isDualPage ? "pt-96" : "",
+          !isDualPage && isFullscreen ? "pt-[420px]" : "",
+          getBackgroundColor()
         )}
       >
-        <div className="flex items-center justify-between px-4 pt-5">
-          <IconButton
-            onClick={() => setTocOpen(true)}
-            className={cn(
-              "hover:bg-black/10 dark:hover:bg-white/10 border-none",
-              getTextColor()
-            )}
-            aria-label="Open table of contents"
-          >
-            <MenuIcon size={20} />
-          </IconButton>
+        <div className="z-100 absolute top-[48%]">
+          <NavigationArrows
+            onPrev={previousPage}
+            onNext={nextPage}
+            readerStyles={createIReactReaderTheme(themes[theme].readerTheme)}
+          />
+        </div>
+        {/* Fixed Top Bar */}
+        <div
+          className={cn(
+            "fixed top-0 left-0 right-0  z-50 bg-transparent"
 
-          <div className="flex items-center gap-2">
-            <Link to="/">
-              <Button
-                variant="ghost"
-                className={cn("shadow-sm", getTextColor())}
-              >
-                Back
-              </Button>
-            </Link>
+            //theme === ThemeType.Dark ? " border-gray-700" : " border-gray-200"
+          )}
+        >
+          <div className="flex items-center justify-between px-4 pt-5">
+            <IconButton
+              onClick={() => setTocOpen(true)}
+              className={cn(
+                "hover:bg-black/10 dark:hover:bg-white/10 border-none",
+                getTextColor()
+              )}
+              aria-label="Open table of contents"
+            >
+              <MenuIcon size={20} />
+            </IconButton>
+
+            <div className="flex items-center gap-2">
+              <Link to="/">
+                <Button
+                  variant="ghost"
+                  className={cn("shadow-sm", getTextColor())}
+                >
+                  Back
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Main PDF Viewer Area */}
-      <div
-        className="flex items-center justify-center  px-2 py-1"
-        style={{ height: "100vh" }}
-      >
-        <Document
-          className="flex items-center justify-center"
-          file={convertFileSrc(book.filePath)}
-          options={pdfOptions}
-          onLoadSuccess={onDocumentLoadSuccess}
-          onItemClick={onItemClick}
-          error={
-            <div className={cn("p-4 text-center", getTextColor())}>
-              <p className="text-red-500">
-                Error loading PDF. Please try again.
-              </p>
-            </div>
-          }
-          loading={
-            <div className={cn("p-4 text-center", getTextColor())}>
-              <p>Loading PDF...</p>
-            </div>
-          }
-          externalLinkTarget="_blank"
-          externalLinkRel="noopener noreferrer nofollow"
+        {/* Main PDF Viewer Area */}
+        <div
+          className="flex items-center justify-center  px-2 py-1"
+          style={{ height: "100vh" }}
         >
-          {isDualPage && pageNumber < numPages ? (
-            // Dual-page view - side by side with gap, using fixed height
-            <div className="flex items-center gap-3">
-              {/* Hidden pages for previous view */}
-              {pageNumber >= 2 && (
+          <Document
+            className="flex items-center justify-center"
+            file={convertFileSrc(book.filePath)}
+            options={pdfOptions}
+            onLoadSuccess={onDocumentLoadSuccess}
+            onItemClick={onItemClick}
+            error={
+              <div className={cn("p-4 text-center", getTextColor())}>
+                <p className="text-red-500">
+                  Error loading PDF. Please try again.
+                </p>
+              </div>
+            }
+            loading={
+              <div className={cn("p-4 text-center", getTextColor())}>
+                <p>Loading PDF...</p>
+              </div>
+            }
+            externalLinkTarget="_blank"
+            externalLinkRel="noopener noreferrer nofollow"
+          >
+            {isDualPage && pageNumber < numPages ? (
+              // Dual-page view - side by side with gap, using fixed height
+              <div className="flex items-center gap-3">
+                {/* Hidden pages for previous view */}
+                {pageNumber >= 2 && (
+                  <PageComponent
+                    key={pageNumber - 2}
+                    thispageNumber={pageNumber - 2}
+                    pdfHeight={pdfHeight}
+                    pdfWidth={dualPageWidth}
+                    isHidden={true}
+                    isDualPage={true}
+                  />
+                )}
+                {pageNumber >= 1 && (
+                  <PageComponent
+                    key={pageNumber - 1}
+                    thispageNumber={pageNumber - 1}
+                    pdfHeight={pdfHeight}
+                    pdfWidth={dualPageWidth}
+                    isHidden={true}
+                    isDualPage={true}
+                  />
+                )}
                 <PageComponent
-                  key={pageNumber - 2}
-                  thispageNumber={pageNumber - 2}
-                  pdfHeight={pdfHeight}
-                  pdfWidth={dualPageWidth}
-                  isHidden={true}
-                  isDualPage={true}
-                />
-              )}
-              {pageNumber >= 1 && (
-                <PageComponent
-                  key={pageNumber - 1}
-                  thispageNumber={pageNumber - 1}
-                  pdfHeight={pdfHeight}
-                  pdfWidth={dualPageWidth}
-                  isHidden={true}
-                  isDualPage={true}
-                />
-              )}
-              <PageComponent
-                key={pageNumber}
-                thispageNumber={pageNumber}
-                pdfHeight={pdfHeight}
-                pdfWidth={dualPageWidth}
-                isHidden={false}
-                isDualPage={true}
-              />
-              {pageNumber + 1 <= numPages && (
-                <PageComponent
-                  key={pageNumber + 1}
-                  thispageNumber={pageNumber + 1}
+                  key={pageNumber}
+                  thispageNumber={pageNumber}
                   pdfHeight={pdfHeight}
                   pdfWidth={dualPageWidth}
                   isHidden={false}
                   isDualPage={true}
                 />
-              )}
-              {/* Hidden pages for next view */}
-              {pageNumber + 2 <= numPages && (
+                {pageNumber + 1 <= numPages && (
+                  <PageComponent
+                    key={pageNumber + 1}
+                    thispageNumber={pageNumber + 1}
+                    pdfHeight={pdfHeight}
+                    pdfWidth={dualPageWidth}
+                    isHidden={false}
+                    isDualPage={true}
+                  />
+                )}
+                {/* Hidden pages for next view */}
+                {pageNumber + 2 <= numPages && (
+                  <PageComponent
+                    key={pageNumber + 2}
+                    thispageNumber={pageNumber + 2}
+                    pdfHeight={pdfHeight}
+                    pdfWidth={dualPageWidth}
+                    isHidden={true}
+                    isDualPage={true}
+                  />
+                )}
+                {pageNumber + 3 <= numPages && (
+                  <PageComponent
+                    key={pageNumber + 3}
+                    thispageNumber={pageNumber + 3}
+                    pdfHeight={pdfHeight}
+                    pdfWidth={dualPageWidth}
+                    isHidden={true}
+                    isDualPage={true}
+                  />
+                )}
+              </div>
+            ) : (
+              // Single page view
+              <>
+                {pageNumber >= 1 && (
+                  <PageComponent
+                    key={pageNumber - 1}
+                    thispageNumber={pageNumber - 1}
+                    pdfWidth={pdfWidth}
+                    isHidden={true}
+                  />
+                )}
                 <PageComponent
-                  key={pageNumber + 2}
-                  thispageNumber={pageNumber + 2}
-                  pdfHeight={pdfHeight}
-                  pdfWidth={dualPageWidth}
-                  isHidden={true}
-                  isDualPage={true}
-                />
-              )}
-              {pageNumber + 3 <= numPages && (
-                <PageComponent
-                  key={pageNumber + 3}
-                  thispageNumber={pageNumber + 3}
-                  pdfHeight={pdfHeight}
-                  pdfWidth={dualPageWidth}
-                  isHidden={true}
-                  isDualPage={true}
-                />
-              )}
-            </div>
-          ) : (
-            // Single page view
-            <>
-              {pageNumber >= 1 && (
-                <PageComponent
-                  key={pageNumber - 1}
-                  thispageNumber={pageNumber - 1}
+                  key={pageNumber}
+                  thispageNumber={pageNumber}
                   pdfWidth={pdfWidth}
-                  isHidden={true}
+                  isHidden={false}
                 />
-              )}
-              <PageComponent
-                key={pageNumber}
-                thispageNumber={pageNumber}
-                pdfWidth={pdfWidth}
-                isHidden={false}
-              />
-              {pageNumber + 1 <= numPages && (
-                <PageComponent
-                  key={pageNumber + 1}
-                  thispageNumber={pageNumber + 1}
-                  pdfWidth={pdfWidth}
-                  isHidden={true}
-                />
-              )}
-            </>
-          )}
-        </Document>
-        {/* TTS Controls - Bottom Center */}
-        <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
-          {playerControl && (
-            <TTSControls bookId={book.id} playerControl={playerControl} />
-          )}
-        </div>
-      </div>
-      {/* TOC Sidebar */}
-      <Sheet open={tocOpen} onOpenChange={setTocOpen}>
-        <SheetContent
-          side="left"
-          className={cn(
-            "w-[300px] sm:w-[400px] p-0",
-            theme === ThemeType.Dark
-              ? "bg-gray-900 border-gray-700"
-              : "bg-white border-gray-200"
-          )}
-        >
-          <SheetHeader
-            className={cn(
-              "p-4 border-b sticky top-0 z-10",
-              theme === ThemeType.Dark
-                ? "border-gray-700 bg-gray-900"
-                : "border-gray-200 bg-white"
+                {pageNumber + 1 <= numPages && (
+                  <PageComponent
+                    key={pageNumber + 1}
+                    thispageNumber={pageNumber + 1}
+                    pdfWidth={pdfWidth}
+                    isHidden={true}
+                  />
+                )}
+              </>
             )}
-          >
-            <SheetTitle className={getTextColor()}>
-              Table of Contents
-            </SheetTitle>
-          </SheetHeader>
-          <div
-            className={cn(
-              "overflow-y-auto h-[calc(100vh-73px)]",
-              // Enhanced TOC styling with better padding and hover states
-              "[&_a]:block [&_a]:py-3 [&_a]:px-4 [&_a]:cursor-pointer",
-              "[&_a]:transition-all [&_a]:duration-200",
-              "[&_a]:border-b [&_a]:font-medium",
-              theme === ThemeType.Dark
-                ? "[&_a]:text-gray-300 [&_a:hover]:bg-gray-800 [&_a:hover]:text-white [&_a]:border-gray-800 [&_a:hover]:pl-6"
-                : "[&_a]:text-gray-700 [&_a:hover]:bg-gray-100 [&_a:hover]:text-black [&_a]:border-gray-100 [&_a:hover]:pl-6"
+          </Document>
+          {/* TTS Controls - Bottom Center */}
+          <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
+            {playerControl && (
+              <TTSControls bookId={book.id} playerControl={playerControl} />
             )}
-          >
-            <Document
-              file={convertFileSrc(book.filePath)}
-              options={pdfOptions}
-              onLoadSuccess={onDocumentLoadSuccess}
-            >
-              <Outline onItemClick={onItemClick} />
-            </Document>
           </div>
-        </SheetContent>
-      </Sheet>
-    </div>
+        </div>
+        {/* TOC Sidebar */}
+        <Sheet open={tocOpen} onOpenChange={setTocOpen}>
+          <SheetContent
+            side="left"
+            className={cn(
+              "w-[300px] sm:w-[400px] p-0",
+              theme === ThemeType.Dark
+                ? "bg-gray-900 border-gray-700"
+                : "bg-white border-gray-200"
+            )}
+          >
+            <SheetHeader
+              className={cn(
+                "p-4 border-b sticky top-0 z-10",
+                theme === ThemeType.Dark
+                  ? "border-gray-700 bg-gray-900"
+                  : "border-gray-200 bg-white"
+              )}
+            >
+              <SheetTitle className={getTextColor()}>
+                Table of Contents
+              </SheetTitle>
+            </SheetHeader>
+            <div
+              className={cn(
+                "overflow-y-auto h-[calc(100vh-73px)]",
+                // Enhanced TOC styling with better padding and hover states
+                "[&_a]:block [&_a]:py-3 [&_a]:px-4 [&_a]:cursor-pointer",
+                "[&_a]:transition-all [&_a]:duration-200",
+                "[&_a]:border-b [&_a]:font-medium",
+                theme === ThemeType.Dark
+                  ? "[&_a]:text-gray-300 [&_a:hover]:bg-gray-800 [&_a:hover]:text-white [&_a]:border-gray-800 [&_a:hover]:pl-6"
+                  : "[&_a]:text-gray-700 [&_a:hover]:bg-gray-100 [&_a:hover]:text-black [&_a]:border-gray-100 [&_a:hover]:pl-6"
+              )}
+            >
+              <Document
+                file={convertFileSrc(book.filePath)}
+                options={pdfOptions}
+                onLoadSuccess={onDocumentLoadSuccess}
+              >
+                <Outline onItemClick={onItemClick} />
+              </Document>
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
+    </SwipeWrapper>
   );
 }
 
