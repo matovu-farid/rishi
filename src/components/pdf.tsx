@@ -7,7 +7,7 @@ import { Button } from "@components/ui/Button";
 import { IconButton } from "@components/ui/IconButton";
 import { ThemeType } from "@/themes/common";
 import { themes } from "@/themes/themes";
-import { Menu as MenuIcon } from "lucide-react";
+import { Loader2, Menu as MenuIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { updateBookLocation } from "@/modules/books";
 import { convertFileSrc } from "@tauri-apps/api/core";
@@ -58,6 +58,8 @@ import {
   previousViewPagesAtom,
   resetParaphStateAtom,
   setParagraphsAtom,
+  currentBookDataAtom,
+  playerControlAtom,
 } from "@/stores/paragraph-atoms";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { TTSControls } from "./TTSControls";
@@ -161,38 +163,17 @@ export function usePdfNavigation(
   };
 }
 
-export function PdfView({ book }: { book: BookData }) {
-  const [playerControl, setPlayerControl] = useState<
-    PlayerControlInterface | undefined
-  >(undefined);
-  const isRendered = useAtomValue(isRenderedAtom);
-  const bookId = book.id;
-  useEffect(() => {
-    if (isRendered) {
-      const playerControl = new PdfPlayerControl(bookId);
-      setPlayerControl(playerControl);
-    }
-  }, [isRendered, bookId]);
-  return (
-    playerControl && (
-      <PdfViewInternal
-        key={book.id}
-        book={book}
-        playerControl={playerControl}
-      />
-    )
-  );
-}
-export function PdfViewInternal({
-  book,
-  playerControl,
-}: {
-  book: BookData;
-  playerControl: PlayerControlInterface;
-}): React.JSX.Element {
+export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const [theme] = useState<ThemeType>(ThemeType.White);
   const [tocOpen, setTocOpen] = useState(false);
   const [direction, setDirection] = useState<"left" | "right">("right");
+  const setCurrentBookData = useSetAtom(currentBookDataAtom);
+  const playerControl = useAtomValue(playerControlAtom);
+
+  // Set book data only when book prop changes, not on every render
+  useEffect(() => {
+    setCurrentBookData(book);
+  }, [book.id, setCurrentBookData]);
 
   // Ref for the scrollable container
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -409,12 +390,6 @@ export function PdfViewInternal({
   function onDocumentLoadSuccess({ numPages }: { numPages: number }): void {
     setPageCount(numPages);
     // If book has saved location, restore it
-    if (book.current_location) {
-      const savedPage = parseInt(book.current_location, 10);
-      if (!isNaN(savedPage) && savedPage >= 1 && savedPage <= numPages) {
-        setPageNumber(savedPage);
-      }
-    }
   }
 
   // Auto-scroll functionality: detect when we reach the end of view and scroll up
@@ -591,8 +566,13 @@ export function PdfViewInternal({
               </div>
             }
             loading={
-              <div className={cn("p-4 text-center", getTextColor())}>
-                <p>Loading PDF...</p>
+              <div
+                className={cn(
+                  "w-full h-full grid place-items-center",
+                  getTextColor()
+                )}
+              >
+                <Loader2 size={20} className="animate-spin" />
               </div>
             }
             externalLinkTarget="_blank"
@@ -679,55 +659,44 @@ export function PdfViewInternal({
               </AnimatePresence>
             ) : (
               // Single page view
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={`single-${pageNumber}`}
-                  initial={{
-                    opacity: 0,
-                    x: direction === "right" ? 100 : -100,
-                  }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: direction === "right" ? -100 : 100 }}
-                  transition={{
-                    duration: 0.3,
-                    ease: [0.4, 0, 0.2, 1],
-                  }}
-                  className="flex flex-col items-center"
-                >
-                  {pageNumber >= 1 && (
-                    <PageComponent
-                      key={pageNumber - 1}
-                      thispageNumber={pageNumber - 1}
-                      pdfWidth={pdfWidth}
-                      isHidden={true}
-                    />
-                  )}
+
+              <div
+                key={`single-${pageNumber}`}
+                className="flex flex-col items-center"
+              >
+                {pageNumber >= 1 && (
                   <PageComponent
-                    key={pageNumber}
-                    thispageNumber={pageNumber}
+                    key={pageNumber - 1}
+                    thispageNumber={pageNumber - 1}
                     pdfWidth={pdfWidth}
-                    isHidden={false}
+                    isHidden={true}
                   />
-                  {pageNumber + 1 <= numPages && (
-                    <PageComponent
-                      key={pageNumber + 1}
-                      thispageNumber={pageNumber + 1}
-                      pdfWidth={pdfWidth}
-                      isHidden={true}
-                    />
-                  )}
-                </motion.div>
-              </AnimatePresence>
+                )}
+                <PageComponent
+                  key={pageNumber}
+                  thispageNumber={pageNumber}
+                  pdfWidth={pdfWidth}
+                  isHidden={false}
+                />
+                {pageNumber + 1 <= numPages && (
+                  <PageComponent
+                    key={pageNumber + 1}
+                    thispageNumber={pageNumber + 1}
+                    pdfWidth={pdfWidth}
+                    isHidden={true}
+                  />
+                )}
+              </div>
             )}
           </Document>
           {/* TTS Controls - Draggable */}
-          {
+          {playerControl && (
             <TTSControls
               key={book.id}
               bookId={book.id}
               playerControl={playerControl}
             />
-          }
+          )}
         </div>
         {/* TOC Sidebar */}
         <Sheet open={tocOpen} onOpenChange={setTocOpen}>

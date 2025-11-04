@@ -23,32 +23,6 @@ function bytesToBlobUrl(bytes: number[]): string {
   return URL.createObjectURL(blob);
 }
 
-// Animation variants for book items
-const bookVariants = {
-  initial: {
-    opacity: 0,
-    scale: 0.8,
-    y: 20,
-  },
-  animate: {
-    opacity: 1,
-    scale: 1,
-    y: 0,
-  },
-  exit: {
-    opacity: 0,
-    scale: 0.8,
-  },
-};
-
-const containerVariants = {
-  animate: {
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
 function FileDrop(): React.JSX.Element {
   const queryClient = useQueryClient();
   const {
@@ -58,7 +32,18 @@ function FileDrop(): React.JSX.Element {
     isError,
   } = useQuery({
     queryKey: ["books"],
-    queryFn: () => getBooks(),
+    queryFn: async () => {
+      const books = await getBooks();
+      // prefetch the book data based on ids
+      books.forEach((book) => {
+        void queryClient.prefetchQuery({
+          queryKey: ["book", book.id],
+          queryFn: () => book,
+        });
+      });
+      return books;
+    },
+    
   });
   const deleteBookMutation = useMutation({
     mutationKey: ["deleteBook"],
@@ -175,7 +160,6 @@ function FileDrop(): React.JSX.Element {
 
       <motion.div
         layout
-        variants={containerVariants}
         initial="animate"
         animate="animate"
         style={
@@ -196,19 +180,13 @@ function FileDrop(): React.JSX.Element {
         {isDragging && (!books || books.length === 0) ? (
           <p>Drop the files here ...</p>
         ) : books && books.length > 0 ? (
-          <AnimatePresence mode="popLayout">
+          <AnimatePresence>
             {books.map((book) => (
               <motion.div
                 key={book.id}
-                layout
-                variants={bookVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={{
-                  duration: 0.4,
-                  ease: "easeOut",
-                }}
+                initial={{ opacity: 0.5, scale: 0.7 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0.5, scale: 0.7 }}
                 className="p-2 grid relative"
               >
                 <div

@@ -1,5 +1,6 @@
 import FileDrop from "@components/FileComponent";
 import { createLazyFileRoute } from "@tanstack/react-router";
+import { motion } from "framer-motion";
 
 export const Route = createLazyFileRoute("/")({
   component: Index,
@@ -7,8 +8,8 @@ export const Route = createLazyFileRoute("/")({
 
 function Index() {
   return (
-    <div className="grid place-items-center h-screen">
+    <motion.div layout className="grid place-items-center h-screen">
       <FileDrop />
-    </div>
+    </motion.div>
   );
 }

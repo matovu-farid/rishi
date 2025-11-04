@@ -3,6 +3,8 @@ import { ParagraphWithIndex } from "@/models/player_control";
 import { atomWithImmer } from "jotai-immer";
 import { atom } from "jotai";
 import { updateBookLocation } from "@/modules/books";
+import { BookData } from "@/generated";
+import { PdfPlayerControl } from "@/models/pdf_player_control";
 
 export const currentParagraphAtom = atom<ParagraphWithIndex>({
   index: "",
@@ -14,7 +16,39 @@ export type Paragraph = ParagraphWithIndex & {
     bottom: number;
   };
 };
-export const pageNumberAtom = atom(1);
+export const currentBookDataAtom = atomWithImmer<BookData | null>(null);
+export const playerControlAtom = atom((get) => {
+  const book = get(currentBookDataAtom);
+  const isRendered = get(isRenderedAtom);
+  if (book && isRendered) {
+    return new PdfPlayerControl(book.id);
+  }
+  return null;
+});
+export const pageNumberAtom = atom(
+  (get) => {
+    try {
+      const book = get(currentBookDataAtom);
+      if (book) {
+        return parseInt(book.current_location, 10);
+      }
+    } catch (error) {
+      console.error("Error getting page number:", error);
+    }
+    return 1;
+  },
+  (get, set, newPageNumber: number) => {
+    const book = get(currentBookDataAtom);
+    if (book) {
+      // Use Immer draft updater for atomWithImmer
+      set(currentBookDataAtom, (draft) => {
+        if (draft) {
+          draft.current_location = newPageNumber.toString();
+        }
+      });
+    }
+  }
+);
 export const isDualPageAtom = atom(false);
 export const currentViewPagesAtom = atom<number[]>([]);
 export const previousViewPagesAtom = atom<number[]>([]);
@@ -197,7 +231,8 @@ export const isRenderedAtom = atom((get) => {
 });
 
 // debug label
-
+playerControlAtom.debugLabel = "playerControlAtom";
+currentBookDataAtom.debugLabel = "currentBookDataAtom";
 highlightedParagraphArrayIndexAtom.debugLabel =
   "highlightedParagraphArrayIndexAtom";
 currentParagraphAtom.debugLabel = "currentParagraphAtom";

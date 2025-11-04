@@ -13,7 +13,7 @@ function RootComponent(): JSX.Element {
   const {
     isPending,
     error,
-    data: books,
+    data: _books,
     isError,
   } = useQuery({
     queryKey: ["books"],
