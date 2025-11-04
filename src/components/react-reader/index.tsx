@@ -397,6 +397,8 @@ export class ReactReader extends PureComponent<
               preventScrollOnSwipe: true,
               trackMouse: true, // Enable swipe with mouse drag
             }}
+            onSwipeLeft={() => (isRTL ? this.prev() : this.next())}
+            onSwipeRight={() => (isRTL ? this.next() : this.prev())}
           >
             <div style={readerStyles.reader}>
               {/* Core EPUB viewer component */}
