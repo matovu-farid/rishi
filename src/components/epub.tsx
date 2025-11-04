@@ -199,7 +199,7 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
               key={animationKey}
               initial={{
                 opacity: 0.3,
-                x: direction === "right" ? 30 : -30,
+                x: direction === "right" ? 100 : -100,
               }}
               animate={{
                 opacity: 0,
