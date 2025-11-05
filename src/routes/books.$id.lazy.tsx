@@ -73,7 +73,7 @@ function BookView(): React.JSX.Element {
   return (
     <motion.div layout className="">
       {book?.kind === "pdf" && <PdfView key={book.id} book={book} />}
-      {book?.kind === "epub" && <EpubView book={book} />}
+      {book?.kind === "epub" && <EpubView key={book.id} book={book} />}
     </motion.div>
   );
 }

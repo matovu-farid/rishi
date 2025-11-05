@@ -29,10 +29,7 @@ class PdfPlayerControl
   }
   async initialize(): Promise<void> {
     customStore.sub(pageNumberAtom, () => {
-      this.emit(
-        PlayerControlEvent.PAGE_CHANGED,
-        customStore.get(pageNumberAtom).toString()
-      );
+      this.emit(PlayerControlEvent.PAGE_CHANGED);
     });
     customStore.sub(getCurrentViewParagraphsAtom, () => {
       this.emit(
@@ -62,17 +59,11 @@ class PdfPlayerControl
     });
     this.on(PlayerControlEvent.MOVE_TO_NEXT_PAGE, () => {
       void this.moveToNextPage();
-      this.emit(
-        PlayerControlEvent.PAGE_CHANGED,
-        customStore.get(pageNumberAtom).toString()
-      );
+      this.emit(PlayerControlEvent.PAGE_CHANGED);
     });
     this.on(PlayerControlEvent.MOVE_TO_PREVIOUS_PAGE, () => {
       void this.moveToPreviousPage();
-      this.emit(
-        PlayerControlEvent.PAGE_CHANGED,
-        customStore.get(pageNumberAtom).toString()
-      );
+      this.emit(PlayerControlEvent.PAGE_CHANGED);
     });
   }
   // async getCurrentViewParagraphs(): Promise<ParagraphWithIndex[]> {

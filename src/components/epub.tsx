@@ -19,8 +19,10 @@ import { updateBookLocation } from "@/modules/books";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { BookData } from "@/generated";
 import { PlayerControlInterface } from "@/models/player_control";
-import { EpubPlayerControl } from "@/models/epub_player_contol";
+import { epubPlayerControl } from "@/models/epub_player_contol";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAtom, useSetAtom } from "jotai";
+import { renditionAtom } from "@/stores/epub_atoms";
 
 function cn(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
@@ -34,9 +36,7 @@ function updateTheme(rendition: Rendition, theme: ThemeType) {
 }
 
 export function EpubView({ book }: { book: BookData }): React.JSX.Element {
-  const rendition = useRef<Rendition | undefined>(undefined);
-  const playerControl = useRef<PlayerControlInterface | undefined>(undefined);
-  const [renditionState, setRenditionState] = useState<Rendition | null>();
+  //const rendition = useRef<Rendition | undefined>(undefined);
   const [theme, setTheme] = useState<ThemeType>(ThemeType.White);
   const [menuOpen, setMenuOpen] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<string>(
@@ -46,30 +46,31 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
   const navigationDirectionRef = useRef<"left" | "right">("right");
   const [animationKey, setAnimationKey] = useState(0);
   const animationTriggerRef = useRef(0);
+  const [rendition, setRendition] = useAtom(renditionAtom);
 
   useEffect(() => {
-    if (rendition.current) {
-      updateTheme(rendition.current, theme);
+    if (rendition) {
+      updateTheme(rendition, theme);
     }
   }, [theme]);
 
   // Track navigation direction by intercepting prev/next when rendition is available
   useEffect(() => {
-    if (rendition.current) {
-      const originalPrev = rendition.current.prev;
-      const originalNext = rendition.current.next;
+    if (rendition) {
+      const originalPrev = rendition.prev;
+      const originalNext = rendition.next;
 
-      rendition.current.prev = function () {
+      rendition.prev = function () {
         navigationDirectionRef.current = "left";
         return originalPrev.call(this);
       };
 
-      rendition.current.next = function () {
+      rendition.next = function () {
         navigationDirectionRef.current = "right";
         return originalNext.call(this);
       };
     }
-  }, [renditionState]);
+  }, [rendition]);
 
   const handleThemeChange = (newTheme: ThemeType) => {
     setTheme(newTheme);
@@ -92,12 +93,6 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
   });
 
   // Update rendition state when ref becomes available
-  useEffect(() => {
-    rendition.current?.on("rendered", () => {
-      if (rendition.current === renditionState) return;
-      setRenditionState(rendition.current);
-    });
-  }, [renditionState]);
 
   function getTextColor() {
     switch (theme) {
@@ -185,12 +180,8 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
           readerStyles={createIReactReaderTheme(themes[theme].readerTheme)}
           getRendition={(_rendition) => {
             updateTheme(_rendition, theme);
-            rendition.current = _rendition;
-            setRenditionState(_rendition);
 
-            playerControl.current = new EpubPlayerControl({
-              rendition: _rendition,
-            });
+            setRendition(_rendition);
           }}
         />
         <AnimatePresence>
@@ -227,9 +218,7 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
         </AnimatePresence>
       </div>
       {/* TTS Controls - Draggable */}
-      {playerControl.current && (
-        <TTSControls bookId={book.id} playerControl={playerControl.current} />
-      )}
+      {<TTSControls bookId={book.id} playerControl={epubPlayerControl} />}
     </div>
   );
 }

@@ -19,7 +19,7 @@ export enum PlayerControlEvent {
 export type PlayerControlEventMap = {
   [PlayerControlEvent.PARAGRAPH_HIGHLIGHTED]: [ParagraphWithIndex];
   [PlayerControlEvent.PARAGRAPH_UNHIGHLIGHTED]: [ParagraphWithIndex];
-  [PlayerControlEvent.PAGE_CHANGED]: [string];
+  [PlayerControlEvent.PAGE_CHANGED]: [void];
   [PlayerControlEvent.NEW_PARAGRAPHS_AVAILABLE]: [ParagraphWithIndex[]];
   [PlayerControlEvent.NEXT_VIEW_PARAGRAPHS_AVAILABLE]: [ParagraphWithIndex[]];
   [PlayerControlEvent.PREVIOUS_VIEW_PARAGRAPHS_AVAILABLE]: [
