@@ -42,18 +42,15 @@ import { NavigationArrows, SwipeWrapper } from "./react-reader/components";
 import { type SwipeEventData } from "react-swipeable";
 import { TextItem } from "pdfjs-dist/types/src/display/api";
 import {
-  currentViewPagesAtom,
   highlightedParagraphAtom,
   isDualPageAtom,
   isHighlightingAtom,
   isRenderedPageAtom,
   nextPageAtom,
-  nextViewPagesAtom,
   pageCountAtom,
   pageNumberAtom,
   Paragraph,
   previousPageAtom,
-  previousViewPagesAtom,
   resetParaphStateAtom,
   setParagraphsAtom,
   currentBookDataAtom,
@@ -160,19 +157,12 @@ export function usePdfNavigation(
     isFullscreen,
   };
 }
+export function useChuncking(){
 
-const getPageFromParagraphIndex = (index: string): number => {
-  return Math.floor(Number(index) / PARAGRAPH_INDEX_PER_PAGE);
-};
-
-export function PdfView({ book }: { book: BookData }): React.JSX.Element {
-  const [theme] = useState<ThemeType>(ThemeType.White);
-  const [tocOpen, setTocOpen] = useState(false);
-  const [direction, setDirection] = useState<"left" | "right">("right");
-  const setCurrentBookData = useSetAtom(currentBookDataAtom);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const highlightedParagraph = useAtomValue(highlightedParagraphAtom);
   const isRendered = useAtomValue(isRenderedAtom);
-  useEffect(() => {
+    useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container || !highlightedParagraph?.index) return;
 
@@ -212,6 +202,16 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     }, 100);
     return () => clearTimeout(timeout);
   }, [highlightedParagraph, isRendered]);
+  return {scrollContainerRef};
+
+}
+
+export function PdfView({ book }: { book: BookData }): React.JSX.Element {
+  const [theme] = useState<ThemeType>(ThemeType.White);
+  const [tocOpen, setTocOpen] = useState(false);
+  const [direction, setDirection] = useState<"left" | "right">("right");
+  const setCurrentBookData = useSetAtom(currentBookDataAtom);
+  const {scrollContainerRef} = useChuncking();
 
   // Set book data only when book prop changes, not on every render
   useEffect(() => {
@@ -219,7 +219,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   }, [book.id, setCurrentBookData]);
 
   // Ref for the scrollable container
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const resetParaphState = useSetAtom(resetParaphStateAtom);
   const setIsDualPage = useSetAtom(isDualPageAtom);
@@ -257,6 +256,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     isDualPageRef.current = isDualPage;
   }, [isDualPage]);
 
+  // Setup menu on mount/unmount
   useEffect(() => {
     let previousAppMenu: TauriMenu | null = null;
     let viewSubmenu: Submenu | null = null;
@@ -397,17 +397,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
 
   const [numPages, setPageCount] = useAtom(pageCountAtom);
 
-  // useEffect(() => {
-  //   if (isDualPage) {
-  //     setCurrentViewPages([pageNumber, pageNumber + 1]);
-  //     setPreviousViewPages([pageNumber - 1, pageNumber - 2]);
-  //     setNextViewPages([pageNumber + 2, pageNumber + 3]);
-  //   } else {
-  //     setCurrentViewPages([pageNumber]);
-  //     setPreviousViewPages([pageNumber - 1]);
-  //     setNextViewPages([pageNumber + 1]);
-  //   }
-  // }, [pageNumber]);
 
   function onItemClick({ pageNumber: itemPageNumber }: { pageNumber: number }) {
     // Determine direction based on page number comparison
@@ -772,6 +761,7 @@ export function PageComponent({
       }
 
       let previousItem: TextItem | null = null;
+      let lineCount = 0;
       for (let item of items) {
         if (!isTextItem(item)) continue;
 
@@ -785,7 +775,12 @@ export function PageComponent({
           item.hasEOL;
         const isThereText = textSoFar.trim().length > 0;
 
-        if (isVerticallySpaced && isThereText) {
+        const hasAtlestFiveLines = lineCount >= 5 && item.hasEOL;
+
+        if ((isVerticallySpaced && isThereText) || hasAtlestFiveLines) {
+          if (hasAtlestFiveLines) {
+            lineCount = 0;
+          }
           paragraphsSoFarArray.current.push(paragraghSoFar.current);
           // Calculate index AFTER push, so it's incremented correctly
           const currentIdx = paragraphsSoFarArray.current.length;
@@ -824,6 +819,9 @@ export function PageComponent({
             ),
           },
         };
+        if (item.hasEOL) {
+          lineCount++;
+        }
       }
 
       paragraphsSoFarArray.current.push(paragraghSoFar.current);
@@ -835,6 +833,7 @@ export function PageComponent({
           (paragraph, index) =>
             index !== 0 || paragraph.text.trim().length > MIN_PARAGRAPH_LENGTH
         )
+
         // remove paragraphs that are too short
         .reduce<Paragraph[]>((acc, paragraph) => {
           const isParagraphTooShort =

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Loader from "./Loader";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "react-toastify";
 import { IconButton } from "./ui/IconButton";
 import { Button } from "./ui/Button";
@@ -15,6 +15,27 @@ import {
 } from "@/modules/books";
 import { useTauriDragDrop } from "./hooks/use-tauri-drag-drop";
 import { motion, AnimatePresence } from "framer-motion";
+import { atom, useSetAtom } from "jotai";
+import { customStore } from "@/stores/jotai";
+
+const newBook = atom<string | null>(null)
+
+const useNavigateToNewBook = () => {
+  const navigate = useNavigate();
+  function navigateToNewBook(bookId: string) {
+    navigate({
+      to: "/books/$id",
+      params: { id: bookId },
+    });
+  }
+  customStore.sub(newBook, () => {
+    const value = customStore.get(newBook);
+    if (value) {
+      navigateToNewBook(value);
+    }
+  })
+
+}
 
 // Add this helper function
 function bytesToBlobUrl(bytes: number[]): string {
@@ -85,6 +106,7 @@ function FileDrop(): React.JSX.Element {
       return books;
     },
   });
+  useNavigateToNewBook();
   const deleteBookMutation = useMutation({
     mutationKey: ["deleteBook"],
     mutationFn: async ({ book }: { book: BookData }) => {
@@ -99,6 +121,10 @@ function FileDrop(): React.JSX.Element {
       void queryClient.invalidateQueries({ queryKey: ["books"] });
     },
   });
+
+  const navigate = useNavigate();
+  const setNewBookId = useSetAtom(newBook);
+
 
   const storeBookDataMutation = useMutation({
     mutationKey: ["getBookData"],
@@ -115,8 +141,13 @@ function FileDrop(): React.JSX.Element {
       console.error("Error storing book:", error);
       toast.error("Can't upload book");
     },
-    onSuccess() {
-      void queryClient.invalidateQueries({ queryKey: ["books"] });
+    onSuccess: async (bookData) => {
+
+      // Invalidate the books list to refresh it
+      await queryClient.invalidateQueries({ queryKey: ["books"] });
+
+      setNewBookId(bookData.id);
+
     },
   });
 
@@ -135,8 +166,10 @@ function FileDrop(): React.JSX.Element {
       console.error("Error storing PDF:", error);
       toast.error("Can't upload book");
     },
-    onSuccess() {
+    onSuccess(bookData) {
       void queryClient.invalidateQueries({ queryKey: ["books"] });
+
+      setNewBookId(bookData.id);
     },
   });
 
@@ -205,10 +238,10 @@ function FileDrop(): React.JSX.Element {
         style={
           books && books.length > 0
             ? {
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
-                gridAutoFlow: "row",
-              }
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
+              gridAutoFlow: "row",
+            }
             : {}
         }
         className={
