@@ -19,24 +19,26 @@ pub fn get_bookData(filePath: &Path) -> Result<BookData, Box<dyn std::error::Err
 
     // Open PDF with lazy loading using pdf crate
     let file = &FileOptions::cached().open(path)?;
-    let dict = file
+
+    // Info dictionary is optional in PDFs - extract metadata if available
+    let title = file
         .trailer
         .info_dict
         .as_ref()
-        .ok_or("PDF file missing info dictionary")?;
-    println!("{:#?}", dict);
-    let title = dict
-        .title
+        .and_then(|dict| dict.title.as_ref())
+        .and_then(|s| s.to_string().ok());
+    let author = file
+        .trailer
+        .info_dict
         .as_ref()
-        .map(|s| s.to_string().unwrap_or_default());
-    let author = dict
-        .author
+        .and_then(|dict| dict.author.as_ref())
+        .and_then(|s| s.to_string().ok());
+    let publisher = file
+        .trailer
+        .info_dict
         .as_ref()
-        .map(|s| s.to_string().unwrap_or_default());
-    let publisher = dict
-        .creator
-        .as_ref()
-        .map(|s| s.to_string().unwrap_or_default());
+        .and_then(|dict| dict.creator.as_ref())
+        .and_then(|s| s.to_string().ok());
     let cover = get_cover(filePath)?;
     let pdfPath = filePath.to_str().unwrap_or_default().to_string();
     let digest = md5::compute(filePath.to_string_lossy().to_string());
@@ -214,69 +216,546 @@ pub fn get_cover(file_path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>
         return Err(format!("File not found: {}", path.display()).into());
     }
 
+    eprintln!("Extracting cover for PDF: {:?}", path);
+
     // Open PDF with lazy loading using pdf crate
     let file = FileOptions::cached().open(path)?;
-
-    // Get first page
-    let page = file.get_page(0)?;
-
-    // Get resources from first page
-    let resources = page.resources()?;
-
     let resolver = file.resolver();
 
-    // Extract first image from XObjects
-    let images: Vec<_> = resources
-        .xobjects
-        .iter()
-        .filter_map(|(_name, &r)| resolver.get(r).ok())
-        .filter(|o| matches!(**o, XObject::Image(_)))
-        .collect();
+    // Strategy 1: Try finding images on the first few pages
+    let num_pages = file.num_pages();
+    let max_pages_to_check = num_pages.min(3); // Check up to first 3 pages
+    eprintln!(
+        "PDF has {} pages, checking first {} pages for images",
+        num_pages, max_pages_to_check
+    );
 
-    if images.is_empty() {
-        return Err("No images found on first page".into());
+    for page_num in 0..max_pages_to_check {
+        let Ok(page) = file.get_page(page_num) else {
+            continue;
+        };
+        let Ok(resources) = page.resources() else {
+            continue;
+        };
+
+        let images: Vec<_> = resources
+            .xobjects
+            .iter()
+            .filter_map(|(_name, &r)| resolver.get(r).ok())
+            .filter(|o| matches!(**o, XObject::Image(_)))
+            .collect();
+
+        eprintln!("Page {} has {} images", page_num, images.len());
+
+        // Try all images on this page, prioritizing JPEG images
+        let mut best_image: Option<Vec<u8>> = None;
+        let mut best_image_info = String::new();
+
+        for (img_index, image) in images.iter().enumerate() {
+            eprintln!("Processing image {} on page {}", img_index, page_num);
+            match process_image(image, &resolver) {
+                Ok(image_data) => {
+                    // Validate that we got actual image data
+                    if image_data.len() > 100 {
+                        let is_jpeg =
+                            image_data.len() >= 2 && image_data[0] == 0xFF && image_data[1] == 0xD8;
+                        let is_png = image_data.len() >= 8
+                            && image_data[0] == 0x89
+                            && image_data[1] == 0x50
+                            && image_data[2] == 0x4E
+                            && image_data[3] == 0x47;
+
+                        let format = if is_jpeg {
+                            "JPEG"
+                        } else if is_png {
+                            "PNG"
+                        } else {
+                            "Unknown"
+                        };
+
+                        eprintln!(
+                            "Successfully extracted {} image {} from page {} ({} bytes)",
+                            format,
+                            img_index,
+                            page_num,
+                            image_data.len()
+                        );
+
+                        // Prioritize JPEG images, but accept any valid image
+                        if is_jpeg {
+                            // JPEG found - return immediately as it's preferred
+                            return Ok(image_data);
+                        } else if best_image.is_none() {
+                            // Store the first valid image as backup
+                            best_image = Some(image_data);
+                            best_image_info =
+                                format!("{} image {} from page {}", format, img_index, page_num);
+                        }
+                    } else {
+                        eprintln!(
+                            "Image {} on page {} too small ({} bytes), trying next",
+                            img_index,
+                            page_num,
+                            image_data.len()
+                        );
+                    }
+                }
+                Err(e) => {
+                    eprintln!(
+                        "Failed to process image {} on page {}: {}",
+                        img_index, page_num, e
+                    );
+                }
+            }
+        }
+
+        // If we found a valid non-JPEG image, use it
+        if let Some(image_data) = best_image {
+            eprintln!("Using best available image: {}", best_image_info);
+            return Ok(image_data);
+        }
     }
 
-    // Process first image
-    let xobject = &images[0];
-    let img = match **xobject {
-        XObject::Image(ref im) => im,
-        _ => return Err("Internal error: not an image".into()),
+    // Some PDFs might have covers on later pages
+    // Strategy 2: Try searching more pages (up to 10) if first 3 didn't have images
+    let max_extended_pages = num_pages.min(10);
+    for page_num in max_pages_to_check..max_extended_pages {
+        let Ok(page) = file.get_page(page_num) else {
+            continue;
+        };
+        let Ok(resources) = page.resources() else {
+            continue;
+        };
+
+        let images: Vec<_> = resources
+            .xobjects
+            .iter()
+            .filter_map(|(_name, &r)| resolver.get(r).ok())
+            .filter(|o| matches!(**o, XObject::Image(_)))
+            .collect();
+
+        eprintln!("Page {} has {} images", page_num, images.len());
+
+        // Try all images on this page, not just the first one
+        for (img_index, image) in images.iter().enumerate() {
+            eprintln!("Processing image {} on page {}", img_index, page_num);
+            match process_image(image, &resolver) {
+                Ok(image_data) => {
+                    // Validate that we got actual image data
+                    if image_data.len() > 100 {
+                        eprintln!(
+                            "Successfully extracted embedded image {} from page {} ({} bytes)",
+                            img_index,
+                            page_num,
+                            image_data.len()
+                        );
+                        return Ok(image_data);
+                    } else {
+                        eprintln!(
+                            "Image {} on page {} too small ({} bytes), trying next",
+                            img_index,
+                            page_num,
+                            image_data.len()
+                        );
+                    }
+                }
+                Err(e) => {
+                    eprintln!(
+                        "Failed to process image {} on page {}: {}",
+                        img_index, page_num, e
+                    );
+                }
+            }
+        }
+    }
+
+    // Strategy 3: Render first page as image if no images found
+    eprintln!("No suitable embedded images found, falling back to placeholder cover");
+    render_first_page_as_image(path, &resolver)
+}
+
+fn process_image(
+    xobject: &XObject,
+    resolver: &impl Resolve,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let XObject::Image(ref img) = xobject else {
+        return Err("Internal error: not an image".into());
     };
 
     // Extract image data with filter info
-    let (data, filter) = img.raw_image_data(&resolver)?;
+    let (data, filter) = match img.raw_image_data(resolver) {
+        Ok(result) => result,
+        Err(e) => {
+            eprintln!("Failed to extract raw image data: {}", e);
+            return Err(e.into());
+        }
+    };
 
-    // Get image dimensions
+    // Get image dimensions and validate them
     let width = img.width as usize;
     let height = img.height as usize;
 
-    // Handle different filter types
+    if width == 0 || height == 0 || width > 10000 || height > 10000 {
+        return Err("Invalid image dimensions".into());
+    }
+
+    // Handle different filter types and convert to standard format
+    eprintln!("Image filter type: {:?}", filter);
     let final_data = match filter {
         Some(StreamFilter::DCTDecode(_)) => {
             // JPEG data is already ready
-            data.to_vec()
+            let jpeg_data = data.to_vec();
+            if jpeg_data.len() < 100 {
+                return Err("JPEG data too small".into());
+            }
+
+            // Validate JPEG header
+            if jpeg_data.len() >= 2 && jpeg_data[0] == 0xFF && jpeg_data[1] == 0xD8 {
+                // Valid JPEG header, return as-is
+                eprintln!("Valid JPEG data found ({} bytes)", jpeg_data.len());
+                jpeg_data
+            } else {
+                // Not a valid JPEG, try to convert as raw data
+                eprintln!(
+                    "Invalid JPEG header, converting as raw data ({} bytes)",
+                    jpeg_data.len()
+                );
+                convert_raw_to_png(jpeg_data, width, height)?
+            }
         }
         Some(StreamFilter::FlateDecode(_)) => {
-            // Need to decompress FlateDecode
+            // Need to decompress FlateDecode and convert to PNG
             use flate2::read::ZlibDecoder;
             use std::io::Read;
 
             let mut decoder = ZlibDecoder::new(&*data);
             let mut decompressed = Vec::new();
-            decoder.read_to_end(&mut decompressed)?;
+            match decoder.read_to_end(&mut decompressed) {
+                Ok(_) => {
+                    if decompressed.is_empty() {
+                        return Err("Decompressed data is empty".into());
+                    }
+                    // Apply predictor if needed (PNG predictor 15)
+                    let predicted_data = match apply_png_predictor(decompressed, width, height, 3) {
+                        Ok(data) => data,
+                        Err(e) => {
+                            eprintln!("Failed to apply PNG predictor: {}", e);
+                            return Err(e);
+                        }
+                    };
 
-            // Apply predictor if needed (PNG predictor 15)
-            let predicted_data = apply_png_predictor(decompressed, width, height, 3)?;
-            predicted_data
+                    // Convert raw RGB data to PNG format
+                    convert_raw_to_png(predicted_data, width, height)?
+                }
+                Err(e) => {
+                    eprintln!("Failed to decompress FlateDecode data: {}", e);
+                    return Err(e.into());
+                }
+            }
         }
         _ => {
-            // For other filters, try to save as-is
-            data.to_vec()
+            // For other filters, try to convert raw data to PNG
+            let raw_data = data.to_vec();
+            if raw_data.len() < 100 {
+                return Err("Raw image data too small".into());
+            }
+
+            // Try to convert raw data to PNG
+            convert_raw_to_png(raw_data, width, height)?
         }
     };
 
+    // Final validation
+    if final_data.len() < 100 {
+        return Err("Final image data too small".into());
+    }
+
     Ok(final_data)
+}
+
+fn convert_raw_to_png(
+    raw_data: Vec<u8>,
+    width: usize,
+    height: usize,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    use image::{ImageBuffer, ImageFormat, Rgb};
+    use std::io::Cursor;
+
+    eprintln!(
+        "Converting raw data to PNG: {} bytes, {}x{}",
+        raw_data.len(),
+        width,
+        height
+    );
+
+    // Try to interpret the raw data as RGB
+    let bytes_per_pixel = if raw_data.len() == width * height * 3 {
+        3 // RGB
+    } else if raw_data.len() == width * height * 4 {
+        4 // RGBA
+    } else if raw_data.len() == width * height {
+        1 // Grayscale
+    } else {
+        // Data size doesn't match expected dimensions, but let's try anyway
+        eprintln!(
+            "Warning: Data size {} doesn't match expected dimensions {}x{}",
+            raw_data.len(),
+            width,
+            height
+        );
+
+        // Try to guess the format based on data size
+        let expected_rgb = width * height * 3;
+        let expected_rgba = width * height * 4;
+        let expected_gray = width * height;
+
+        if raw_data.len() >= expected_rgba {
+            4 // Assume RGBA
+        } else if raw_data.len() >= expected_rgb {
+            3 // Assume RGB
+        } else if raw_data.len() >= expected_gray {
+            1 // Assume Grayscale
+        } else {
+            return Err(format!(
+                "Raw data size {} is too small for {}x{} image",
+                raw_data.len(),
+                width,
+                height
+            )
+            .into());
+        }
+    };
+
+    eprintln!("Detected {} bytes per pixel", bytes_per_pixel);
+
+    let mut png_bytes = Vec::new();
+    let mut cursor = Cursor::new(&mut png_bytes);
+
+    let result = match bytes_per_pixel {
+        3 => {
+            // RGB data
+            let img_buffer =
+                ImageBuffer::<Rgb<u8>, Vec<u8>>::from_raw(width as u32, height as u32, raw_data)
+                    .ok_or("Failed to create RGB image buffer")?;
+            image::DynamicImage::ImageRgb8(img_buffer).write_to(&mut cursor, ImageFormat::Png)
+        }
+        4 => {
+            // RGBA data
+            use image::Rgba;
+            let img_buffer =
+                ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(width as u32, height as u32, raw_data)
+                    .ok_or("Failed to create RGBA image buffer")?;
+            image::DynamicImage::ImageRgba8(img_buffer).write_to(&mut cursor, ImageFormat::Png)
+        }
+        1 => {
+            // Grayscale data
+            use image::Luma;
+            let img_buffer =
+                ImageBuffer::<Luma<u8>, Vec<u8>>::from_raw(width as u32, height as u32, raw_data)
+                    .ok_or("Failed to create grayscale image buffer")?;
+            image::DynamicImage::ImageLuma8(img_buffer).write_to(&mut cursor, ImageFormat::Png)
+        }
+        _ => return Err("Unsupported pixel format".into()),
+    };
+
+    match result {
+        Ok(_) => {
+            eprintln!("Successfully converted to PNG ({} bytes)", png_bytes.len());
+            Ok(png_bytes)
+        }
+        Err(e) => {
+            eprintln!("Failed to convert to PNG: {}", e);
+            Err(e.into())
+        }
+    }
+}
+
+fn render_first_page_as_image(
+    file_path: &Path,
+    _resolver: &impl Resolve,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    eprintln!("PDF rendering requested for: {:?}", file_path);
+
+    // Try to use pdfium-render for actual first page rendering
+    match try_pdfium_render(file_path) {
+        Ok(rendered_data) => {
+            eprintln!(
+                "Successfully rendered first page with pdfium ({} bytes)",
+                rendered_data.len()
+            );
+            return Ok(rendered_data);
+        }
+        Err(e) => {
+            eprintln!("Pdfium rendering failed: {}, using placeholder", e);
+        }
+    }
+
+    // Fallback to placeholder cover
+    eprintln!("Using placeholder cover");
+    create_placeholder_cover()
+}
+
+fn try_pdfium_render(file_path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    use pdfium_render::prelude::*;
+
+    // Try to initialize pdfium with multiple binding approaches
+    let pdfium = match Pdfium::bind_to_system_library() {
+        Ok(bindings) => {
+            eprintln!("Successfully bound to system pdfium library");
+            Pdfium::new(bindings)
+        }
+        Err(e) => {
+            eprintln!("Failed to bind to system pdfium library: {}", e);
+            // Try alternative binding methods if available
+            return Err(format!("Pdfium library not available: {}", e).into());
+        }
+    };
+
+    // Load the PDF document
+    eprintln!("Attempting to load PDF file: {:?}", file_path);
+    let document = match pdfium.load_pdf_from_file(file_path, None) {
+        Ok(doc) => {
+            eprintln!("Successfully loaded PDF document");
+            doc
+        }
+        Err(e) => {
+            eprintln!("Failed to load PDF file: {}", e);
+            return Err(format!("Failed to load PDF file: {}", e).into());
+        }
+    };
+
+    // Get the first page
+    eprintln!("Attempting to get first page");
+    let page = match document.pages().get(0) {
+        Ok(p) => {
+            eprintln!("Successfully got first page");
+            p
+        }
+        Err(e) => {
+            eprintln!("Failed to get first page: {}", e);
+            return Err(format!("Failed to get first page: {}", e).into());
+        }
+    };
+
+    // Render the page with book cover dimensions (400px width)
+    eprintln!("Attempting to render page with 400px width");
+    let render_config = PdfRenderConfig::new().set_target_width(400);
+
+    let bitmap = match page.render_with_config(&render_config) {
+        Ok(bmp) => {
+            eprintln!("Successfully rendered page to bitmap");
+            bmp
+        }
+        Err(e) => {
+            eprintln!("Failed to render page: {}", e);
+            return Err(format!("Failed to render page: {}", e).into());
+        }
+    };
+
+    // Convert bitmap to PNG using a more reliable approach
+    let image = bitmap.as_image();
+
+    // Use a temporary file approach to avoid version conflicts
+    let temp_path = std::env::temp_dir().join(format!("temp_cover_{}.png", std::process::id()));
+
+    match image.save(&temp_path) {
+        Ok(_) => {
+            // Read the saved file back into memory
+            match std::fs::read(&temp_path) {
+                Ok(data) => {
+                    // Clean up temp file
+                    let _ = std::fs::remove_file(&temp_path);
+                    eprintln!(
+                        "Successfully rendered first page to PNG ({} bytes)",
+                        data.len()
+                    );
+                    Ok(data)
+                }
+                Err(e) => {
+                    let _ = std::fs::remove_file(&temp_path);
+                    Err(format!("Failed to read temp PNG file: {}", e).into())
+                }
+            }
+        }
+        Err(e) => Err(format!("Failed to save PNG to temp file: {}", e).into()),
+    }
+}
+
+fn create_placeholder_cover() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    use image::{ImageFormat, Rgba, RgbaImage};
+    use std::io::Cursor;
+
+    // Create a book-like placeholder cover (400x600 - typical book aspect ratio)
+    let width = 400u32;
+    let height = 600u32;
+
+    // Create a more book-like background with a subtle pattern
+    let mut img = RgbaImage::new(width, height);
+
+    for (x, y, pixel) in img.enumerate_pixels_mut() {
+        // Create a subtle book-like texture
+        let gradient_y = (y as f32 / height as f32).min(1.0);
+        let _gradient_x = (x as f32 / width as f32).min(1.0);
+
+        // Base colors for a book cover look
+        let base_r = 45u8;
+        let base_g = 55u8;
+        let base_b = 70u8;
+
+        // Add some texture and variation
+        let noise = ((x + y) % 7) as u8 * 3;
+        let edge_darken = if x < 20 || x > width - 20 || y < 20 || y > height - 20 {
+            20
+        } else {
+            0
+        };
+
+        *pixel = Rgba([
+            (base_r + (gradient_y * 30.0) as u8 + noise).saturating_sub(edge_darken),
+            (base_g + (gradient_y * 35.0) as u8 + noise).saturating_sub(edge_darken),
+            (base_b + (gradient_y * 40.0) as u8 + noise).saturating_sub(edge_darken),
+            255,
+        ]);
+    }
+
+    // Add a simple "PDF" text area in the center
+    let text_area_y = height / 2 - 40;
+    let text_area_height = 80;
+    let text_area_x = width / 4;
+    let text_area_width = width / 2;
+
+    // Create a lighter rectangle for text area
+    for y in text_area_y..(text_area_y + text_area_height).min(height) {
+        for x in text_area_x..(text_area_x + text_area_width).min(width) {
+            let pixel = img.get_pixel_mut(x, y);
+            *pixel = Rgba([200, 210, 220, 255]);
+        }
+    }
+
+    // Add a simple border around the text area
+    for y in text_area_y..(text_area_y + text_area_height).min(height) {
+        for x in [text_area_x, text_area_x + text_area_width - 1] {
+            if x < width {
+                let pixel = img.get_pixel_mut(x, y);
+                *pixel = Rgba([100, 110, 120, 255]);
+            }
+        }
+    }
+    for x in text_area_x..(text_area_x + text_area_width).min(width) {
+        for y in [text_area_y, text_area_y + text_area_height - 1] {
+            if y < height {
+                let pixel = img.get_pixel_mut(x, y);
+                *pixel = Rgba([100, 110, 120, 255]);
+            }
+        }
+    }
+
+    // Encode as PNG
+    let mut buffer = Vec::new();
+    let mut cursor = Cursor::new(&mut buffer);
+    image::DynamicImage::ImageRgba8(img).write_to(&mut cursor, ImageFormat::Png)?;
+
+    Ok(buffer)
 }
 
 fn apply_png_predictor(

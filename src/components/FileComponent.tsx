@@ -19,7 +19,48 @@ import { motion, AnimatePresence } from "framer-motion";
 // Add this helper function
 function bytesToBlobUrl(bytes: number[]): string {
   const uint8Array = new Uint8Array(bytes);
-  const blob = new Blob([uint8Array], { type: "image/jpeg" }); // Change type if needed
+
+  // Detect image format from header bytes
+  let mimeType = "image/jpeg"; // default
+
+  if (uint8Array.length >= 8) {
+    // Check for PNG signature (89 50 4E 47 0D 0A 1A 0A)
+    if (
+      uint8Array[0] === 0x89 &&
+      uint8Array[1] === 0x50 &&
+      uint8Array[2] === 0x4e &&
+      uint8Array[3] === 0x47
+    ) {
+      mimeType = "image/png";
+    }
+    // Check for JPEG signature (FF D8)
+    else if (uint8Array[0] === 0xff && uint8Array[1] === 0xd8) {
+      mimeType = "image/jpeg";
+    }
+    // Check for GIF signature (47 49 46)
+    else if (
+      uint8Array[0] === 0x47 &&
+      uint8Array[1] === 0x49 &&
+      uint8Array[2] === 0x46
+    ) {
+      mimeType = "image/gif";
+    }
+    // Check for WebP signature (52 49 46 46 ... 57 45 42 50)
+    else if (
+      uint8Array[0] === 0x52 &&
+      uint8Array[1] === 0x49 &&
+      uint8Array[2] === 0x46 &&
+      uint8Array[3] === 0x46 &&
+      uint8Array[8] === 0x57 &&
+      uint8Array[9] === 0x45 &&
+      uint8Array[10] === 0x42 &&
+      uint8Array[11] === 0x50
+    ) {
+      mimeType = "image/webp";
+    }
+  }
+
+  const blob = new Blob([uint8Array], { type: mimeType });
   return URL.createObjectURL(blob);
 }
 
@@ -43,7 +84,6 @@ function FileDrop(): React.JSX.Element {
       });
       return books;
     },
-    
   });
   const deleteBookMutation = useMutation({
     mutationKey: ["deleteBook"],
@@ -217,6 +257,7 @@ function FileDrop(): React.JSX.Element {
                       className="object-fill shadow-3xl drop-shadow-lg"
                       src={bytesToBlobUrl(book.cover)}
                       width={200}
+                      height={400}
                       alt="cover image"
                     />
                   </Link>
