@@ -72,8 +72,11 @@ export class Player extends EventEmitter<PlayerEventMap> {
     await this.playerControl.initialize();
     this.playerControl.on(
       PlayerControlEvent.NEW_PARAGRAPHS_AVAILABLE,
-      (paragraphs: ParagraphWithIndex[]) => {
+      async (paragraphs: ParagraphWithIndex[]) => {
         this.currentViewParagraphs = paragraphs;
+        if (this.playingState === PlayingState.Playing) {
+          await this.handleLocationChanged();
+        }
       }
     );
     this.playerControl.on(

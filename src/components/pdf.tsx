@@ -220,12 +220,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
 
   // Ref for the scrollable container
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  // Track if we're currently auto-scrolling to prevent conflicts
-  const isAutoScrollingRef = useRef(false);
-  // Track last scroll position to detect user scrolling
-  const lastScrollTopRef = useRef(0);
-  // Timeout for debouncing scroll detection
-  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const resetParaphState = useSetAtom(resetParaphStateAtom);
   const setIsDualPage = useSetAtom(isDualPageAtom);
@@ -771,7 +765,6 @@ export function PageComponent({
       };
 
       const items = pageData.items;
-      let headerGot = false;
       function isTextItem(
         item: TextItem | TextMarkedContent
       ): item is TextItem {

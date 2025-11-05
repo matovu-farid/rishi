@@ -18,11 +18,10 @@ import { Rendition } from "epubjs/types";
 import { updateBookLocation } from "@/modules/books";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { BookData } from "@/generated";
-import { PlayerControlInterface } from "@/models/player_control";
 import { epubPlayerControl } from "@/models/epub_player_contol";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAtom, useSetAtom } from "jotai";
-import { renditionAtom } from "@/stores/epub_atoms";
+import { currentEpubLocationAtom, renditionAtom } from "@/stores/epub_atoms";
 
 function cn(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
@@ -53,6 +52,8 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
       updateTheme(rendition, theme);
     }
   }, [theme]);
+
+  const setCurrentEpubLocation = useSetAtom(currentEpubLocationAtom);
 
   // Track navigation direction by intercepting prev/next when rendition is available
   useEffect(() => {
@@ -175,6 +176,8 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
               bookId: book.id,
               location: epubcfi,
             });
+
+            setCurrentEpubLocation(epubcfi);
           }}
           swipeable={true}
           readerStyles={createIReactReaderTheme(themes[theme].readerTheme)}

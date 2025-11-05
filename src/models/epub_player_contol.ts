@@ -1,5 +1,4 @@
 import {
-  ParagraphWithIndex,
   PlayerControlEvent,
   PlayerControlEventMap,
   PlayerControlInterface,
@@ -9,16 +8,11 @@ import type Rendition from "epubjs/types/rendition";
 
 // @ts-ignore
 
-import {
-  getCurrentViewParagraphs,
-  getNextViewParagraphs,
-  getPreviousViewParagraphs,
-  highlightRange,
-  removeHighlight,
-} from "@/epubwrapper";
+import { highlightRange, removeHighlight } from "@/epubwrapper";
 import { EventEmitter } from "eventemitter3";
 import { customStore } from "@/stores/jotai";
 import {
+  currentEpubLocationAtom,
   getEpubCurrentViewParagraphsAtom,
   getEpubNextViewParagraphsAtom,
   getEpubPreviousViewParagraphsAtom,
@@ -82,6 +76,11 @@ export class EpubPlayerControl
         // Register event handlers (only once per rendition change)
         this.on(PlayerControlEvent.MOVE_TO_NEXT_PAGE, async () => {
           await rendition.next();
+
+          customStore.set(
+            currentEpubLocationAtom,
+            customStore.get(currentEpubLocationAtom) + 1
+          );
           // Wait for rendered event to fire before emitting PAGE_CHANGED
           // This ensures paragraphs are updated before Player handles the page change
 
@@ -89,10 +88,11 @@ export class EpubPlayerControl
         });
         this.on(PlayerControlEvent.MOVE_TO_PREVIOUS_PAGE, async () => {
           await rendition.prev();
+
           // Wait for rendered event to fire before emitting PAGE_CHANGED
 
           this.emit(PlayerControlEvent.PAGE_CHANGED);
-        }); 
+        });
         this.on(
           PlayerControlEvent.HIGHLIGHT_PARAGRAPH,
           async (index: string) => {
