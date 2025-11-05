@@ -20,22 +20,42 @@ import { EventEmitter } from "eventemitter3";
 import { customStore } from "@/stores/jotai";
 import { renditionAtom } from "@/stores/epub_atoms";
 
-class EpubPlayerControl
+export class EpubPlayerControl
   extends EventEmitter<PlayerControlEventMap>
   implements PlayerControlInterface
 {
   private currentlyHighlightedParagraphIndex: string | null = null;
+  private currentRendition: Rendition | null = null;
+  private renderedHandler: (() => Promise<void>) | null = null;
+  private unsubscribeRendition: (() => void) | null = null;
 
   constructor() {
     super();
     void this.initialize();
   }
+
   async initialize(): Promise<void> {
-    customStore.sub(renditionAtom, () => {
+    // Store the unsubscribe function
+    this.unsubscribeRendition = customStore.sub(renditionAtom, () => {
       const rendition = customStore.get(renditionAtom);
 
       if (rendition) {
-        rendition.on("rendered", async () => {
+        // Clean up old rendition listeners if we had a previous rendition
+        if (this.currentRendition && this.renderedHandler) {
+          this.currentRendition.off("rendered", this.renderedHandler);
+        }
+
+        // Clean up old event listeners on this instance
+        this.removeAllListeners(PlayerControlEvent.MOVE_TO_NEXT_PAGE);
+        this.removeAllListeners(PlayerControlEvent.MOVE_TO_PREVIOUS_PAGE);
+        this.removeAllListeners(PlayerControlEvent.HIGHLIGHT_PARAGRAPH);
+        this.removeAllListeners(PlayerControlEvent.REMOVE_HIGHLIGHT);
+
+        // Store the new rendition
+        this.currentRendition = rendition;
+
+        // Create a bound handler for the rendered event
+        this.renderedHandler = async () => {
           const currentViewParagraphs = await getCurrentViewParagraphs(
             rendition
           ).map((paragraph) => ({
@@ -68,7 +88,12 @@ class EpubPlayerControl
             PlayerControlEvent.PREVIOUS_VIEW_PARAGRAPHS_AVAILABLE,
             previousViewParagraphs
           );
-        });
+        };
+
+        // Register the rendered handler
+        rendition.on("rendered", this.renderedHandler);
+
+        // Register event handlers (only once per rendition change)
         this.on(PlayerControlEvent.MOVE_TO_NEXT_PAGE, async () => {
           await rendition.next();
           this.emit(PlayerControlEvent.PAGE_CHANGED);
@@ -80,14 +105,55 @@ class EpubPlayerControl
         this.on(
           PlayerControlEvent.HIGHLIGHT_PARAGRAPH,
           async (index: string) => {
-            await highlightRange(rendition, index);
+            // Remove old highlight before adding new one
+            if (
+              this.currentlyHighlightedParagraphIndex &&
+              this.currentlyHighlightedParagraphIndex !== index
+            ) {
+              await removeHighlight(
+                rendition,
+                this.currentlyHighlightedParagraphIndex
+              );
+            }
+            // Only highlight if it's not already highlighted
+            if (this.currentlyHighlightedParagraphIndex !== index) {
+              await highlightRange(rendition, index);
+              this.currentlyHighlightedParagraphIndex = index;
+            }
           }
         );
         this.on(PlayerControlEvent.REMOVE_HIGHLIGHT, async (index: string) => {
           await removeHighlight(rendition, index);
+          if (this.currentlyHighlightedParagraphIndex === index) {
+            this.currentlyHighlightedParagraphIndex = null;
+          }
         });
       }
     });
+  }
+
+  cleanup(): void {
+    // Clean up rendition listener
+    if (this.currentRendition && this.renderedHandler) {
+      this.currentRendition.off("rendered", this.renderedHandler);
+    }
+
+    // Unsubscribe from rendition atom
+    if (this.unsubscribeRendition) {
+      this.unsubscribeRendition();
+    }
+
+    // Remove all event listeners
+    this.removeAllListeners();
+
+    // Clear current highlight
+    if (this.currentlyHighlightedParagraphIndex && this.currentRendition) {
+      void removeHighlight(
+        this.currentRendition,
+        this.currentlyHighlightedParagraphIndex
+      );
+      this.currentlyHighlightedParagraphIndex = null;
+    }
   }
 }
 
