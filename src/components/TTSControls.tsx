@@ -1,5 +1,4 @@
 import { IconButton } from "./ui/IconButton";
-import { Spinner } from "./ui/Spinner";
 import {
   Play,
   Pause,
@@ -10,6 +9,7 @@ import {
   AlertTriangle,
   Bug,
   Info,
+  Loader2,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -194,7 +194,7 @@ export function TTSControls({
 
   const getPlayIcon = () => {
     if (playingState === PlayingState.Loading) {
-      return <Spinner size="medium" color="currentColor" />;
+      return <Loader2 size={24} className="animate-spin" />;
     }
     if (playingState === PlayingState.Playing) {
       return <Pause size={24} />;

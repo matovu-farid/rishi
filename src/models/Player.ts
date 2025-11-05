@@ -258,7 +258,6 @@ export class Player extends EventEmitter<PlayerEventMap> {
 
   public async playWithoutRetry(skipCache: boolean = false) {
     if (this.playingState === PlayingState.Playing) return;
-    this.setPlayingState(PlayingState.Playing);
 
     if (this.currentViewParagraphs.length === 0) {
       console.warn(
@@ -290,6 +289,9 @@ export class Player extends EventEmitter<PlayerEventMap> {
     // Highlight current paragraph and store reference
 
     await this.highlightParagraph(currentParagraph);
+
+    // Set loading state while waiting for audio
+    this.setPlayingState(PlayingState.Loading);
 
     // Request audio with high priority
 
