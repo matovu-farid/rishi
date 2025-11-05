@@ -96,10 +96,27 @@ export class EpubPlayerControl
         // Register event handlers (only once per rendition change)
         this.on(PlayerControlEvent.MOVE_TO_NEXT_PAGE, async () => {
           await rendition.next();
+          // Wait for rendered event to fire before emitting PAGE_CHANGED
+          // This ensures paragraphs are updated before Player handles the page change
+          await new Promise<void>((resolve) => {
+            const handler = async () => {
+              rendition.off("rendered", handler);
+              resolve();
+            };
+            rendition.once("rendered", handler);
+          });
           this.emit(PlayerControlEvent.PAGE_CHANGED);
         });
         this.on(PlayerControlEvent.MOVE_TO_PREVIOUS_PAGE, async () => {
           await rendition.prev();
+          // Wait for rendered event to fire before emitting PAGE_CHANGED
+          await new Promise<void>((resolve) => {
+            const handler = async () => {
+              rendition.off("rendered", handler);
+              resolve();
+            };
+            rendition.once("rendered", handler);
+          });
           this.emit(PlayerControlEvent.PAGE_CHANGED);
         });
         this.on(
