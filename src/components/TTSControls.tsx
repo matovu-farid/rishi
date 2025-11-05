@@ -48,7 +48,9 @@ export function TTSControls({
   const [showError, setShowError] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [hasShownError, setHasShownError] = useState(false);
-  const [position, setPosition] = useState(getDefaultPosition);
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(
+    null
+  );
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef<HTMLDivElement>(null);
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
@@ -61,7 +63,27 @@ export function TTSControls({
   );
   const { setIsDebugging, shouldDebug } = useDebug(player);
 
-  // Load saved position from Tauri Store on mount
+  // Constrain position within viewport bounds
+  const constrainPosition = useCallback((x: number, y: number) => {
+    if (typeof window === "undefined") {
+      return { x: 0, y: 0 };
+    }
+
+    const componentWidth = 300; // Approximate component width
+    const componentHeight = 60; // Approximate component height
+
+    const minX = 0;
+    const minY = 0;
+    const maxX = window.innerWidth - componentWidth;
+    const maxY = window.innerHeight - componentHeight;
+
+    return {
+      x: Math.max(minX, Math.min(maxX, x)),
+      y: Math.max(minY, Math.min(maxY, y)),
+    };
+  }, []);
+
+  // Load saved position from Tauri Store on mount, and calculate default position after mount
   useEffect(() => {
     const loadPosition = async () => {
       try {
@@ -75,7 +97,15 @@ export function TTSControls({
           typeof savedPosition.x === "number" &&
           typeof savedPosition.y === "number"
         ) {
-          setPosition(savedPosition);
+          // Validate saved position is within viewport
+          const constrained = constrainPosition(
+            savedPosition.x,
+            savedPosition.y
+          );
+          setPosition(constrained);
+        } else {
+          // No saved position, use default
+          setPosition(getDefaultPosition());
         }
       } catch (error) {
         console.error(
@@ -83,11 +113,12 @@ export function TTSControls({
           error
         );
         // Use default position if loading fails
+        setPosition(getDefaultPosition());
       }
     };
 
     void loadPosition();
-  }, []);
+  }, [constrainPosition]);
 
   useEffect(() => {
     player.on(PlayerEvent.PLAYING_STATE_CHANGED, setPlayingState);
@@ -171,26 +202,6 @@ export function TTSControls({
     return <Play size={24} />;
   };
 
-  // Constrain position within viewport bounds
-  const constrainPosition = useCallback((x: number, y: number) => {
-    if (typeof window === "undefined") {
-      return { x: 0, y: 0 };
-    }
-
-    const componentWidth = 300; // Approximate component width
-    const componentHeight = 60; // Approximate component height
-
-    const minX = 0;
-    const minY = 0;
-    const maxX = window.innerWidth - componentWidth;
-    const maxY = window.innerHeight - componentHeight;
-
-    return {
-      x: Math.max(minX, Math.min(maxX, x)),
-      y: Math.max(minY, Math.min(maxY, y)),
-    };
-  }, []);
-
   // Save position to Tauri Store
   const savePosition = useCallback((x: number, y: number) => {
     void (async () => {
@@ -207,6 +218,8 @@ export function TTSControls({
   // Handle drag start
   const handleMouseDown = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!position) return;
+
       // Prevent dragging if clicking on buttons or interactive elements
       const target = e.target as HTMLElement;
       if (
@@ -249,7 +262,7 @@ export function TTSControls({
   // Handle drag end
   const handleMouseUp = useCallback(
     (e?: MouseEvent) => {
-      if (isDragging) {
+      if (isDragging && position) {
         if (e) {
           e.preventDefault();
           e.stopPropagation(); // Prevent event from bubbling to underlying elements
@@ -284,6 +297,8 @@ export function TTSControls({
 
   // Constrain position when window is resized
   useEffect(() => {
+    if (!position) return;
+
     const handleResize = () => {
       const constrained = constrainPosition(position.x, position.y);
       if (constrained.x !== position.x || constrained.y !== position.y) {
@@ -294,6 +309,11 @@ export function TTSControls({
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [position, constrainPosition]);
+
+  // Don't render until position is calculated
+  if (position === null) {
+    return null;
+  }
 
   return (
     <>

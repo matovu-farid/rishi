@@ -24,7 +24,11 @@ export const pageNumberAtom = atom(
       // block when no page data yet
       const book = get(currentBookDataAtom);
       if (book) {
-        return parseInt(book.current_location, 10);
+        const pageNumber = parseInt(book.current_location, 10);
+        if (isNaN(pageNumber) || pageNumber < 1) {
+          return 1;
+        }
+        return pageNumber;
       }
     } catch (error) {
       console.error("Error getting page number:", error);
