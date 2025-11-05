@@ -180,8 +180,9 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
           readerStyles={createIReactReaderTheme(themes[theme].readerTheme)}
           getRendition={(_rendition) => {
             updateTheme(_rendition, theme);
-
-            setRendition(_rendition);
+            _rendition.on("rendered", () => {
+              setRendition(_rendition);
+            });
           }}
         />
         <AnimatePresence>

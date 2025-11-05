@@ -18,7 +18,12 @@ import {
 } from "@/epubwrapper";
 import { EventEmitter } from "eventemitter3";
 import { customStore } from "@/stores/jotai";
-import { renditionAtom } from "@/stores/epub_atoms";
+import {
+  getEpubCurrentViewParagraphsAtom,
+  getEpubNextViewParagraphsAtom,
+  getEpubPreviousViewParagraphsAtom,
+  renditionAtom,
+} from "@/stores/epub_atoms";
 
 export class EpubPlayerControl
   extends EventEmitter<PlayerControlEventMap>
@@ -35,6 +40,26 @@ export class EpubPlayerControl
   }
 
   async initialize(): Promise<void> {
+    customStore.sub(getEpubCurrentViewParagraphsAtom, async () => {
+      this.emit(
+        PlayerControlEvent.NEW_PARAGRAPHS_AVAILABLE,
+        await customStore.get(getEpubCurrentViewParagraphsAtom)
+      );
+    });
+
+    customStore.sub(getEpubNextViewParagraphsAtom, async () => {
+      this.emit(
+        PlayerControlEvent.NEXT_VIEW_PARAGRAPHS_AVAILABLE,
+        await customStore.get(getEpubNextViewParagraphsAtom)
+      );
+    });
+
+    customStore.sub(getEpubPreviousViewParagraphsAtom, async () => {
+      this.emit(
+        PlayerControlEvent.PREVIOUS_VIEW_PARAGRAPHS_AVAILABLE,
+        await customStore.get(getEpubPreviousViewParagraphsAtom)
+      );
+    });
     // Store the unsubscribe function
     this.unsubscribeRendition = customStore.sub(renditionAtom, () => {
       const rendition = customStore.get(renditionAtom);
@@ -54,71 +79,20 @@ export class EpubPlayerControl
         // Store the new rendition
         this.currentRendition = rendition;
 
-        // Create a bound handler for the rendered event
-        this.renderedHandler = async () => {
-          const currentViewParagraphs = await getCurrentViewParagraphs(
-            rendition
-          ).map((paragraph) => ({
-            text: paragraph.text,
-            index: paragraph.cfiRange,
-          }));
-
-          this.emit(
-            PlayerControlEvent.NEW_PARAGRAPHS_AVAILABLE,
-            currentViewParagraphs
-          );
-          const nextViewParagraphs = (
-            await getNextViewParagraphs(rendition)
-          ).map((paragraph) => ({
-            text: paragraph.text,
-            index: paragraph.cfiRange,
-          }));
-          this.emit(
-            PlayerControlEvent.NEXT_VIEW_PARAGRAPHS_AVAILABLE,
-            nextViewParagraphs
-          );
-
-          const previousViewParagraphs = (
-            await getPreviousViewParagraphs(rendition)
-          ).map((paragraph) => ({
-            text: paragraph.text,
-            index: paragraph.cfiRange,
-          }));
-          this.emit(
-            PlayerControlEvent.PREVIOUS_VIEW_PARAGRAPHS_AVAILABLE,
-            previousViewParagraphs
-          );
-        };
-
-        // Register the rendered handler
-        rendition.on("rendered", this.renderedHandler);
-
         // Register event handlers (only once per rendition change)
         this.on(PlayerControlEvent.MOVE_TO_NEXT_PAGE, async () => {
           await rendition.next();
           // Wait for rendered event to fire before emitting PAGE_CHANGED
           // This ensures paragraphs are updated before Player handles the page change
-          await new Promise<void>((resolve) => {
-            const handler = async () => {
-              rendition.off("rendered", handler);
-              resolve();
-            };
-            rendition.once("rendered", handler);
-          });
+
           this.emit(PlayerControlEvent.PAGE_CHANGED);
         });
         this.on(PlayerControlEvent.MOVE_TO_PREVIOUS_PAGE, async () => {
           await rendition.prev();
           // Wait for rendered event to fire before emitting PAGE_CHANGED
-          await new Promise<void>((resolve) => {
-            const handler = async () => {
-              rendition.off("rendered", handler);
-              resolve();
-            };
-            rendition.once("rendered", handler);
-          });
+
           this.emit(PlayerControlEvent.PAGE_CHANGED);
-        });
+        }); 
         this.on(
           PlayerControlEvent.HIGHLIGHT_PARAGRAPH,
           async (index: string) => {
