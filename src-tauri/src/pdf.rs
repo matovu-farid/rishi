@@ -40,29 +40,51 @@ pub fn get_bookData(filePath: &Path) -> Result<BookData, Box<dyn std::error::Err
         .and_then(|dict| dict.creator.as_ref())
         .and_then(|s| s.to_string().ok());
     let cover = get_cover(filePath)?;
-    let pdfPath = filePath.to_str().unwrap_or_default().to_string();
+    let pdf_path = filePath.to_str().unwrap_or_default().to_string();
     let digest = md5::compute(filePath.to_string_lossy().to_string());
     let id = format!("{:x}", digest);
     let kind = BookKind::Pdf.to_string();
     let current_location = "".to_string();
+    let cover_kind = Some(get_kind(&cover));
 
-    Ok(BookData::new(
-        id,
-        kind,
-        cover,
-        title,
-        author,
-        publisher,
-        pdfPath,
-        current_location,
-    ))
+    match cover {
+        Cover::Fallback(cover) => Ok(BookData::new(
+            id,
+            kind,
+            cover,
+            title,
+            author,
+            publisher,
+            pdf_path,
+            current_location,
+            cover_kind,
+        )),
+        Cover::Normal(cover) => Ok(BookData::new(
+            id,
+            kind,
+            cover,
+            title,
+            author,
+            publisher,
+            pdf_path,
+            current_location,
+            cover_kind,
+        )),
+    }
+}
+
+fn get_kind(cover: &Cover) -> String {
+    match cover {
+        Cover::Normal(_) => "normal".to_string(),
+        Cover::Fallback(_) => "fall_back".to_string(),
+    }
 }
 
 pub fn get_paragraphs(
-    filePath: &Path,
-    pageNumber: u32,
+    file_path: &Path,
+    page_number: u32,
 ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-    let path = std::path::Path::new(filePath);
+    let path = std::path::Path::new(file_path);
     if !path.exists() {
         return Err(format!("File not found: {}", path.display()).into());
     }
@@ -72,7 +94,7 @@ pub fn get_paragraphs(
     let resolver = file.resolver();
 
     // Get first page
-    let page = file.get_page(pageNumber)?;
+    let page = file.get_page(page_number)?;
 
     // Get text from first page
     let content = page.contents.as_ref().ok_or("No content found")?;
@@ -210,7 +232,11 @@ pub fn get_paragraphs(
     Ok(paragraphs)
 }
 
-pub fn get_cover(file_path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+pub enum Cover {
+    Normal(Vec<u8>),
+    Fallback(Vec<u8>),
+}
+pub fn get_cover(file_path: &Path) -> Result<Cover, Box<dyn std::error::Error>> {
     let path = std::path::Path::new(file_path);
     if !path.exists() {
         return Err(format!("File not found: {}", path.display()).into());
@@ -284,7 +310,7 @@ pub fn get_cover(file_path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>
                         // Prioritize JPEG images, but accept any valid image
                         if is_jpeg {
                             // JPEG found - return immediately as it's preferred
-                            return Ok(image_data);
+                            return Ok(Cover::Normal(image_data));
                         } else if best_image.is_none() {
                             // Store the first valid image as backup
                             best_image = Some(image_data);
@@ -312,7 +338,7 @@ pub fn get_cover(file_path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>
         // If we found a valid non-JPEG image, use it
         if let Some(image_data) = best_image {
             eprintln!("Using best available image: {}", best_image_info);
-            return Ok(image_data);
+            return Ok(Cover::Normal(image_data));
         }
     }
 
@@ -349,7 +375,7 @@ pub fn get_cover(file_path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>
                             page_num,
                             image_data.len()
                         );
-                        return Ok(image_data);
+                        return Ok(Cover::Fallback(image_data));
                     } else {
                         eprintln!(
                             "Image {} on page {} too small ({} bytes), trying next",
@@ -573,7 +599,7 @@ fn convert_raw_to_png(
 fn render_first_page_as_image(
     file_path: &Path,
     _resolver: &impl Resolve,
-) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+) -> Result<Cover, Box<dyn std::error::Error>> {
     eprintln!("PDF rendering requested for: {:?}", file_path);
 
     // Try to use pdfium-render for actual first page rendering
@@ -583,7 +609,7 @@ fn render_first_page_as_image(
                 "Successfully rendered first page with pdfium ({} bytes)",
                 rendered_data.len()
             );
-            return Ok(rendered_data);
+            return Ok(Cover::Fallback(rendered_data));
         }
         Err(e) => {
             eprintln!("Pdfium rendering failed: {}, using placeholder", e);
@@ -681,7 +707,7 @@ fn try_pdfium_render(file_path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Er
     }
 }
 
-fn create_placeholder_cover() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+fn create_placeholder_cover() -> Result<Cover, Box<dyn std::error::Error>> {
     use image::{ImageFormat, Rgba, RgbaImage};
     use std::io::Cursor;
 
@@ -755,7 +781,7 @@ fn create_placeholder_cover() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let mut cursor = Cursor::new(&mut buffer);
     image::DynamicImage::ImageRgba8(img).write_to(&mut cursor, ImageFormat::Png)?;
 
-    Ok(buffer)
+    Ok(Cover::Fallback(buffer))
 }
 
 fn apply_png_predictor(

@@ -27,5 +27,6 @@ pub fn get_bookData(epubPath: &Path) -> Result<BookData, String> {
         publisher,
         filePath,
         current_location,
+        None,
     ))
 }

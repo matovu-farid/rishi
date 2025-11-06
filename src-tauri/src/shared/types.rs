@@ -24,6 +24,7 @@ pub struct BookData {
     publisher: Option<String>,
     filePath: String,
     current_location: String,
+    cover_kind: Option<String>,
 }
 
 impl BookData {
@@ -36,6 +37,7 @@ impl BookData {
         publisher: Option<String>,
         filePath: String,
         current_location: String,
+        cover_kind: Option<String>,
     ) -> Self {
         Self {
             id,
@@ -43,6 +45,7 @@ impl BookData {
             cover,
             title,
             author,
+            cover_kind,
             publisher,
             filePath,
             current_location,

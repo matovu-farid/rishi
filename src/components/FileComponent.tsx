@@ -132,7 +132,7 @@ function FileDrop(): React.JSX.Element {
       const epubPath = await copyBookToAppData(filePath);
 
       const bookData = await getBookData({ epubPath });
-      await storeBook(bookData);
+      await storeBook({...bookData,version:0});
 
       return bookData;
     },
@@ -157,8 +157,8 @@ function FileDrop(): React.JSX.Element {
       const pdfPath = await copyBookToAppData(filePath);
 
       const bookData = await getPdfData({ pdfPath });
-      await storeBook(bookData);
 
+      await storeBook({...bookData,version:0});
       return bookData;
     },
 

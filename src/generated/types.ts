@@ -15,6 +15,7 @@ export const BookDataSchema = z.object({
   publisher: z.string().optional(),
   filePath: z.string(),
   current_location: z.string(),
+  cover_kind: z.string().optional(),
 });
 
 export const GetBookDataParamsSchema = z.object({

@@ -9,7 +9,7 @@ import { ThemeType } from "@/themes/common";
 import { themes } from "@/themes/themes";
 import { Loader2, Menu as MenuIcon } from "lucide-react";
 import { motion, AnimatePresence, animate } from "framer-motion";
-import { updateBookLocation } from "@/modules/books";
+import { SavedBookData, updateBookLocation, updateCoverImage } from "@/modules/books";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
@@ -206,12 +206,31 @@ export function useChuncking() {
 
 }
 
-export function PdfView({ book }: { book: BookData }): React.JSX.Element {
+export async function updateStoredCoverImage(book: SavedBookData) {
+  if (book.version && book.version > 0) return;
+  const canvas = document.querySelector<HTMLCanvasElement>('[data-isactive="true"] canvas')
+  if (!canvas) return
+  const blob = await new Promise<Blob | null>(resolve => {
+    canvas.toBlob(resolve)
+  })
+  if (!blob) return
+
+  await updateCoverImage(blob, book.id)
+
+}
+export function useUpdateCoverIMage(book: SavedBookData) {
+  useEffect(() => {
+    updateStoredCoverImage(book)
+  }, [])
+}
+
+export function PdfView({ book }: { book: SavedBookData }): React.JSX.Element {
   const [theme] = useState<ThemeType>(ThemeType.White);
   const [tocOpen, setTocOpen] = useState(false);
   const [direction, setDirection] = useState<"left" | "right">("right");
   const setCurrentBookData = useSetAtom(currentBookDataAtom);
   const { scrollContainerRef } = useChuncking();
+  useUpdateCoverIMage(book)
 
   // Set book data only when book prop changes, not on every render
   useEffect(() => {
