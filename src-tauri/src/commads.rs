@@ -14,8 +14,12 @@ pub fn get_book_data(epubPath: &Path) -> Result<BookData, String> {
 }
 
 #[tauri::command]
-pub fn get_pdf_data(pdfPath: &Path) -> Result<BookData, String> {
-    pdf::get_bookData(pdfPath).map_err(|e| e.to_string())
+pub fn get_pdf_data(app: tauri::AppHandle, pdfPath: &Path) -> Result<BookData, String> {
+    let res = pdf::get_bookData(pdfPath);
+    if let Ok(book_data) = &res {
+        pdf::store_book_data(app, book_data);
+    }
+    return res.map_err(|e| e.to_string());
 }
 
 #[tauri::command]

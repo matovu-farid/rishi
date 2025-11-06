@@ -5,12 +5,15 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 
 import React, { useRef } from "react";
-import { getBooks, updateBookLocation } from "@/modules/books";
 import { EpubView } from "@components/epub";
 import { PdfView } from "@components/pdf";
 import { motion } from "framer-motion";
 import { useSetAtom } from "jotai";
 import { currentBookDataAtom } from "@/stores/paragraph-atoms";
+import {
+  synchronizedGetBooks,
+  synchronizedUpdateBookLocation,
+} from "@/modules/sync_books";
 export const Route = createLazyFileRoute("/books/$id")({
   component: () => <BookView />,
 });
@@ -27,7 +30,9 @@ function BookView(): React.JSX.Element {
   } = useQuery({
     queryKey: ["book", id],
     queryFn: async () => {
-      const book = (await getBooks()).find((book) => book.id === id);
+      const book = (await synchronizedGetBooks()).find(
+        (book) => book.id === id
+      );
       if (!book) {
         throw new Error("Book not found");
       }
@@ -44,7 +49,7 @@ function BookView(): React.JSX.Element {
       bookId: string;
       location: string;
     }) => {
-      await updateBookLocation(bookId, location);
+      await synchronizedUpdateBookLocation(bookId, location);
     },
 
     onError() {

@@ -7,23 +7,23 @@ import { Button } from "./ui/Button";
 import { Trash2, Plus } from "lucide-react";
 import { chooseFiles } from "@/modules/chooseFiles";
 import { BookData, getBookData, getPdfData } from "@/generated";
-import {
-  getBooks,
-  deleteBook,
-  copyBookToAppData,
-  storeBook,
-} from "@/modules/books";
+import { copyBookToAppData } from "@/modules/books";
 import { useTauriDragDrop } from "./hooks/use-tauri-drag-drop";
 import { motion, AnimatePresence } from "framer-motion";
 import { atom, useSetAtom } from "jotai";
 import { customStore } from "@/stores/jotai";
+import {
+  synchronizedGetBooks,
+  synchronizedStoreBook,
+  synchronizedDeleteBook,
+} from "@/modules/sync_books";
 
-const newBook = atom<string | null>(null)
+const newBook = atom<string | null>(null);
 
 const useNavigateToNewBook = () => {
   const navigate = useNavigate();
   function navigateToNewBook(bookId: string) {
-    navigate({
+    void navigate({
       to: "/books/$id",
       params: { id: bookId },
     });
@@ -33,9 +33,8 @@ const useNavigateToNewBook = () => {
     if (value) {
       navigateToNewBook(value);
     }
-  })
-
-}
+  });
+};
 
 // Add this helper function
 function bytesToBlobUrl(bytes: number[]): string {
@@ -95,7 +94,7 @@ function FileDrop(): React.JSX.Element {
   } = useQuery({
     queryKey: ["books"],
     queryFn: async () => {
-      const books = await getBooks();
+      const books = await synchronizedGetBooks();
       // prefetch the book data based on ids
       books.forEach((book) => {
         void queryClient.prefetchQuery({
@@ -110,7 +109,7 @@ function FileDrop(): React.JSX.Element {
   const deleteBookMutation = useMutation({
     mutationKey: ["deleteBook"],
     mutationFn: async ({ book }: { book: BookData }) => {
-      await deleteBook(book);
+      await synchronizedDeleteBook(book);
     },
 
     onError(error) {
@@ -122,9 +121,7 @@ function FileDrop(): React.JSX.Element {
     },
   });
 
-  const navigate = useNavigate();
   const setNewBookId = useSetAtom(newBook);
-
 
   const storeBookDataMutation = useMutation({
     mutationKey: ["getBookData"],
@@ -132,7 +129,7 @@ function FileDrop(): React.JSX.Element {
       const epubPath = await copyBookToAppData(filePath);
 
       const bookData = await getBookData({ epubPath });
-      await storeBook({...bookData,version:0});
+      await synchronizedStoreBook({ ...bookData, version: 0 });
 
       return bookData;
     },
@@ -142,12 +139,15 @@ function FileDrop(): React.JSX.Element {
       toast.error("Can't upload book");
     },
     onSuccess: async (bookData) => {
-
       // Invalidate the books list to refresh it
       await queryClient.invalidateQueries({ queryKey: ["books"] });
 
-      setNewBookId(bookData.id);
-
+      // Reset to null first to ensure the subscription fires even if it's the same ID
+      setNewBookId(null);
+      // Use setTimeout to ensure the reset happens before setting the new value
+      setTimeout(() => {
+        setNewBookId(bookData.id);
+      }, 0);
     },
   });
 
@@ -158,7 +158,7 @@ function FileDrop(): React.JSX.Element {
 
       const bookData = await getPdfData({ pdfPath });
 
-      await storeBook({...bookData,version:0});
+      // await synchronizedStoreBook({ ...bookData, version: 0 });
       return bookData;
     },
 
@@ -169,7 +169,12 @@ function FileDrop(): React.JSX.Element {
     onSuccess(bookData) {
       void queryClient.invalidateQueries({ queryKey: ["books"] });
 
-      setNewBookId(bookData.id);
+      // Reset to null first to ensure the subscription fires even if it's the same ID
+      setNewBookId(null);
+      // Use setTimeout to ensure the reset happens before setting the new value
+      setTimeout(() => {
+        setNewBookId(bookData.id);
+      }, 0);
     },
   });
 

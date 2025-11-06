@@ -1,4 +1,4 @@
-import { getBooks } from "@/modules/books";
+import { synchronizedGetBooks } from "@/modules/sync_books";
 import Loader from "../components/Loader";
 import { useQuery } from "@tanstack/react-query";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
@@ -20,7 +20,7 @@ function RootComponent(): JSX.Element {
     queryFn: async () => {
       // Wait for Electron context to be ready
 
-      return await getBooks();
+      return await synchronizedGetBooks();
     },
     retry: 3,
     retryDelay: 1000,

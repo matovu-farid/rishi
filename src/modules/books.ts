@@ -3,7 +3,6 @@ import { path } from "@tauri-apps/api";
 import * as fs from "@tauri-apps/plugin-fs";
 import { load, Store } from "@tauri-apps/plugin-store";
 
-
 export async function copyBookToAppData(filePath: string) {
   const appdataPath = await path.appDataDir();
   const fileName = await path.basename(filePath);
@@ -24,7 +23,7 @@ export async function getBooks(storeParam?: Store) {
 
 export async function getBook(id: String, storeParam?: Store) {
   let store = storeParam || await getStore()
-  const books = await getBooks(storeParam)
+  const books = await getBooks(store)
   return books.find(book => book.id == id)
 }
 export async function storeBook(book: BookData, storeParam?: Store) {
@@ -41,8 +40,10 @@ export async function storeBook(book: BookData, storeParam?: Store) {
     console.log('>>> No saved book')
 
     books.push(book);
-  } else
+  } else {
+    console.log('>>> Update saved book')
     books = books.map(currBook => {
+
       if (currBook.id != book.id) return currBook
       // Object.create(currBook,)
       return {
@@ -51,6 +52,7 @@ export async function storeBook(book: BookData, storeParam?: Store) {
         version: (currBook.version || 0) + 1
       }
     })
+  }
 
 
   await store.set("books", books);
@@ -81,11 +83,8 @@ export async function getStore() {
   return store
 }
 
-export async function deleteBook(book: BookData) {
-  const store = await load("store.json", {
-    autoSave: true,
-    defaults: { books: [] },
-  });
+export async function deleteBook(book: BookData, storeParam?: Store) {
+  const store = storeParam || await getStore()
   const books = await store.get<BookData[]>("books");
   if (!books) {
     return;
@@ -98,8 +97,9 @@ export async function deleteBook(book: BookData) {
   await store.set("books", books);
 }
 export async function updateBook(bookSlice: Partial<BookData> & { id: string }, storeParam?: Store) {
+  const store = storeParam || await getStore()
 
-  const book = await getBook(bookSlice.id, storeParam)
+  const book = await getBook(bookSlice.id, store)
   if (!book) return
   await storeBook({ ...book, ...bookSlice }, storeParam)
 }
@@ -121,3 +121,4 @@ export async function getBookLocation(bookId: string, storeParam?: Store) {
   }
   return book.current_location;
 }
+

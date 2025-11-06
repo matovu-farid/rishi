@@ -2,7 +2,7 @@ import { ParagraphWithIndex } from "@/models/player_control";
 
 import { atomWithImmer } from "jotai-immer";
 import { atom } from "jotai";
-import { updateBookLocation } from "@/modules/books";
+import { synchronizedUpdateBookLocation } from "@/modules/sync_books";
 import { BookData } from "@/generated";
 
 export const currentParagraphAtom = atom<ParagraphWithIndex>({
@@ -203,7 +203,7 @@ export const changePageAtom = atom(
     const numPages = get(pageCountAtom);
     if (newPageNumber >= 1 && newPageNumber <= numPages) {
       set(pageNumberAtom, newPageNumber);
-      await updateBookLocation(bookId, newPageNumber.toString());
+      await synchronizedUpdateBookLocation(bookId, newPageNumber.toString());
     }
   }
 );

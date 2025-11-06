@@ -16,7 +16,7 @@ impl BookKind {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct BookData {
-    id: String,
+    pub id: String,
     kind: String,
     cover: Vec<u8>,
     title: Option<String>,

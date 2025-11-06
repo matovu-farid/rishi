@@ -9,7 +9,10 @@ import { ThemeType } from "@/themes/common";
 import { themes } from "@/themes/themes";
 import { Loader2, Menu as MenuIcon } from "lucide-react";
 import { motion, AnimatePresence, animate } from "framer-motion";
-import { updateBookLocation, updateCoverImage } from "@/modules/books";
+import {
+  synchronizedUpdateBookLocation,
+  syncronizedUpdateCoverImage,
+} from "@/modules/sync_books";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
@@ -158,7 +161,6 @@ export function usePdfNavigation(
   };
 }
 export function useChuncking() {
-
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const highlightedParagraph = useAtomValue(highlightedParagraphAtom);
   const isRendered = useAtomValue(isRenderedAtom);
@@ -203,28 +205,31 @@ export function useChuncking() {
     return () => clearTimeout(timeout);
   }, [highlightedParagraph, isRendered]);
   return { scrollContainerRef };
-
 }
 
 export async function updateStoredCoverImage(book: BookData) {
+  console.log(`>>> Updating cover image for book ID: ${book.id}`);
   if (book.version && book.version > 0) return;
-  const canvas = document.querySelector<HTMLCanvasElement>('[data-isactive="true"] canvas')
-  if (!canvas) return
-  const blob = await new Promise<Blob | null>(resolve => {
-    canvas.toBlob(resolve)
-  })
-  if (!blob) return
+  const canvas = document.querySelector<HTMLCanvasElement>(
+    '[data-isactive="true"] canvas'
+  );
+  if (!canvas) return;
+  console.log(">>> Found canvas for cover image extraction.");
 
-  await updateCoverImage(blob, book.id)
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve);
+  });
+  if (!blob) return;
+  console.log(">>> Extracted cover image blob from canvas.");
 
+  await syncronizedUpdateCoverImage(blob, book.id);
 }
 
 export function useUpdateCoverIMage(book: BookData) {
-  const isRendered = useAtomValue(isRenderedAtom)
+  const isRendered = useAtomValue(isRenderedAtom);
   useEffect(() => {
-    if (isRendered)
-      updateStoredCoverImage(book)
-  }, [isRendered])
+    if (isRendered) void updateStoredCoverImage(book);
+  }, [isRendered]);
 }
 
 export function PdfView({ book }: { book: BookData }): React.JSX.Element {
@@ -233,7 +238,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const [direction, setDirection] = useState<"left" | "right">("right");
   const setCurrentBookData = useSetAtom(currentBookDataAtom);
   const { scrollContainerRef } = useChuncking();
-  useUpdateCoverIMage(book)
+  useUpdateCoverIMage(book);
 
   // Set book data only when book prop changes, not on every render
   useEffect(() => {
@@ -385,7 +390,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
       bookId: string;
       location: string;
     }) => {
-      await updateBookLocation(bookId, location);
+      await synchronizedUpdateBookLocation(bookId, location);
     },
 
     onError(_error) {
@@ -418,7 +423,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const [pageNumber, setPageNumber] = useAtom(pageNumberAtom);
 
   const [numPages, setPageCount] = useAtom(pageCountAtom);
-
 
   function onItemClick({ pageNumber: itemPageNumber }: { pageNumber: number }) {
     // Determine direction based on page number comparison
@@ -578,14 +582,17 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                       isDualPage={true}
                     />
                   )}
-                  <PageComponent
-                    key={pageNumber}
-                    thispageNumber={pageNumber}
-                    pdfHeight={pdfHeight}
-                    pdfWidth={dualPageWidth}
-                    isHidden={false}
-                    isDualPage={true}
-                  />
+
+                  <div data-isactive="true">
+                    <PageComponent
+                      key={pageNumber}
+                      thispageNumber={pageNumber}
+                      pdfHeight={pdfHeight}
+                      pdfWidth={dualPageWidth}
+                      isHidden={false}
+                      isDualPage={true}
+                    />
+                  </div>
                   {pageNumber + 1 <= numPages && (
                     <PageComponent
                       key={pageNumber + 1}
@@ -634,12 +641,15 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                     isHidden={true}
                   />
                 )}
-                <PageComponent
-                  key={pageNumber}
-                  thispageNumber={pageNumber}
-                  pdfWidth={pdfWidth}
-                  isHidden={false}
-                />
+
+                <div data-isactive="true">
+                  <PageComponent
+                    key={pageNumber}
+                    thispageNumber={pageNumber}
+                    pdfWidth={pdfWidth}
+                    isHidden={false}
+                  />
+                </div>
                 {pageNumber + 1 <= numPages && (
                   <PageComponent
                     key={pageNumber + 1}
@@ -753,7 +763,7 @@ export function PageComponent({
     const highlightedPageNumber = Math.floor(
       Number(highlightedParagraph.index) / PARAGRAPH_INDEX_PER_PAGE
     );
-    return highlightedPageNumber == pageNumber
+    return highlightedPageNumber == pageNumber;
   }
   function isInsideParagraph(wordTransform: Transform) {
     const highlightedPageNumber = Math.floor(
@@ -904,37 +914,34 @@ export function PageComponent({
   }, [pageData]);
   return (
 
-    <div
-      data-isactive={isActivePage() ? "true" : "false"}
-    >
-      <Page
-        pageNumber={pageNumber}
-        key={pageNumber.toString()}
-        customTextRenderer={({
-          str,
+    <Page
+      pageNumber={pageNumber}
+      key={pageNumber.toString()}
+      customTextRenderer={({
+        str,
 
-          transform,
-        }) => {
-          if (
-            isHighlighting &&
-            // isHighlighedPage() &&
-            isInsideParagraph(transform as Transform)
-          ) {
-            return `<mark>${str}</mark>`;
-          }
+        transform,
+      }) => {
+        if (
+          isHighlighting &&
+          // isHighlighedPage() &&
+          isInsideParagraph(transform as Transform)
+        ) {
+          return `<mark>${str}</mark>`;
+        }
 
-          return str;
-        }}
-        height={isDualPage ? pdfHeight : undefined}
-        width={isDualPage ? undefined : pdfWidth}
-        className={" rounded shadow-lg  " + isHiddenClass}
-        renderTextLayer={true}
-        renderAnnotationLayer={true}
-        canvasBackground="white"
-        onGetTextSuccess={(data) => {
-          setPageData(data);
-        }}
-      />
-    </div>
+        return str;
+      }}
+      height={isDualPage ? pdfHeight : undefined}
+      width={isDualPage ? undefined : pdfWidth}
+      className={" rounded shadow-lg  " + isHiddenClass}
+      renderTextLayer={true}
+      renderAnnotationLayer={true}
+      canvasBackground="white"
+      onGetTextSuccess={(data) => {
+        setPageData(data);
+      }}
+    />
+
   );
 }

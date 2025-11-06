@@ -3,13 +3,38 @@ use pdf::object::*;
 
 use std::path::Path;
 
+use crate::shared::types::{BookData, BookKind};
 use pdf::{
     content::{Op, TextDrawAdjusted},
     file::FileOptions,
     object::Resolve,
 };
+use serde_json::json;
+use tauri_plugin_store::StoreExt;
 
-use crate::shared::types::{BookData, BookKind};
+pub fn store_book_data(
+    app: tauri::AppHandle,
+    book_data: &BookData,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let store = app.store("store.json")?;
+    match store.get("books") {
+        Some(value) => {
+            let mut current_books: Vec<BookData> = serde_json::from_value(value.clone())?;
+            current_books.push(book_data.clone());
+            let books_value = serde_json::to_value(current_books)?;
+            store.set("books", json!(books_value));
+            store.save()?;
+        }
+        None => {
+            // No existing books, create new array
+            let current_books = vec![book_data.clone()];
+            let books_value = serde_json::to_value(current_books)?;
+            store.set("books", json!(books_value));
+            store.save()?;
+        }
+    }
+    Ok(())
+}
 
 pub fn get_bookData(filePath: &Path) -> Result<BookData, Box<dyn std::error::Error>> {
     let path = std::path::Path::new(filePath);
@@ -342,62 +367,7 @@ pub fn get_cover(file_path: &Path) -> Result<Cover, Box<dyn std::error::Error>> 
         }
     }
 
-    // Some PDFs might have covers on later pages
-    // Strategy 2: Try searching more pages (up to 10) if first 3 didn't have images
-    let max_extended_pages = num_pages.min(10);
-    for page_num in max_pages_to_check..max_extended_pages {
-        let Ok(page) = file.get_page(page_num) else {
-            continue;
-        };
-        let Ok(resources) = page.resources() else {
-            continue;
-        };
-
-        let images: Vec<_> = resources
-            .xobjects
-            .iter()
-            .filter_map(|(_name, &r)| resolver.get(r).ok())
-            .filter(|o| matches!(**o, XObject::Image(_)))
-            .collect();
-
-        eprintln!("Page {} has {} images", page_num, images.len());
-
-        // Try all images on this page, not just the first one
-        for (img_index, image) in images.iter().enumerate() {
-            eprintln!("Processing image {} on page {}", img_index, page_num);
-            match process_image(image, &resolver) {
-                Ok(image_data) => {
-                    // Validate that we got actual image data
-                    if image_data.len() > 100 {
-                        eprintln!(
-                            "Successfully extracted embedded image {} from page {} ({} bytes)",
-                            img_index,
-                            page_num,
-                            image_data.len()
-                        );
-                        return Ok(Cover::Fallback(image_data));
-                    } else {
-                        eprintln!(
-                            "Image {} on page {} too small ({} bytes), trying next",
-                            img_index,
-                            page_num,
-                            image_data.len()
-                        );
-                    }
-                }
-                Err(e) => {
-                    eprintln!(
-                        "Failed to process image {} on page {}: {}",
-                        img_index, page_num, e
-                    );
-                }
-            }
-        }
-    }
-
-    // Strategy 3: Render first page as image if no images found
-    eprintln!("No suitable embedded images found, falling back to placeholder cover");
-    render_first_page_as_image(path, &resolver)
+    create_placeholder_cover()
 }
 
 fn process_image(
@@ -595,118 +565,6 @@ fn convert_raw_to_png(
         }
     }
 }
-
-fn render_first_page_as_image(
-    file_path: &Path,
-    _resolver: &impl Resolve,
-) -> Result<Cover, Box<dyn std::error::Error>> {
-    eprintln!("PDF rendering requested for: {:?}", file_path);
-
-    // Try to use pdfium-render for actual first page rendering
-    match try_pdfium_render(file_path) {
-        Ok(rendered_data) => {
-            eprintln!(
-                "Successfully rendered first page with pdfium ({} bytes)",
-                rendered_data.len()
-            );
-            return Ok(Cover::Fallback(rendered_data));
-        }
-        Err(e) => {
-            eprintln!("Pdfium rendering failed: {}, using placeholder", e);
-        }
-    }
-
-    // Fallback to placeholder cover
-    eprintln!("Using placeholder cover");
-    create_placeholder_cover()
-}
-
-fn try_pdfium_render(file_path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    use pdfium_render::prelude::*;
-
-    // Try to initialize pdfium with multiple binding approaches
-    let pdfium = match Pdfium::bind_to_system_library() {
-        Ok(bindings) => {
-            eprintln!("Successfully bound to system pdfium library");
-            Pdfium::new(bindings)
-        }
-        Err(e) => {
-            eprintln!("Failed to bind to system pdfium library: {}", e);
-            // Try alternative binding methods if available
-            return Err(format!("Pdfium library not available: {}", e).into());
-        }
-    };
-
-    // Load the PDF document
-    eprintln!("Attempting to load PDF file: {:?}", file_path);
-    let document = match pdfium.load_pdf_from_file(file_path, None) {
-        Ok(doc) => {
-            eprintln!("Successfully loaded PDF document");
-            doc
-        }
-        Err(e) => {
-            eprintln!("Failed to load PDF file: {}", e);
-            return Err(format!("Failed to load PDF file: {}", e).into());
-        }
-    };
-
-    // Get the first page
-    eprintln!("Attempting to get first page");
-    let page = match document.pages().get(0) {
-        Ok(p) => {
-            eprintln!("Successfully got first page");
-            p
-        }
-        Err(e) => {
-            eprintln!("Failed to get first page: {}", e);
-            return Err(format!("Failed to get first page: {}", e).into());
-        }
-    };
-
-    // Render the page with book cover dimensions (400px width)
-    eprintln!("Attempting to render page with 400px width");
-    let render_config = PdfRenderConfig::new().set_target_width(400);
-
-    let bitmap = match page.render_with_config(&render_config) {
-        Ok(bmp) => {
-            eprintln!("Successfully rendered page to bitmap");
-            bmp
-        }
-        Err(e) => {
-            eprintln!("Failed to render page: {}", e);
-            return Err(format!("Failed to render page: {}", e).into());
-        }
-    };
-
-    // Convert bitmap to PNG using a more reliable approach
-    let image = bitmap.as_image();
-
-    // Use a temporary file approach to avoid version conflicts
-    let temp_path = std::env::temp_dir().join(format!("temp_cover_{}.png", std::process::id()));
-
-    match image.save(&temp_path) {
-        Ok(_) => {
-            // Read the saved file back into memory
-            match std::fs::read(&temp_path) {
-                Ok(data) => {
-                    // Clean up temp file
-                    let _ = std::fs::remove_file(&temp_path);
-                    eprintln!(
-                        "Successfully rendered first page to PNG ({} bytes)",
-                        data.len()
-                    );
-                    Ok(data)
-                }
-                Err(e) => {
-                    let _ = std::fs::remove_file(&temp_path);
-                    Err(format!("Failed to read temp PNG file: {}", e).into())
-                }
-            }
-        }
-        Err(e) => Err(format!("Failed to save PNG to temp file: {}", e).into()),
-    }
-}
-
 fn create_placeholder_cover() -> Result<Cover, Box<dyn std::error::Error>> {
     use image::{ImageFormat, Rgba, RgbaImage};
     use std::io::Cursor;

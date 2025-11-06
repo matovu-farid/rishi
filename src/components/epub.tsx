@@ -15,7 +15,7 @@ import createIReactReaderTheme from "@/themes/readerThemes";
 import { Palette } from "lucide-react";
 import { TTSControls } from "@components/TTSControls";
 import { Rendition } from "epubjs/types";
-import { updateBookLocation } from "@/modules/books";
+import { synchronizedUpdateBookLocation } from "@/modules/sync_books";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { BookData } from "@/generated";
 import { epubPlayerControl } from "@/models/epub_player_contol";
@@ -85,7 +85,7 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
       bookId: string;
       location: string;
     }) => {
-      await updateBookLocation(bookId, location);
+      await synchronizedUpdateBookLocation(bookId, location);
     },
 
     onError(_error) {

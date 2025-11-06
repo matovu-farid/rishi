@@ -2,6 +2,7 @@ mod commads;
 mod epub;
 mod pdf;
 mod shared;
+use tauri_plugin_store::StoreExt;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 
