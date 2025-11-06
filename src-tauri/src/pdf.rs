@@ -76,7 +76,7 @@ pub fn get_bookData(filePath: &Path) -> Result<BookData, Box<dyn std::error::Err
 fn get_kind(cover: &Cover) -> String {
     match cover {
         Cover::Normal(_) => "normal".to_string(),
-        Cover::Fallback(_) => "fall_back".to_string(),
+        Cover::Fallback(_) => "fallback".to_string(),
     }
 }
 

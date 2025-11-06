@@ -60,7 +60,7 @@ export async function updateCoverImage(blob: Blob, id: String, storeParam?: Stor
   if (!book) return
   // only update it once
   if (book.version && book.version > 0) return
-  if (book.version && book.version != "fallback") return
+  if (book.cover_kind && book.cover_kind != "fallback") return
   const bytes = await blob.bytes()
   const cover = Array.from(bytes)
   await updateBook({
