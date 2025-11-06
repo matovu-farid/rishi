@@ -157,12 +157,12 @@ export function usePdfNavigation(
     isFullscreen,
   };
 }
-export function useChuncking(){
+export function useChuncking() {
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const highlightedParagraph = useAtomValue(highlightedParagraphAtom);
   const isRendered = useAtomValue(isRenderedAtom);
-    useEffect(() => {
+  useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container || !highlightedParagraph?.index) return;
 
@@ -202,7 +202,7 @@ export function useChuncking(){
     }, 100);
     return () => clearTimeout(timeout);
   }, [highlightedParagraph, isRendered]);
-  return {scrollContainerRef};
+  return { scrollContainerRef };
 
 }
 
@@ -211,7 +211,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const [tocOpen, setTocOpen] = useState(false);
   const [direction, setDirection] = useState<"left" | "right">("right");
   const setCurrentBookData = useSetAtom(currentBookDataAtom);
-  const {scrollContainerRef} = useChuncking();
+  const { scrollContainerRef } = useChuncking();
 
   // Set book data only when book prop changes, not on every render
   useEffect(() => {
@@ -726,6 +726,13 @@ export function PageComponent({
     dimensions: defaultDimensions,
   });
   const paragraphsSoFarArray = useRef<Paragraph[]>([]);
+  function isActivePage() {
+    if (!highlightedParagraph?.index) return false;
+    const highlightedPageNumber = Math.floor(
+      Number(highlightedParagraph.index) / PARAGRAPH_INDEX_PER_PAGE
+    );
+    return highlightedPageNumber == pageNumber
+  }
   function isInsideParagraph(wordTransform: Transform) {
     const highlightedPageNumber = Math.floor(
       Number(highlightedParagraph.index) / PARAGRAPH_INDEX_PER_PAGE
@@ -771,7 +778,7 @@ export function PageComponent({
         const isVerticallySpaced =
           previousItem &&
           Math.abs(previousItem.transform[5] - item.transform[5]) >
-            getParagraphThreshold(item) &&
+          getParagraphThreshold(item) &&
           item.hasEOL;
         const isThereText = textSoFar.trim().length > 0;
 
@@ -874,33 +881,38 @@ export function PageComponent({
     }
   }, [pageData]);
   return (
-    <Page
-      pageNumber={pageNumber}
-      key={pageNumber.toString()}
-      customTextRenderer={({
-        str,
 
-        transform,
-      }) => {
-        if (
-          isHighlighting &&
-          // isHighlighedPage() &&
-          isInsideParagraph(transform as Transform)
-        ) {
-          return `<mark>${str}</mark>`;
-        }
+    <div
+      data-isactive={isActivePage() ? "true" : "false"}
+    >
+      <Page
+        pageNumber={pageNumber}
+        key={pageNumber.toString()}
+        customTextRenderer={({
+          str,
 
-        return str;
-      }}
-      height={isDualPage ? pdfHeight : undefined}
-      width={isDualPage ? undefined : pdfWidth}
-      className={" rounded shadow-lg  " + isHiddenClass}
-      renderTextLayer={true}
-      renderAnnotationLayer={true}
-      canvasBackground="white"
-      onGetTextSuccess={(data) => {
-        setPageData(data);
-      }}
-    />
+          transform,
+        }) => {
+          if (
+            isHighlighting &&
+            // isHighlighedPage() &&
+            isInsideParagraph(transform as Transform)
+          ) {
+            return `<mark>${str}</mark>`;
+          }
+
+          return str;
+        }}
+        height={isDualPage ? pdfHeight : undefined}
+        width={isDualPage ? undefined : pdfWidth}
+        className={" rounded shadow-lg  " + isHiddenClass}
+        renderTextLayer={true}
+        renderAnnotationLayer={true}
+        canvasBackground="white"
+        onGetTextSuccess={(data) => {
+          setPageData(data);
+        }}
+      />
+    </div>
   );
 }
