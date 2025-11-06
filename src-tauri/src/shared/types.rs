@@ -25,6 +25,7 @@ pub struct BookData {
     filePath: String,
     current_location: String,
     cover_kind: Option<String>,
+    version: u32,
 }
 
 impl BookData {
@@ -49,6 +50,7 @@ impl BookData {
             publisher,
             filePath,
             current_location,
+            version: 0,
         }
     }
 }

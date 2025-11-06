@@ -9,7 +9,7 @@ import { ThemeType } from "@/themes/common";
 import { themes } from "@/themes/themes";
 import { Loader2, Menu as MenuIcon } from "lucide-react";
 import { motion, AnimatePresence, animate } from "framer-motion";
-import { SavedBookData, updateBookLocation, updateCoverImage } from "@/modules/books";
+import { updateBookLocation, updateCoverImage } from "@/modules/books";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
@@ -206,7 +206,7 @@ export function useChuncking() {
 
 }
 
-export async function updateStoredCoverImage(book: SavedBookData) {
+export async function updateStoredCoverImage(book: BookData) {
   if (book.version && book.version > 0) return;
   const canvas = document.querySelector<HTMLCanvasElement>('[data-isactive="true"] canvas')
   if (!canvas) return
@@ -218,13 +218,16 @@ export async function updateStoredCoverImage(book: SavedBookData) {
   await updateCoverImage(blob, book.id)
 
 }
-export function useUpdateCoverIMage(book: SavedBookData) {
+
+export function useUpdateCoverIMage(book: BookData) {
+  const isRendered = useAtomValue(isRenderedAtom)
   useEffect(() => {
-    updateStoredCoverImage(book)
-  }, [])
+    if (isRendered)
+      updateStoredCoverImage(book)
+  }, [isRendered])
 }
 
-export function PdfView({ book }: { book: SavedBookData }): React.JSX.Element {
+export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const [theme] = useState<ThemeType>(ThemeType.White);
   const [tocOpen, setTocOpen] = useState(false);
   const [direction, setDirection] = useState<"left" | "right">("right");

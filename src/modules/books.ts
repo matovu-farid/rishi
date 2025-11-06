@@ -3,9 +3,7 @@ import { path } from "@tauri-apps/api";
 import * as fs from "@tauri-apps/plugin-fs";
 import { load, Store } from "@tauri-apps/plugin-store";
 
-export type SavedBookData = BookData & {
-  version?: 0
-}
+
 export async function copyBookToAppData(filePath: string) {
   const appdataPath = await path.appDataDir();
   const fileName = await path.basename(filePath);
@@ -17,7 +15,7 @@ export async function copyBookToAppData(filePath: string) {
 export async function getBooks(storeParam?: Store) {
 
   let store = storeParam || await getStore()
-  const books = await store.get<SavedBookData[]>("books");
+  const books = await store.get<BookData[]>("books");
   if (!books) {
     return [];
   }
@@ -29,20 +27,24 @@ export async function getBook(id: String, storeParam?: Store) {
   const books = await getBooks(storeParam)
   return books.find(book => book.id == id)
 }
-export async function storeBook(book: SavedBookData, storeParam?: Store) {
+export async function storeBook(book: BookData, storeParam?: Store) {
 
   let store = storeParam || await getStore()
-  const books = await getBooks(store);
+  let books = await getBooks(store);
   if (!books) {
+    console.log('>>> No books')
     await store.set("books", [book]);
     return;
   }
   const savedBook = books.find(currBook => currBook.id == book.id)
-  if (!savedBook)
+  if (!savedBook) {
+    console.log('>>> No saved book')
+
     books.push(book);
-  else
-    books.map(currBook => {
+  } else
+    books = books.map(currBook => {
       if (currBook.id != book.id) return currBook
+      // Object.create(currBook,)
       return {
         ...currBook,
         ...book,
@@ -60,9 +62,11 @@ export async function updateCoverImage(blob: Blob, id: String, storeParam?: Stor
   if (!book) return
   // only update it once
   if (book.version && book.version > 0) return
-  if (book.cover_kind && book.cover_kind != "fallback") return
+  // if (book.cover_kind && book.cover_kind != "fallback") return
+  if (book.kind != "pdf") return
   const bytes = await blob.bytes()
   const cover = Array.from(bytes)
+  console.log({ cover })
   await updateBook({
     id: book.id,
     cover
@@ -93,7 +97,7 @@ export async function deleteBook(book: BookData) {
   books.splice(index, 1);
   await store.set("books", books);
 }
-export async function updateBook(bookSlice: Partial<SavedBookData> & { id: string }, storeParam?: Store) {
+export async function updateBook(bookSlice: Partial<BookData> & { id: string }, storeParam?: Store) {
 
   const book = await getBook(bookSlice.id, storeParam)
   if (!book) return
