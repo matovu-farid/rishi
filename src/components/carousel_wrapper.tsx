@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useEffect, useState } from "react";
 
 import {
   Carousel,
@@ -8,28 +8,49 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { useSetAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { pageNumberAtom } from "@/stores/paragraph-atoms";
 
+/**
+ * 
+ * Note: The current page number is 1-indexed, but the carousel is 0-indexed.
+ * So we need to subtract 1 from the current page number to get the correct index.
+ * And add 1 to the selected scroll snap to get the correct index.
+ * And add 1 to the current page number to get the correct index.
+ * And subtract 1 from the selected scroll snap to get the correct index.
+ * And add 1 to the current page number to get the correct index.
+ */
 export function CarouselWrapper({
   children,
 }: {
   children: React.ReactElement[];
 }) {
-  const [api, setApi] = React.useState<CarouselApi>();
-  const setCurrent = useSetAtom(pageNumberAtom);
+  const [api, setApi] = useState<CarouselApi>();
+  const [currentPageNumber, setCurrent] = useAtom(pageNumberAtom);
 
-  React.useEffect(() => {
+
+
+  useEffect(() => {
+    if (!api) {
+      return;
+    }
+    if (currentPageNumber - 1 >= 0 && currentPageNumber - 1 !== api.selectedScrollSnap()) {
+      api.scrollTo(currentPageNumber - 1);
+    }
+  }, [currentPageNumber]);
+
+  useEffect(() => {
     if (!api) {
       return;
     }
 
-    setCurrent(api.selectedScrollSnap());
+    setCurrent(api.selectedScrollSnap() + 1);
     api.on("select", (api) => {
-      // throttle(1000, () => {
       setCurrent(api.selectedScrollSnap() + 1);
-      console.log("selectedScrollSnap", api.selectedScrollSnap());
-      // })
+    });
+
+    api.on("init", (api) => {
+      api.scrollTo(currentPageNumber);
     });
   }, [api]);
   return (
