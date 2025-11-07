@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/carousel";
 import { useSetAtom } from "jotai";
 import { pageNumberAtom } from "@/stores/paragraph-atoms";
-import { throttle } from "throttle-debounce";
 
 export function CarouselWrapper({
   children,
