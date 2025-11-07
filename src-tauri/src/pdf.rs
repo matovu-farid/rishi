@@ -1,7 +1,7 @@
 use pdf::enc::StreamFilter;
 use pdf::object::*;
 
-use std::path::Path;
+use std::{fmt::Display, path::Path};
 
 use crate::shared::types::{BookData, BookKind};
 use pdf::{
@@ -70,7 +70,7 @@ pub fn get_bookData(filePath: &Path) -> Result<BookData, Box<dyn std::error::Err
     let id = format!("{:x}", digest);
     let kind = BookKind::Pdf.to_string();
     let current_location = "".to_string();
-    let cover_kind = Some(get_kind(&cover));
+    let cover_kind = Some(cover.to_string());
 
     match cover {
         Cover::Fallback(cover) => Ok(BookData::new(
@@ -95,13 +95,6 @@ pub fn get_bookData(filePath: &Path) -> Result<BookData, Box<dyn std::error::Err
             current_location,
             cover_kind,
         )),
-    }
-}
-
-fn get_kind(cover: &Cover) -> String {
-    match cover {
-        Cover::Normal(_) => "normal".to_string(),
-        Cover::Fallback(_) => "fallback".to_string(),
     }
 }
 
@@ -261,6 +254,16 @@ pub enum Cover {
     Normal(Vec<u8>),
     Fallback(Vec<u8>),
 }
+
+impl Display for Cover {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Cover::Normal(_) => write!(f, "normal"),
+            Cover::Fallback(_) => write!(f, "fallback"),
+        }
+    }
+}
+
 pub fn get_cover(file_path: &Path) -> Result<Cover, Box<dyn std::error::Error>> {
     let path = std::path::Path::new(file_path);
     if !path.exists() {
