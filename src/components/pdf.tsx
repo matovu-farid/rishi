@@ -32,7 +32,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-} from "@components/components/ui/sheet";
+} from "@components/ui/sheet";
 import { cn } from "@components/lib/utils";
 
 import { BookData } from "@/generated";
@@ -40,9 +40,7 @@ import { BookData } from "@/generated";
 // Import required CSS for text and annotation layers
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
-import createIReactReaderTheme from "@/themes/readerThemes";
-import { NavigationArrows, SwipeWrapper } from "./react-reader/components";
-import { type SwipeEventData } from "react-swipeable";
+
 import { TextItem } from "pdfjs-dist/types/src/display/api";
 import {
   highlightedParagraphAtom,
@@ -64,6 +62,7 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { TTSControls } from "./TTSControls";
 import { customStore } from "@/stores/jotai";
 import { playerControl } from "@/models/pdf_player_control";
+import { CarouselWrapper } from "./carousel_wrapper";
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -273,8 +272,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     nextPage,
     isDualPage,
     pdfWidth,
-    pdfHeight,
-    dualPageWidth,
+
     isFullscreen,
   } = usePdfNavigation(book.id, setDirection);
 
@@ -443,294 +441,171 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     setPageCount(numPages);
     // If book has saved location, restore it
   }
+  const pages = useMemo(() => {
+    return Array.from(new Array(numPages), (_, index) => {
+      return (
+        // <PageComponent
+        //   key={`page-${index}`}
+        //   thispageNumber={index}
+        //   pdfWidth={pdfWidth}
+        //   bookId={book.id}
+        // />
+        <Page
+          key={`page_${index + 1}`}
+          pageNumber={index + 1}
+          width={pdfWidth}
+        />
+      );
+    });
+  }, [numPages]);
+  const responsive = {
+    superLargeDesktop: {
+      // the naming can be any, depends on you.
+      breakpoint: { max: 4000, min: 3000 },
+      items: 5,
+    },
+    desktop: {
+      breakpoint: { max: 3000, min: 1024 },
+      items: 3,
+    },
+    tablet: {
+      breakpoint: { max: 1024, min: 464 },
+      items: 2,
+    },
+    mobile: {
+      breakpoint: { max: 464, min: 0 },
+      items: 1,
+    },
+  };
 
   return (
-    <SwipeWrapper
-      swipeProps={{
-        onSwiped: (eventData: SwipeEventData) => {
-          const { dir } = eventData;
-          // Left swipe = next page, Right swipe = previous page
-          if (dir === "Left") {
-            setDirection("right");
-            void nextPage();
-          }
-          if (dir === "Right") {
-            setDirection("left");
-            void previousPage();
-          }
-        },
-        onTouchStartOrOnMouseDown: ({ event }) => event.preventDefault(),
-        touchEventOptions: { passive: false },
-        preventScrollOnSwipe: true,
-        trackMouse: true, // Enable swipe with mouse drag
-      }}
-      onSwipeLeft={() => void nextPage()}
-      onSwipeRight={() => void previousPage()}
+    <div
+      ref={scrollContainerRef}
+      className={cn(
+        "relative h-screen w-full overflow-y-scroll ",
+        !isDualPage ? "pt-96" : "",
+        !isDualPage && isFullscreen ? "pt-[420px]" : "",
+        getBackgroundColor()
+      )}
     >
+      {/* Fixed Top Bar */}
       <div
-        ref={scrollContainerRef}
         className={cn(
-          "relative h-screen w-full overflow-y-scroll ",
-          !isDualPage ? "pt-96" : "",
-          !isDualPage && isFullscreen ? "pt-[420px]" : "",
-          getBackgroundColor()
+          "fixed top-0 left-0 right-0  z-50 bg-transparent"
+
+          //theme === ThemeType.Dark ? " border-gray-700" : " border-gray-200"
         )}
       >
-        <div className="z-100 absolute top-[48%]">
-          <NavigationArrows
-            onPrev={previousPage}
-            onNext={nextPage}
-            readerStyles={createIReactReaderTheme(themes[theme].readerTheme)}
-          />
-        </div>
-        {/* Fixed Top Bar */}
-        <div
-          className={cn(
-            "fixed top-0 left-0 right-0  z-50 bg-transparent"
+        <div className="flex items-center justify-between px-4 pt-5">
+          <IconButton
+            onClick={() => setTocOpen(true)}
+            className={cn(
+              "hover:bg-black/10 dark:hover:bg-white/10 border-none",
+              getTextColor()
+            )}
+            aria-label="Open table of contents"
+          >
+            <MenuIcon size={20} />
+          </IconButton>
 
-            //theme === ThemeType.Dark ? " border-gray-700" : " border-gray-200"
-          )}
-        >
-          <div className="flex items-center justify-between px-4 pt-5">
-            <IconButton
-              onClick={() => setTocOpen(true)}
-              className={cn(
-                "hover:bg-black/10 dark:hover:bg-white/10 border-none",
-                getTextColor()
-              )}
-              aria-label="Open table of contents"
-            >
-              <MenuIcon size={20} />
-            </IconButton>
-
-            <div className="flex items-center gap-2">
-              <Link to="/">
-                <Button
-                  variant="ghost"
-                  className={cn("shadow-sm cursor-pointer", getTextColor())}
-                >
-                  Back
-                </Button>
-              </Link>
-            </div>
+          <div className="flex items-center gap-2">
+            <Link to="/">
+              <Button
+                variant="ghost"
+                className={cn("shadow-sm cursor-pointer", getTextColor())}
+              >
+                Back
+              </Button>
+            </Link>
           </div>
         </div>
+      </div>
 
-        {/* Main PDF Viewer Area */}
-        <div
-          className="flex items-center justify-center  px-2 py-1"
-          style={{ height: "100vh" }}
-        >
-          <Document
-            className="flex items-center justify-center"
-            file={convertFileSrc(book.filepath)}
-            options={pdfOptions}
-            onLoadSuccess={onDocumentLoadSuccess}
-            onItemClick={onItemClick}
-            error={
-              <div className={cn("p-4 text-center", getTextColor())}>
-                <p className="text-red-500">
-                  Error loading PDF. Please try again.
-                </p>
-              </div>
-            }
-            loading={
-              <div
-                className={cn(
-                  "w-full h-full grid place-items-center",
-                  getTextColor()
-                )}
-              >
-                <Loader2 size={20} className="animate-spin" />
-              </div>
-            }
-            externalLinkTarget="_blank"
-            externalLinkRel="noopener noreferrer nofollow"
-          >
-            {isDualPage && pageNumber < numPages ? (
-              // Dual-page view - side by side with gap, using fixed height
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={`dual-${pageNumber}`}
-                  initial={{
-                    opacity: 0,
-                    x: direction === "right" ? 100 : -100,
-                  }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: direction === "right" ? -100 : 100 }}
-                  transition={{
-                    duration: 0.3,
-                    ease: [0.4, 0, 0.2, 1],
-                  }}
-                  className="flex items-center gap-3"
-                >
-                  {/* Hidden pages for previous view */}
-                  {pageNumber >= 2 && (
-                    <PageComponent
-                      key={pageNumber - 2}
-                      thispageNumber={pageNumber - 2}
-                      pdfHeight={pdfHeight}
-                      pdfWidth={dualPageWidth}
-                      isHidden={true}
-                      isDualPage={true}
-                      bookId={book.id}
-                    />
-                  )}
-                  {pageNumber >= 1 && (
-                    <PageComponent
-                      key={pageNumber - 1}
-                      thispageNumber={pageNumber - 1}
-                      pdfHeight={pdfHeight}
-                      pdfWidth={dualPageWidth}
-                      isHidden={true}
-                      isDualPage={true}
-                      bookId={book.id}
-                    />
-                  )}
-
-                  <div data-isactive="true">
-                    <PageComponent
-                      key={pageNumber}
-                      thispageNumber={pageNumber}
-                      pdfHeight={pdfHeight}
-                      pdfWidth={dualPageWidth}
-                      isHidden={false}
-                      isDualPage={true}
-                      isActive={true}
-                      bookId={book.id}
-                    />
-                  </div>
-                  {pageNumber + 1 <= numPages && (
-                    <PageComponent
-                      key={pageNumber + 1}
-                      thispageNumber={pageNumber + 1}
-                      pdfHeight={pdfHeight}
-                      pdfWidth={dualPageWidth}
-                      isHidden={false}
-                      isDualPage={true}
-                      bookId={book.id}
-                    />
-                  )}
-                  {/* Hidden pages for next view */}
-                  {pageNumber + 2 <= numPages && (
-                    <PageComponent
-                      key={pageNumber + 2}
-                      thispageNumber={pageNumber + 2}
-                      pdfHeight={pdfHeight}
-                      pdfWidth={dualPageWidth}
-                      isHidden={true}
-                      isDualPage={true}
-                      bookId={book.id}
-                    />
-                  )}
-                  {pageNumber + 3 <= numPages && (
-                    <PageComponent
-                      key={pageNumber + 3}
-                      thispageNumber={pageNumber + 3}
-                      pdfHeight={pdfHeight}
-                      pdfWidth={dualPageWidth}
-                      isHidden={true}
-                      isDualPage={true}
-                      bookId={book.id}
-                    />
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            ) : (
-              // Single page view
-
-              <div
-                key={`single-${pageNumber}`}
-                className="flex flex-col items-center"
-              >
-                {pageNumber >= 1 && (
-                  <PageComponent
-                    key={pageNumber - 1}
-                    thispageNumber={pageNumber - 1}
-                    pdfWidth={pdfWidth}
-                    isHidden={true}
-                    bookId={book.id}
-                  />
-                )}
-
-                <div data-isactive="true">
-                  <PageComponent
-                    key={pageNumber}
-                    thispageNumber={pageNumber}
-                    pdfWidth={pdfWidth}
-                    isHidden={false}
-                    isActive={true}
-                    bookId={book.id}
-                  />
-                </div>
-                {pageNumber + 1 <= numPages && (
-                  <PageComponent
-                    key={pageNumber + 1}
-                    thispageNumber={pageNumber + 1}
-                    pdfWidth={pdfWidth}
-                    isHidden={true}
-                    bookId={book.id}
-                  />
-                )}
-              </div>
-            )}
-          </Document>
-          {/* TTS Controls - Draggable */}
-          {
-            <TTSControls
-              key={book.id}
-              bookId={book.id}
-              playerControl={playerControl}
-            />
+      {/* Main PDF Viewer Area */}
+      <div className="flex items-center justify-center  px-2 py-1">
+        <Document
+          className="flex items-center justify-center"
+          file={convertFileSrc(book.filepath)}
+          options={pdfOptions}
+          onLoadSuccess={onDocumentLoadSuccess}
+          onItemClick={onItemClick}
+          error={
+            <div className={cn("p-4 text-center", getTextColor())}>
+              <p className="text-red-500">
+                Error loading PDF. Please try again.
+              </p>
+            </div>
           }
-        </div>
-        {/* TOC Sidebar */}
-        <Sheet open={tocOpen} onOpenChange={setTocOpen}>
-          <SheetContent
-            side="left"
-            className={cn(
-              "w-[300px] sm:w-[400px] p-0",
-              theme === ThemeType.Dark
-                ? "bg-gray-900 border-gray-700"
-                : "bg-white border-gray-200"
-            )}
-          >
-            <SheetHeader
-              className={cn(
-                "p-4 border-b sticky top-0 z-10",
-                theme === ThemeType.Dark
-                  ? "border-gray-700 bg-gray-900"
-                  : "border-gray-200 bg-white"
-              )}
-            >
-              <SheetTitle className={getTextColor()}>
-                Table of Contents
-              </SheetTitle>
-            </SheetHeader>
+          loading={
             <div
               className={cn(
-                "overflow-y-auto h-[calc(100vh-73px)]",
-                // Enhanced TOC styling with better padding and hover states
-                "[&_a]:block [&_a]:py-3 [&_a]:px-4 [&_a]:cursor-pointer",
-                "[&_a]:transition-all [&_a]:duration-200",
-                "[&_a]:border-b [&_a]:font-medium",
-                theme === ThemeType.Dark
-                  ? "[&_a]:text-gray-300 [&_a:hover]:bg-gray-800 [&_a:hover]:text-white [&_a]:border-gray-800 [&_a:hover]:pl-6"
-                  : "[&_a]:text-gray-700 [&_a:hover]:bg-gray-100 [&_a:hover]:text-black [&_a]:border-gray-100 [&_a:hover]:pl-6"
+                "w-full h-full grid place-items-center",
+                getTextColor()
               )}
             >
-              <Document
-                file={convertFileSrc(book.filepath)}
-                options={pdfOptions}
-                onLoadSuccess={onDocumentLoadSuccess}
-              >
-                <Outline onItemClick={onItemClick} />
-              </Document>
+              <Loader2 size={20} className="animate-spin" />
             </div>
-          </SheetContent>
-        </Sheet>
+          }
+          externalLinkTarget="_blank"
+          externalLinkRel="noopener noreferrer nofollow"
+        >
+          <CarouselWrapper>{pages}</CarouselWrapper>
+        </Document>
+        {/* TTS Controls - Draggable */}
+        {
+          <TTSControls
+            key={book.id}
+            bookId={book.id}
+            playerControl={playerControl}
+          />
+        }
       </div>
-    </SwipeWrapper>
+      {/* TOC Sidebar */}
+      <Sheet open={tocOpen} onOpenChange={setTocOpen}>
+        <SheetContent
+          side="left"
+          className={cn(
+            "w-[300px] sm:w-[400px] p-0",
+            theme === ThemeType.Dark
+              ? "bg-gray-900 border-gray-700"
+              : "bg-white border-gray-200"
+          )}
+        >
+          <SheetHeader
+            className={cn(
+              "p-4 border-b sticky top-0 z-10",
+              theme === ThemeType.Dark
+                ? "border-gray-700 bg-gray-900"
+                : "border-gray-200 bg-white"
+            )}
+          >
+            <SheetTitle className={getTextColor()}>
+              Table of Contents
+            </SheetTitle>
+          </SheetHeader>
+          <div
+            className={cn(
+              "overflow-y-auto h-[calc(100vh-73px)]",
+              // Enhanced TOC styling with better padding and hover states
+              "[&_a]:block [&_a]:py-3 [&_a]:px-4 [&_a]:cursor-pointer",
+              "[&_a]:transition-all [&_a]:duration-200",
+              "[&_a]:border-b [&_a]:font-medium",
+              theme === ThemeType.Dark
+                ? "[&_a]:text-gray-300 [&_a:hover]:bg-gray-800 [&_a:hover]:text-white [&_a]:border-gray-800 [&_a:hover]:pl-6"
+                : "[&_a]:text-gray-700 [&_a:hover]:bg-gray-100 [&_a:hover]:text-black [&_a]:border-gray-100 [&_a:hover]:pl-6"
+            )}
+          >
+            <Document
+              file={convertFileSrc(book.filepath)}
+              options={pdfOptions}
+              onLoadSuccess={onDocumentLoadSuccess}
+            >
+              <Outline onItemClick={onItemClick} />
+            </Document>
+          </div>
+        </SheetContent>
+      </Sheet>
+    </div>
   );
 }
 
@@ -749,17 +624,13 @@ export function PageComponent({
   thispageNumber: pageNumber,
   pdfHeight,
   pdfWidth,
-  isHidden = false,
   isDualPage = false,
-  isActive = false,
   bookId,
 }: {
   thispageNumber: number;
   pdfHeight?: number;
   pdfWidth?: number;
-  isHidden: boolean;
   isDualPage?: boolean;
-  isActive?: boolean;
   bookId: string;
 }) {
   const [pageData, setPageData] = useState<TextContent | null>(null);
@@ -788,8 +659,11 @@ export function PageComponent({
     return isBelowOrEqualTop && isAboveOrEqualBottom;
   }
   const setIsRendered = useSetAtom(isRenderedPageAtom);
+  const currentPage = useAtomValue(pageNumberAtom);
+  const isActive = currentPage === pageNumber;
 
-  const isHiddenClass = isHidden ? " hidden" : "";
+  const isHidden = false;
+
   const setIsCanvasRendered = useSetAtom(isPdfRenderedAtom);
 
   const highlightedParagraph = useAtomValue(highlightedParagraphAtom);
@@ -945,7 +819,7 @@ export function PageComponent({
       }}
       height={isDualPage ? pdfHeight : undefined}
       width={isDualPage ? undefined : pdfWidth}
-      className={" rounded shadow-lg  " + isHiddenClass}
+      className={" rounded shadow-lg  "}
       renderTextLayer={true}
       renderAnnotationLayer={true}
       canvasBackground="white"
