@@ -27,12 +27,12 @@ import type {
   TextContent,
   TextMarkedContent,
 } from "pdfjs-dist/types/src/display/api";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@components/ui/sheet";
+// import {
+//   Sheet,
+//   SheetContent,
+//   SheetHeader,
+//   SheetTitle,
+// } from "@/components/ui/sheet";
 import { cn } from "@components/lib/utils";
 
 import { BookData } from "@/generated";
@@ -63,6 +63,12 @@ import { TTSControls } from "./TTSControls";
 import { customStore } from "@/stores/jotai";
 import { playerControl } from "@/models/pdf_player_control";
 import { CarouselWrapper } from "./carousel_wrapper";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "./components/ui/sheet";
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -444,47 +450,27 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const pages = useMemo(() => {
     return Array.from(new Array(numPages), (_, index) => {
       return (
-        // <PageComponent
-        //   key={`page-${index}`}
-        //   thispageNumber={index}
-        //   pdfWidth={pdfWidth}
-        //   bookId={book.id}
+        // <Page
+        //   key={`page_${index + 1}`}
+        //   pageNumber={index + 1}
+        //   width={pdfWidth}
         // />
-        <Page
-          key={`page_${index + 1}`}
-          pageNumber={index + 1}
-          width={pdfWidth}
+        <PageComponent
+          key={`page-${index + 1}`}
+          thispageNumber={index + 1}
+          pdfWidth={pdfWidth}
+          bookId={book.id}
         />
       );
     });
   }, [numPages]);
-  const responsive = {
-    superLargeDesktop: {
-      // the naming can be any, depends on you.
-      breakpoint: { max: 4000, min: 3000 },
-      items: 5,
-    },
-    desktop: {
-      breakpoint: { max: 3000, min: 1024 },
-      items: 3,
-    },
-    tablet: {
-      breakpoint: { max: 1024, min: 464 },
-      items: 2,
-    },
-    mobile: {
-      breakpoint: { max: 464, min: 0 },
-      items: 1,
-    },
-  };
 
   return (
     <div
       ref={scrollContainerRef}
       className={cn(
         "relative h-screen w-full overflow-y-scroll ",
-        !isDualPage ? "pt-96" : "",
-        !isDualPage && isFullscreen ? "pt-[420px]" : "",
+        !isDualPage && isFullscreen ? "" : "",
         getBackgroundColor()
       )}
     >
@@ -662,8 +648,6 @@ export function PageComponent({
   const currentPage = useAtomValue(pageNumberAtom);
   const isActive = currentPage === pageNumber;
 
-  const isHidden = false;
-
   const setIsCanvasRendered = useSetAtom(isPdfRenderedAtom);
 
   const highlightedParagraph = useAtomValue(highlightedParagraphAtom);
@@ -800,7 +784,7 @@ export function PageComponent({
   }, [pageData]);
   return (
     <Page
-      pageNumber={pageNumber}
+      pageNumber={pageNumber }
       key={pageNumber.toString()}
       customTextRenderer={({
         str,
