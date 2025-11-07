@@ -302,9 +302,6 @@ function FileDrop(): React.JSX.Element {
                     />
                   </Link>
                 </div>
-                <div className="text-teal-500 justify-center p-2 overflow-hidden text-ellipsis whitespace-nowrap text-sm">
-                  {book.title}
-                </div>
               </motion.div>
             ))}
           </AnimatePresence>
