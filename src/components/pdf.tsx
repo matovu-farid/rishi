@@ -57,7 +57,8 @@ import {
   resetParaphStateAtom,
   setParagraphsAtom,
   currentBookDataAtom,
-  isRenderedAtom,
+  isTextGotAtom,
+  isPdfRenderedAtom,
 } from "@/stores/paragraph-atoms";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { TTSControls } from "./TTSControls";
@@ -163,7 +164,7 @@ export function usePdfNavigation(
 export function useChuncking() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const highlightedParagraph = useAtomValue(highlightedParagraphAtom);
-  const isRendered = useAtomValue(isRenderedAtom);
+  const isRendered = useAtomValue(isTextGotAtom);
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container || !highlightedParagraph?.index) return;
@@ -208,6 +209,7 @@ export function useChuncking() {
 }
 
 export async function updateStoredCoverImage(book: BookData) {
+
   console.log(`>>> Updating cover image for book ID: ${book.id}`);
   if (book.version && book.version > 0) return;
   const canvas = document.querySelector<HTMLCanvasElement>(
@@ -226,9 +228,12 @@ export async function updateStoredCoverImage(book: BookData) {
 }
 
 export function useUpdateCoverIMage(book: BookData) {
-  const isRendered = useAtomValue(isRenderedAtom);
+  const isRendered = useAtomValue(isPdfRenderedAtom);
   useEffect(() => {
-    if (isRendered) void updateStoredCoverImage(book);
+    if (isRendered(book.id)) {
+      void updateStoredCoverImage(book);
+
+    }
   }, [isRendered]);
 }
 
@@ -570,6 +575,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                       pdfWidth={dualPageWidth}
                       isHidden={true}
                       isDualPage={true}
+                      bookId={book.id}
                     />
                   )}
                   {pageNumber >= 1 && (
@@ -580,6 +586,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                       pdfWidth={dualPageWidth}
                       isHidden={true}
                       isDualPage={true}
+                      bookId={book.id}
                     />
                   )}
 
@@ -591,6 +598,8 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                       pdfWidth={dualPageWidth}
                       isHidden={false}
                       isDualPage={true}
+                      isActive={true}
+                      bookId={book.id}
                     />
                   </div>
                   {pageNumber + 1 <= numPages && (
@@ -601,6 +610,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                       pdfWidth={dualPageWidth}
                       isHidden={false}
                       isDualPage={true}
+                      bookId={book.id}
                     />
                   )}
                   {/* Hidden pages for next view */}
@@ -612,6 +622,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                       pdfWidth={dualPageWidth}
                       isHidden={true}
                       isDualPage={true}
+                      bookId={book.id}
                     />
                   )}
                   {pageNumber + 3 <= numPages && (
@@ -622,6 +633,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                       pdfWidth={dualPageWidth}
                       isHidden={true}
                       isDualPage={true}
+                      bookId={book.id}
                     />
                   )}
                 </motion.div>
@@ -639,6 +651,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                     thispageNumber={pageNumber - 1}
                     pdfWidth={pdfWidth}
                     isHidden={true}
+                    bookId={book.id}
                   />
                 )}
 
@@ -648,6 +661,8 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                     thispageNumber={pageNumber}
                     pdfWidth={pdfWidth}
                     isHidden={false}
+                    isActive={true}
+                    bookId={book.id}
                   />
                 </div>
                 {pageNumber + 1 <= numPages && (
@@ -656,6 +671,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                     thispageNumber={pageNumber + 1}
                     pdfWidth={pdfWidth}
                     isHidden={true}
+                    bookId={book.id}
                   />
                 )}
               </div>
@@ -737,12 +753,16 @@ export function PageComponent({
   pdfWidth,
   isHidden = false,
   isDualPage = false,
+  isActive = false,
+  bookId,
 }: {
   thispageNumber: number;
   pdfHeight?: number;
   pdfWidth?: number;
   isHidden: boolean;
   isDualPage?: boolean;
+  isActive?: boolean;
+  bookId: string;
 }) {
   const [pageData, setPageData] = useState<TextContent | null>(null);
   const isHighlighting = useAtomValue(isHighlightingAtom);
@@ -758,13 +778,6 @@ export function PageComponent({
     dimensions: defaultDimensions,
   });
   const paragraphsSoFarArray = useRef<Paragraph[]>([]);
-  function isActivePage() {
-    if (!highlightedParagraph?.index) return false;
-    const highlightedPageNumber = Math.floor(
-      Number(highlightedParagraph.index) / PARAGRAPH_INDEX_PER_PAGE
-    );
-    return highlightedPageNumber == pageNumber;
-  }
   function isInsideParagraph(wordTransform: Transform) {
     const highlightedPageNumber = Math.floor(
       Number(highlightedParagraph.index) / PARAGRAPH_INDEX_PER_PAGE
@@ -779,6 +792,7 @@ export function PageComponent({
   const setIsRendered = useSetAtom(isRenderedPageAtom);
 
   const isHiddenClass = isHidden ? " hidden" : "";
+  const setIsCanvasRendered = useSetAtom(isPdfRenderedAtom);
 
   const highlightedParagraph = useAtomValue(highlightedParagraphAtom);
 
@@ -940,6 +954,10 @@ export function PageComponent({
       canvasBackground="white"
       onGetTextSuccess={(data) => {
         setPageData(data);
+      }}
+      onRenderSuccess={() => {
+        if (isActive)
+          setIsCanvasRendered(bookId, true)
       }}
     />
 

@@ -17,6 +17,7 @@ import {
   synchronizedStoreBook,
   synchronizedDeleteBook,
 } from "@/modules/sync_books";
+import { pdfsControllerAtom } from "@/stores/paragraph-atoms";
 
 const newBook = atom<string | null>(null);
 
@@ -85,6 +86,7 @@ function bytesToBlobUrl(bytes: number[]): string {
 }
 
 function FileDrop(): React.JSX.Element {
+  const setPfsController = useSetAtom(pdfsControllerAtom);
   const queryClient = useQueryClient();
   const {
     isPending,
@@ -95,6 +97,8 @@ function FileDrop(): React.JSX.Element {
     queryKey: ["books"],
     queryFn: async () => {
       const books = await synchronizedGetBooks();
+      const pdfIds = books.filter(book => book.kind === 'pdf').map(book => book.id);
+      setPfsController({ type: 'setAll', ids: pdfIds });
       // prefetch the book data based on ids
       books.forEach((book) => {
         void queryClient.prefetchQuery({
@@ -110,6 +114,7 @@ function FileDrop(): React.JSX.Element {
     mutationKey: ["deleteBook"],
     mutationFn: async ({ book }: { book: BookData }) => {
       await synchronizedDeleteBook(book);
+      setPfsController({ type: 'remove', id: book.id });
     },
 
     onError(error) {

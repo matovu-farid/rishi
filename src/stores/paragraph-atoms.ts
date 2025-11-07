@@ -239,12 +239,74 @@ export const isRenderedPageAtom = atom(
     });
   }
 );
-export const isRenderedAtom = atom((get) => {
+export const isTextGotAtom = atom((get) => {
   return get(currentViewPagesAtom)
     .map((pageNumber) => get(isRenderedPageAtom)[pageNumber])
     .every((rendered) => rendered);
 });
+export const booksAtom = atom<string[]>([]);
+export const pdfsRenderedAtom = atom<{ [bookId: string]: boolean }>({});
+export const isPdfRenderedAtom = atom(get => {
+  const pdfsRendered = get(pdfsRenderedAtom);
+  return (bookId: string) => pdfsRendered[bookId] ?? false;
+}, (get, set, bookId: string, isRendered: boolean) => {
+  const pdfsRendered = get(pdfsRenderedAtom);
+  set(pdfsRenderedAtom, {
+    ...pdfsRendered,
+    [bookId]: isRendered,
+  });
+});
+isPdfRenderedAtom.debugLabel = "isPdfRenderedAtom";
 
+pdfsRenderedAtom.debugLabel = "PdfsRenderedAtom";
+booksAtom.debugLabel = "booksAtom";
+type ActionOptions =
+  { type: "add"; id: string }
+  | { type: "remove"; id: string }
+  | { type: "setAll"; ids: string[] }
+
+export const pdfsControllerAtom = atom(
+  (get) => get(booksAtom),
+  (get, set, action: ActionOptions) => {
+    const books = get(booksAtom);
+    const isRendered = get(pdfsRenderedAtom);
+
+    switch (action.type) {
+      case "add": {
+        if (!books.includes(action.id)) {
+          set(booksAtom, [...books, action.id]);
+          set(pdfsRenderedAtom, { ...isRendered, [action.id]: false }); // default state
+        }
+        break;
+      }
+
+      case "remove": {
+        const newBooks = books.filter((id) => id !== action.id);
+        const { [action.id]: _, ...rest } = isRendered;
+
+        set(booksAtom, newBooks);
+        set(pdfsRenderedAtom, rest);
+        break;
+      }
+
+      case "setAll": {
+        const newBooks = action.ids;
+        const newRendered: Record<string, boolean> = {};
+
+        for (const id of newBooks) {
+          newRendered[id] = isRendered[id] ?? false;
+        }
+
+        set(booksAtom, newBooks);
+        set(pdfsRenderedAtom, newRendered);
+        break;
+      }
+    }
+  }
+);
+
+
+export const isRenderedAtom = atom<Record<string, boolean>>({});
 // debug label
 currentBookDataAtom.debugLabel = "currentBookDataAtom";
 highlightedParagraphArrayIndexAtom.debugLabel =
@@ -272,4 +334,4 @@ previousPageAtom.debugLabel = "previousPageAtom";
 nextPageAtom.debugLabel = "nextPageAtom";
 isRenderedPageStateAtom.debugLabel = "isRenderedPageStateAtom";
 isRenderedPageAtom.debugLabel = "isRenderedPageAtom";
-isRenderedAtom.debugLabel = "isRenderedAtom";
+isTextGotAtom.debugLabel = "isRenderedAtom";
