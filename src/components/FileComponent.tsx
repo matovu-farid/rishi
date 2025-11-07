@@ -14,7 +14,6 @@ import { atom, useSetAtom } from "jotai";
 import { customStore } from "@/stores/jotai";
 import {
   synchronizedGetBooks,
-  synchronizedStoreBook,
   synchronizedDeleteBook,
 } from "@/modules/sync_books";
 import { pdfsControllerAtom } from "@/stores/paragraph-atoms";
@@ -134,10 +133,7 @@ function FileDrop(): React.JSX.Element {
     mutationKey: ["getBookData"],
     mutationFn: async ({ filePath }: { filePath: string }) => {
       const epubPath = await copyBookToAppData(filePath);
-
       const bookData = await getBookData({ path: epubPath });
-      await synchronizedStoreBook({ ...bookData, version: 0 });
-
       return bookData;
     },
 
@@ -165,7 +161,6 @@ function FileDrop(): React.JSX.Element {
 
       const bookData = await getPdfData({ path: pdfPath });
 
-      // await synchronizedStoreBook({ ...bookData, version: 0 });
       return bookData;
     },
 

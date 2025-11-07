@@ -27,10 +27,6 @@ export const GetPdfDataParamsSchema = z.object({
   path: z.string(),
 });
 
-export const GreetParamsSchema = z.object({
-  name: z.string(),
-});
-
 export const UnzipParamsSchema = z.object({
   file_path: z.string(),
   out_dir: z.string(),
@@ -39,8 +35,6 @@ export const UnzipParamsSchema = z.object({
 export type GetBookDataParams = z.infer<typeof GetBookDataParamsSchema>;
 
 export type GetPdfDataParams = z.infer<typeof GetPdfDataParamsSchema>;
-
-export type GreetParams = z.infer<typeof GreetParamsSchema>;
 
 export type UnzipParams = z.infer<typeof UnzipParamsSchema>;
 
