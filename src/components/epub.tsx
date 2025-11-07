@@ -161,7 +161,7 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
               <Loader />
             </div>
           }
-          url={convertFileSrc(book.filePath)}
+          url={convertFileSrc(book.filepath)}
           title={book.title}
           location={currentLocation || book.current_location || 0}
           locationChanged={(epubcfi: string) => {

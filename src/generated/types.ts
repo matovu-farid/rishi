@@ -13,23 +13,18 @@ export const BookDataSchema = z.object({
   title: z.string().optional(),
   author: z.string().optional(),
   publisher: z.string().optional(),
-  filePath: z.string(),
+  filepath: z.string(),
   current_location: z.string(),
   cover_kind: z.string().optional(),
   version: z.number(),
 });
 
 export const GetBookDataParamsSchema = z.object({
-  epubPath: z.string(),
+  path: z.string(),
 });
 
 export const GetPdfDataParamsSchema = z.object({
-  pdfPath: z.string(),
-});
-
-export const GetParagraphsParamsSchema = z.object({
-  pdfPath: z.string(),
-  pageNumber: z.number(),
+  path: z.string(),
 });
 
 export const GreetParamsSchema = z.object({
@@ -44,8 +39,6 @@ export const UnzipParamsSchema = z.object({
 export type GetBookDataParams = z.infer<typeof GetBookDataParamsSchema>;
 
 export type GetPdfDataParams = z.infer<typeof GetPdfDataParamsSchema>;
-
-export type GetParagraphsParams = z.infer<typeof GetParagraphsParamsSchema>;
 
 export type GreetParams = z.infer<typeof GreetParamsSchema>;
 

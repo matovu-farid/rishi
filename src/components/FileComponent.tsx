@@ -97,8 +97,10 @@ function FileDrop(): React.JSX.Element {
     queryKey: ["books"],
     queryFn: async () => {
       const books = await synchronizedGetBooks();
-      const pdfIds = books.filter(book => book.kind === 'pdf').map(book => book.id);
-      setPfsController({ type: 'setAll', ids: pdfIds });
+      const pdfIds = books
+        .filter((book) => book.kind === "pdf")
+        .map((book) => book.id);
+      setPfsController({ type: "setAll", ids: pdfIds });
       // prefetch the book data based on ids
       books.forEach((book) => {
         void queryClient.prefetchQuery({
@@ -114,7 +116,7 @@ function FileDrop(): React.JSX.Element {
     mutationKey: ["deleteBook"],
     mutationFn: async ({ book }: { book: BookData }) => {
       await synchronizedDeleteBook(book);
-      setPfsController({ type: 'remove', id: book.id });
+      setPfsController({ type: "remove", id: book.id });
     },
 
     onError(error) {
@@ -133,7 +135,7 @@ function FileDrop(): React.JSX.Element {
     mutationFn: async ({ filePath }: { filePath: string }) => {
       const epubPath = await copyBookToAppData(filePath);
 
-      const bookData = await getBookData({ epubPath });
+      const bookData = await getBookData({ path: epubPath });
       await synchronizedStoreBook({ ...bookData, version: 0 });
 
       return bookData;
@@ -161,7 +163,7 @@ function FileDrop(): React.JSX.Element {
     mutationFn: async ({ filePath }: { filePath: string }) => {
       const pdfPath = await copyBookToAppData(filePath);
 
-      const bookData = await getPdfData({ pdfPath });
+      const bookData = await getPdfData({ path: pdfPath });
 
       // await synchronizedStoreBook({ ...bookData, version: 0 });
       return bookData;
@@ -248,10 +250,10 @@ function FileDrop(): React.JSX.Element {
         style={
           books && books.length > 0
             ? {
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
-              gridAutoFlow: "row",
-            }
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
+                gridAutoFlow: "row",
+              }
             : {}
         }
         className={

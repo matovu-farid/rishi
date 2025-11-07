@@ -209,7 +209,6 @@ export function useChuncking() {
 }
 
 export async function updateStoredCoverImage(book: BookData) {
-
   console.log(`>>> Updating cover image for book ID: ${book.id}`);
   if (book.version && book.version > 0) return;
   const canvas = document.querySelector<HTMLCanvasElement>(
@@ -232,7 +231,6 @@ export function useUpdateCoverIMage(book: BookData) {
   useEffect(() => {
     if (isRendered(book.id)) {
       void updateStoredCoverImage(book);
-
     }
   }, [isRendered]);
 }
@@ -525,7 +523,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
         >
           <Document
             className="flex items-center justify-center"
-            file={convertFileSrc(book.filePath)}
+            file={convertFileSrc(book.filepath)}
             options={pdfOptions}
             onLoadSuccess={onDocumentLoadSuccess}
             onItemClick={onItemClick}
@@ -722,7 +720,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
               )}
             >
               <Document
-                file={convertFileSrc(book.filePath)}
+                file={convertFileSrc(book.filepath)}
                 options={pdfOptions}
                 onLoadSuccess={onDocumentLoadSuccess}
               >
@@ -824,7 +822,7 @@ export function PageComponent({
         const isVerticallySpaced =
           previousItem &&
           Math.abs(previousItem.transform[5] - item.transform[5]) >
-          getParagraphThreshold(item) &&
+            getParagraphThreshold(item) &&
           item.hasEOL;
         const isThereText = textSoFar.trim().length > 0;
 
@@ -927,7 +925,6 @@ export function PageComponent({
     }
   }, [pageData]);
   return (
-
     <Page
       pageNumber={pageNumber}
       key={pageNumber.toString()}
@@ -956,10 +953,8 @@ export function PageComponent({
         setPageData(data);
       }}
       onRenderSuccess={() => {
-        if (isActive)
-          setIsCanvasRendered(bookId, true)
+        if (isActive) setIsCanvasRendered(bookId, true);
       }}
     />
-
   );
 }

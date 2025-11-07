@@ -4,32 +4,24 @@ use std::io;
 use std::path::{Path, PathBuf};
 use zip::ZipArchive;
 
-use crate::epub;
-use crate::pdf;
+use crate::epub::Epub;
+use crate::pdf::Pdf;
+use crate::shared::books::store_book_data;
+use crate::shared::books::Extractable;
 use crate::shared::types::BookData;
 
 #[tauri::command]
-pub fn get_book_data(epubPath: &Path) -> Result<BookData, String> {
-    epub::get_bookData(epubPath)
+pub fn get_book_data(app: tauri::AppHandle, path: &Path) -> Result<BookData, String> {
+    let data = Epub::new(path);
+    store_book_data(app, &data).map_err(|e| e.to_string())?;
+    data.extract().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn get_pdf_data(app: tauri::AppHandle, pdfPath: &Path) -> Result<BookData, String> {
-    let res = pdf::get_bookData(pdfPath);
-    if let Ok(book_data) = &res {
-        pdf::store_book_data(app, book_data);
-    }
-    return res.map_err(|e| e.to_string());
-}
-
-#[tauri::command]
-pub fn get_paragraphs(pdfPath: &Path, pageNumber: u32) -> Result<Vec<String>, String> {
-    pdf::get_paragraphs(pdfPath, pageNumber).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-pub fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
+pub fn get_pdf_data(app: tauri::AppHandle, path: &Path) -> Result<BookData, String> {
+    let data = Pdf::new(path);
+    store_book_data(app, &data).map_err(|e| e.to_string())?;
+    data.extract().map_err(|e| e.to_string())
 }
 
 #[tauri::command]

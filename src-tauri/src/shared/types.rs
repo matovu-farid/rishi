@@ -22,7 +22,7 @@ pub struct BookData {
     title: Option<String>,
     author: Option<String>,
     publisher: Option<String>,
-    filePath: String,
+    filepath: String,
     current_location: String,
     cover_kind: Option<String>,
     version: u32,
@@ -36,7 +36,7 @@ impl BookData {
         title: Option<String>,
         author: Option<String>,
         publisher: Option<String>,
-        filePath: String,
+        filepath: String,
         current_location: String,
         cover_kind: Option<String>,
     ) -> Self {
@@ -48,7 +48,7 @@ impl BookData {
             author,
             cover_kind,
             publisher,
-            filePath,
+            filepath,
             current_location,
             version: 0,
         }

@@ -1,258 +1,95 @@
 use pdf::enc::StreamFilter;
 use pdf::object::*;
 
-use std::{fmt::Display, path::Path};
-
-use crate::shared::types::{BookData, BookKind};
-use pdf::{
-    content::{Op, TextDrawAdjusted},
-    file::FileOptions,
-    object::Resolve,
+use std::{
+    fmt::Display,
+    path::{Path, PathBuf},
 };
-use serde_json::json;
-use tauri_plugin_store::StoreExt;
 
-pub fn store_book_data(
-    app: tauri::AppHandle,
-    book_data: &BookData,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let store = app.store("store.json")?;
-    match store.get("books") {
-        Some(value) => {
-            let mut current_books: Vec<BookData> = serde_json::from_value(value.clone())?;
-            current_books.push(book_data.clone());
-            let books_value = serde_json::to_value(current_books)?;
-            store.set("books", json!(books_value));
-            store.save()?;
-        }
-        None => {
-            // No existing books, create new array
-            let current_books = vec![book_data.clone()];
-            let books_value = serde_json::to_value(current_books)?;
-            store.set("books", json!(books_value));
-            store.save()?;
-        }
-    }
-    Ok(())
-}
-
-pub fn get_bookData(filePath: &Path) -> Result<BookData, Box<dyn std::error::Error>> {
-    let path = std::path::Path::new(filePath);
-    if !path.exists() {
-        return Err(format!("File not found: {}", path.display()).into());
-    }
-
-    // Open PDF with lazy loading using pdf crate
-    let file = &FileOptions::cached().open(path)?;
-
-    // Info dictionary is optional in PDFs - extract metadata if available
-    let title = file
-        .trailer
-        .info_dict
-        .as_ref()
-        .and_then(|dict| dict.title.as_ref())
-        .and_then(|s| s.to_string().ok());
-    let author = file
-        .trailer
-        .info_dict
-        .as_ref()
-        .and_then(|dict| dict.author.as_ref())
-        .and_then(|s| s.to_string().ok());
-    let publisher = file
-        .trailer
-        .info_dict
-        .as_ref()
-        .and_then(|dict| dict.creator.as_ref())
-        .and_then(|s| s.to_string().ok());
-    let cover = get_cover(filePath)?;
-    let pdf_path = filePath.to_str().unwrap_or_default().to_string();
-    let digest = md5::compute(filePath.to_string_lossy().to_string());
-    let id = format!("{:x}", digest);
-    let kind = BookKind::Pdf.to_string();
-    let current_location = "".to_string();
-    let cover_kind = Some(cover.to_string());
-
-    match cover {
-        Cover::Fallback(cover) => Ok(BookData::new(
-            id,
-            kind,
-            cover,
-            title,
-            author,
-            publisher,
-            pdf_path,
-            current_location,
-            cover_kind,
-        )),
-        Cover::Normal(cover) => Ok(BookData::new(
-            id,
-            kind,
-            cover,
-            title,
-            author,
-            publisher,
-            pdf_path,
-            current_location,
-            cover_kind,
-        )),
-    }
-}
-
-pub fn get_paragraphs(
-    file_path: &Path,
-    page_number: u32,
-) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-    let path = std::path::Path::new(file_path);
-    if !path.exists() {
-        return Err(format!("File not found: {}", path.display()).into());
-    }
-
-    // Open PDF with lazy loading using pdf crate
-    let file = FileOptions::cached().open(path)?;
-    let resolver = file.resolver();
-
-    // Get first page
-    let page = file.get_page(page_number)?;
-
-    // Get text from first page
-    let content = page.contents.as_ref().ok_or("No content found")?;
-    let ops = content.operations(&resolver)?;
-
-    // Paragraph array to collect results
-    let mut paragraphs: Vec<String> = Vec::new();
-    let mut current_paragraph = String::new();
-
-    // Track position to detect paragraph breaks
-    let mut last_y_position: Option<f32> = None;
-    let mut current_y_position: Option<f32> = None;
-
-    // Extract and print actual text content
-    for op in ops {
-        // Update position tracking for formatting
-        match op {
-            Op::SetTextMatrix { matrix } => {
-                // Check if we moved to a significantly different Y position (new line or paragraph)
-                if let Some(last_y) = last_y_position {
-                    let y_delta = matrix.f - last_y;
-                    // If we moved down by more than 1 unit, it's likely a new line
-                    if y_delta < -1.0 {
-                        // Check if it's a paragraph break (more than 1.5x the normal line spacing)
-                        if y_delta < -15.0 {
-                            // Paragraph break: finalize current paragraph and start a new one
-                            if !current_paragraph.trim().is_empty() {
-                                paragraphs.push(current_paragraph.trim().to_string());
-                                current_paragraph = String::new();
-                            }
-                        } else {
-                            // Regular line break within paragraph: add space
-                            if !current_paragraph.is_empty() && !current_paragraph.ends_with(' ') {
-                                current_paragraph.push(' ');
-                            }
-                        }
-                    }
-                }
-                current_y_position = Some(matrix.f);
-            }
-            Op::MoveTextPosition { translation } => {
-                // Moving position without text usually indicates a new line
-                if translation.y < -1.0 {
-                    if translation.y < -15.0 {
-                        // Paragraph break
-                        if !current_paragraph.trim().is_empty() {
-                            paragraphs.push(current_paragraph.trim().to_string());
-                            current_paragraph = String::new();
-                        }
-                    } else {
-                        // Regular line break within paragraph: add space
-                        if !current_paragraph.is_empty() && !current_paragraph.ends_with(' ') {
-                            current_paragraph.push(' ');
-                        }
-                    }
-                }
-                current_y_position = Some(current_y_position.unwrap_or(0.0) + translation.y);
-            }
-            Op::TextNewline => {
-                // Regular line break within paragraph: add space
-                if !current_paragraph.is_empty() && !current_paragraph.ends_with(' ') {
-                    current_paragraph.push(' ');
-                }
-                if let Some(curr_y) = current_y_position {
-                    last_y_position = Some(curr_y);
-                }
-            }
-            Op::BeginText => {
-                // Check if we moved to a new Y position and need formatting
-                if let Some(curr_y) = current_y_position {
-                    if let Some(last_y) = last_y_position {
-                        let y_delta = curr_y - last_y;
-                        if y_delta < -1.0 {
-                            if y_delta < -15.0 {
-                                // Paragraph break
-                                if !current_paragraph.trim().is_empty() {
-                                    paragraphs.push(current_paragraph.trim().to_string());
-                                    current_paragraph = String::new();
-                                }
-                            } else {
-                                // Regular line break within paragraph: add space
-                                if !current_paragraph.is_empty()
-                                    && !current_paragraph.ends_with(' ')
-                                {
-                                    current_paragraph.push(' ');
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            Op::TextDraw { text } => {
-                // Simple text drawing operation
-                let text_content = text.to_string_lossy();
-                current_paragraph.push_str(&text_content);
-                if let Some(curr_y) = current_y_position {
-                    last_y_position = Some(curr_y);
-                }
-            }
-            Op::TextDrawAdjusted { array } => {
-                // Text with spacing adjustments
-                for item in array {
-                    match item {
-                        TextDrawAdjusted::Text(text) => {
-                            current_paragraph.push_str(&text.to_string_lossy());
-                        }
-                        TextDrawAdjusted::Spacing(spacing) => {
-                            // Handle spacing adjustments
-                            if spacing < -50.0 {
-                                // Large negative spacing might indicate word break
-                                if !current_paragraph.is_empty()
-                                    && !current_paragraph.ends_with(' ')
-                                {
-                                    current_paragraph.push(' ');
-                                }
-                            }
-                        }
-                    }
-                }
-                if let Some(curr_y) = current_y_position {
-                    last_y_position = Some(curr_y);
-                }
-            }
-            _ => {
-                // Ignore other operations (drawing commands, etc.)
-            }
-        }
-    }
-
-    // Push the last paragraph if it's not empty
-    if !current_paragraph.trim().is_empty() {
-        paragraphs.push(current_paragraph.trim().to_string());
-    }
-
-    Ok(paragraphs)
-}
+use crate::shared::{
+    books::Extractable,
+    types::{BookData, BookKind},
+};
+use pdf::{file::FileOptions, object::Resolve};
 
 pub enum Cover {
     Normal(Vec<u8>),
     Fallback(Vec<u8>),
+}
+
+pub struct Pdf {
+    path: PathBuf,
+}
+impl Pdf {
+    pub fn new(path: &Path) -> Self {
+        Pdf {
+            path: path.to_path_buf(),
+        }
+    }
+}
+impl Extractable for Pdf {
+    fn extract(&self) -> Result<BookData, Box<dyn std::error::Error>> {
+        let path = &self.path;
+
+        if !path.exists() {
+            return Err(format!("File not found: {}", path.display()).into());
+        }
+
+        // Open PDF with lazy loading using pdf crate
+        let file = &FileOptions::cached().open(path)?;
+
+        // Info dictionary is optional in PDFs - extract metadata if available
+        let title = file
+            .trailer
+            .info_dict
+            .as_ref()
+            .and_then(|dict| dict.title.as_ref())
+            .and_then(|s| s.to_string().ok());
+        let author = file
+            .trailer
+            .info_dict
+            .as_ref()
+            .and_then(|dict| dict.author.as_ref())
+            .and_then(|s| s.to_string().ok());
+        let publisher = file
+            .trailer
+            .info_dict
+            .as_ref()
+            .and_then(|dict| dict.creator.as_ref())
+            .and_then(|s| s.to_string().ok());
+        let cover = get_cover(path)?;
+        let pdf_path = path.to_str().unwrap_or_default().to_string();
+        let digest = md5::compute(path.to_string_lossy().to_string());
+        let id = format!("{:x}", digest);
+        let kind = BookKind::Pdf.to_string();
+        let current_location = "".to_string();
+        let cover_kind = Some(cover.to_string());
+
+        match cover {
+            Cover::Fallback(cover) => Ok(BookData::new(
+                id,
+                kind,
+                cover,
+                title,
+                author,
+                publisher,
+                pdf_path,
+                current_location,
+                cover_kind,
+            )),
+            Cover::Normal(cover) => Ok(BookData::new(
+                id,
+                kind,
+                cover,
+                title,
+                author,
+                publisher,
+                pdf_path,
+                current_location,
+                cover_kind,
+            )),
+        }
+    }
 }
 
 impl Display for Cover {

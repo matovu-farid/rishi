@@ -18,11 +18,6 @@ export async function getPdfData(params: types.GetPdfDataParams): Promise<types.
   return invoke('get_pdf_data', validatedParams);
 }
 
-export async function getParagraphs(params: types.GetParagraphsParams): Promise<types.string[]> {
-  const validatedParams = types.GetParagraphsParamsSchema.parse(params);
-  return invoke('get_paragraphs', validatedParams);
-}
-
 export async function greet(params: types.GreetParams): Promise<string> {
   const validatedParams = types.GreetParamsSchema.parse(params);
   return invoke('greet', validatedParams);

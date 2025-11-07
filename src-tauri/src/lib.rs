@@ -1,8 +1,7 @@
-mod commads;
+mod commands;
 mod epub;
 mod pdf;
 mod shared;
-use tauri_plugin_store::StoreExt;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 
@@ -15,12 +14,10 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
-            commads::greet,
-            commads::is_dev,
-            commads::unzip,
-            commads::get_book_data,
-            commads::get_pdf_data,
-            commads::get_paragraphs,
+            commands::is_dev,
+            commands::unzip,
+            commands::get_book_data,
+            commands::get_pdf_data,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
