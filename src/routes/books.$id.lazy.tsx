@@ -4,12 +4,16 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { EpubView } from "@components/epub";
-import { PdfView } from "@components/pdf";
+import { PdfView } from "@components/pdf/components/pdf";
 import { motion } from "framer-motion";
-import { useSetAtom } from "jotai";
-import { currentBookDataAtom } from "@/stores/paragraph-atoms";
+import { useAtomValue, useSetAtom } from "jotai";
+import {
+  BookNavigationState,
+  bookNavigationStateAtom,
+  currentBookDataAtom,
+} from "@components/pdf/atoms/paragraph-atoms";
 import {
   synchronizedGetBooks,
   synchronizedUpdateBookLocation,
@@ -21,6 +25,7 @@ export const Route = createLazyFileRoute("/books/$id")({
 function BookView(): React.JSX.Element {
   const { id } = Route.useParams() as { id: string };
   const setBookData = useSetAtom(currentBookDataAtom);
+  const bookNavigationState = useAtomValue(bookNavigationStateAtom);
 
   const {
     isPending,
@@ -40,6 +45,14 @@ function BookView(): React.JSX.Element {
       return book;
     },
   });
+  // COntrols the lifecycle of the book navigation state
+  const setBookNavigationState = useSetAtom(bookNavigationStateAtom);
+  useEffect(() => {
+    setBookNavigationState(BookNavigationState.Navigated);
+    return () => {
+      setBookNavigationState(BookNavigationState.Idle);
+    };
+  }, []);
 
   const updateBookLocationMutation = useMutation({
     mutationFn: async ({

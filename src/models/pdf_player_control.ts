@@ -1,6 +1,5 @@
 import { customStore } from "@/stores/jotai";
 import {
-  ParagraphWithIndex,
   PlayerControlEvent,
   PlayerControlEventMap,
   PlayerControlInterface,
@@ -15,7 +14,7 @@ import {
   nextPageAtom,
   pageNumberAtom,
   previousPageAtom,
-} from "@/stores/paragraph-atoms";
+} from "@components/pdf/atoms/paragraph-atoms";
 import { EventEmitter } from "eventemitter3";
 
 class PdfPlayerControl
@@ -108,12 +107,12 @@ class PdfPlayerControl
 
   async moveToNextPage() {
     const book = customStore.get(currentBookDataAtom);
-    if (book) await customStore.set(nextPageAtom, book.id);
+    if (book) await customStore.set(nextPageAtom);
   }
 
   async moveToPreviousPage() {
     const book = customStore.get(currentBookDataAtom);
-    if (book) await customStore.set(previousPageAtom, book.id);
+    if (book) await customStore.set(previousPageAtom);
   }
 
   cleanup(): void {
