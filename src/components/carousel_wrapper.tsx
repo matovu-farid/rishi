@@ -34,7 +34,14 @@ export function CarouselWrapper({
   const [api, setApi] = useState<CarouselApi>();
   const [currentPageNumber, setCurrent] = useAtom(pageNumberAtom);
   const targetIndex = currentPageNumber - 1;
-  const [programmaticScrollState, setProgrammaticScrollState] = useState<ProgrammaticScrollState>(ProgrammaticScrollState.Initial);
+  // const [programmaticScrollState, setProgrammaticScrollState] = useState<ProgrammaticScrollState>(ProgrammaticScrollState.Initial);
+  const programmaticScrollState = useRef<ProgrammaticScrollState>(
+    ProgrammaticScrollState.Initial
+  );
+  const setProgrammaticScrollState = (state: ProgrammaticScrollState) => {
+    programmaticScrollState.current = state;
+  };
+
   useEffect(() => {
     if (!api) {
       return;
@@ -55,18 +62,34 @@ export function CarouselWrapper({
       if (!api) {
         return;
       }
-    
-      
-      if (programmaticScrollState === ProgrammaticScrollState.ProgrammaticPending) {
-        setProgrammaticScrollState(ProgrammaticScrollState.ProgrammaticCompleted);
+
+      if (
+        programmaticScrollState.current ===
+        ProgrammaticScrollState.ProgrammaticPending
+      ) {
+        setProgrammaticScrollState(
+          ProgrammaticScrollState.ProgrammaticCompleted
+        );
         return;
       }
       setCurrent(api.selectedScrollSnap() + 1);
+
+      if (
+        programmaticScrollState.current ===
+        ProgrammaticScrollState.ProgrammaticCompleted
+      ) {
+        setProgrammaticScrollState(ProgrammaticScrollState.Initial);
+      }
     };
     const handleInit = (api: CarouselApi) => {
       if (!api) return;
-      if (programmaticScrollState === ProgrammaticScrollState.ProgrammaticPending) {
-        setProgrammaticScrollState(ProgrammaticScrollState.ProgrammaticCompleted);
+      if (
+        programmaticScrollState.current ===
+        ProgrammaticScrollState.ProgrammaticPending
+      ) {
+        setProgrammaticScrollState(
+          ProgrammaticScrollState.ProgrammaticCompleted
+        );
         return;
       }
 
@@ -77,7 +100,7 @@ export function CarouselWrapper({
 
     api.on("select", handleSelect);
     api.on("init", handleInit);
- 
+
     handleInit(api);
     return () => {
       api.off("select", handleSelect);
