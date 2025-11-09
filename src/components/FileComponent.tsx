@@ -17,9 +17,8 @@ import {
   synchronizedDeleteBook,
 } from "@/modules/sync_books";
 import {
-  currentBookDataAtom,
   pdfsControllerAtom,
-  setCurrentBookDataAtom,
+  setPageNumberAtom,
 } from "@components/pdf/atoms/paragraph-atoms";
 
 const newBook = atom<string | null>(null);
@@ -183,7 +182,7 @@ function FileDrop(): React.JSX.Element {
       }, 0);
     },
   });
-  const setCurrentBookData = useSetAtom(setCurrentBookDataAtom);
+  const setCurrentPageNumber = useSetAtom(setPageNumberAtom);
   const naviagate = useNavigate();
 
   // Extract file processing logic to be reusable
@@ -294,20 +293,10 @@ function FileDrop(): React.JSX.Element {
                     </IconButton>
                   </div>
 
-                  <Button
-                    variant="ghost"
+                  <Link
+                    to="/books/$id"
+                    params={{ id: book.id }}
                     className="rounded-3xl z-5  bg-transparent shadow-none overflow-visible hover:bg-transparent hover:shadow-none"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-
-                      setCurrentBookData(book);
-
-                      void naviagate({
-                        to: "/books/$id",
-                        params: { id: book.id },
-                      });
-                    }}
                   >
                     <img
                       className="object-fill shadow-3xl drop-shadow-lg"
@@ -316,7 +305,7 @@ function FileDrop(): React.JSX.Element {
                       height={400}
                       alt="cover image"
                     />
-                  </Button>
+                  </Link>
                 </div>
               </motion.div>
             ))}

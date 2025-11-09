@@ -8,11 +8,10 @@ import React, { useEffect, useRef } from "react";
 import { EpubView } from "@components/epub";
 import { PdfView } from "@components/pdf/components/pdf";
 import { motion } from "framer-motion";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useSetAtom } from "jotai";
 import {
   BookNavigationState,
   bookNavigationStateAtom,
-  currentBookDataAtom,
 } from "@components/pdf/atoms/paragraph-atoms";
 import {
   synchronizedGetBooks,
@@ -24,8 +23,6 @@ export const Route = createLazyFileRoute("/books/$id")({
 
 function BookView(): React.JSX.Element {
   const { id } = Route.useParams() as { id: string };
-  const setBookData = useSetAtom(currentBookDataAtom);
-  const bookNavigationState = useAtomValue(bookNavigationStateAtom);
 
   const {
     isPending,
@@ -41,7 +38,8 @@ function BookView(): React.JSX.Element {
       if (!book) {
         throw new Error("Book not found");
       }
-      setBookData(book);
+      console.log({ book });
+
       return book;
     },
   });

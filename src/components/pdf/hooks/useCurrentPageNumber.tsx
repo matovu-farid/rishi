@@ -7,11 +7,11 @@ import {
 import { useCallback, useEffect } from "react";
 import { getCurrrentPageNumber } from "../utils/getCurrentPageNumbers";
 import { throttle } from "throttle-debounce";
+import { playerControl } from "@/models/pdf_player_control";
 
 export function useCurrentPageNumber(
   scrollRef: React.RefObject<HTMLDivElement | null>
 ) {
-  //   const [currentPageNumber, setCurrentPageNumber] = useAtom(pageNumberAtom);
   const currentPageNumber = useAtomValue(pageNumberAtom);
   const setPageNumber = useSetAtom(setPageNumberAtom);
   const scrollDiv = scrollRef.current;
@@ -63,6 +63,7 @@ export function useCurrentPageNumberNavigation(
   useEffect(() => {
     if (!elementRefValue) return;
     if (!isPdfRendered) return;
+    void playerControl.initialize();
     const element = findElementWithPageNumber(
       currentPageNumber,
       elementRefValue

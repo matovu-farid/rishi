@@ -1,11 +1,11 @@
 import { customStore } from "@/stores/jotai";
 import {
+  ParagraphWithIndex,
   PlayerControlEvent,
   PlayerControlEventMap,
   PlayerControlInterface,
 } from "./player_control";
 import {
-  currentBookDataAtom,
   getCurrentViewParagraphsAtom,
   getNextViewParagraphsAtom,
   getPreviousViewParagraphsAtom,
@@ -21,10 +21,10 @@ class PdfPlayerControl
   extends EventEmitter<PlayerControlEventMap>
   implements PlayerControlInterface
 {
-  private unsubscribePageNumber: (() => void) | null = null;
-  private unsubscribeCurrentViewParagraphs: (() => void) | null = null;
-  private unsubscribeNextViewParagraphs: (() => void) | null = null;
-  private unsubscribePreviousViewParagraphs: (() => void) | null = null;
+  private currentViewParagraphs: ParagraphWithIndex[] = [];
+  private nextPageParagraphs: ParagraphWithIndex[] = [];
+  private previousPageParagraphs: ParagraphWithIndex[] = [];
+
   private currentlyHighlightedParagraphIndex: string | null = null;
 
   constructor() {
@@ -35,40 +35,35 @@ class PdfPlayerControl
   async initialize(): Promise<void> {
     // Store unsubscribe functions for all subscriptions
     // Note: customStore.sub() returns an unsubscribe function in Jotai
-    this.unsubscribePageNumber = customStore.sub(pageNumberAtom, () => {
+    customStore.sub(pageNumberAtom, () => {
       this.emit(PlayerControlEvent.PAGE_CHANGED);
     });
+    const updateCurrent = () => {
+      const paragraphs = customStore.get(getCurrentViewParagraphsAtom);
+      this.currentViewParagraphs = paragraphs;
+      this.emit(PlayerControlEvent.NEW_PARAGRAPHS_AVAILABLE, paragraphs);
+    };
+    const updateNext = () => {
+      const paragraphs = customStore.get(getNextViewParagraphsAtom);
+      this.nextPageParagraphs = paragraphs;
+      this.emit(PlayerControlEvent.NEXT_VIEW_PARAGRAPHS_AVAILABLE, paragraphs);
+    };
+    const updatePrevious = () => {
+      const paragraphs = customStore.get(getPreviousViewParagraphsAtom);
+      this.previousPageParagraphs = paragraphs;
+      this.emit(
+        PlayerControlEvent.PREVIOUS_VIEW_PARAGRAPHS_AVAILABLE,
+        paragraphs
+      );
+    };
 
-    this.unsubscribeCurrentViewParagraphs = customStore.sub(
-      getCurrentViewParagraphsAtom,
-      () => {
-        this.emit(
-          PlayerControlEvent.NEW_PARAGRAPHS_AVAILABLE,
-          customStore.get(getCurrentViewParagraphsAtom)
-        );
-      }
-    );
+    customStore.sub(getCurrentViewParagraphsAtom, updateCurrent);
+    updateCurrent();
 
-    this.unsubscribeNextViewParagraphs = customStore.sub(
-      getNextViewParagraphsAtom,
-      () => {
-        this.emit(
-          PlayerControlEvent.NEXT_VIEW_PARAGRAPHS_AVAILABLE,
-          customStore.get(getNextViewParagraphsAtom)
-        );
-      }
-    );
-
-    this.unsubscribePreviousViewParagraphs = customStore.sub(
-      getPreviousViewParagraphsAtom,
-      () => {
-        this.emit(
-          PlayerControlEvent.PREVIOUS_VIEW_PARAGRAPHS_AVAILABLE,
-          customStore.get(getPreviousViewParagraphsAtom)
-        );
-      }
-    );
-
+    customStore.sub(getNextViewParagraphsAtom, updateNext);
+    updateNext();
+    customStore.sub(getPreviousViewParagraphsAtom, updatePrevious);
+    updatePrevious();
     // Register event handlers (only called once in constructor, so no need to clean up old ones)
     this.on(PlayerControlEvent.REMOVE_HIGHLIGHT, (index: string) => {
       void this.removeHighlight(index);
@@ -106,37 +101,14 @@ class PdfPlayerControl
   }
 
   async moveToNextPage() {
-    const book = customStore.get(currentBookDataAtom);
-    if (book) await customStore.set(nextPageAtom);
+    await customStore.set(nextPageAtom);
   }
 
   async moveToPreviousPage() {
-    const book = customStore.get(currentBookDataAtom);
-    if (book) await customStore.set(previousPageAtom);
+    await customStore.set(previousPageAtom);
   }
 
   cleanup(): void {
-    // Unsubscribe from all atom subscriptions
-    if (this.unsubscribePageNumber) {
-      this.unsubscribePageNumber();
-      this.unsubscribePageNumber = null;
-    }
-
-    if (this.unsubscribeCurrentViewParagraphs) {
-      this.unsubscribeCurrentViewParagraphs();
-      this.unsubscribeCurrentViewParagraphs = null;
-    }
-
-    if (this.unsubscribeNextViewParagraphs) {
-      this.unsubscribeNextViewParagraphs();
-      this.unsubscribeNextViewParagraphs = null;
-    }
-
-    if (this.unsubscribePreviousViewParagraphs) {
-      this.unsubscribePreviousViewParagraphs();
-      this.unsubscribePreviousViewParagraphs = null;
-    }
-
     // Only remove listeners that this class registered, not all listeners
     // We need to be careful not to remove listeners added by other classes (like Player)
     // Since initialize() is only called once in constructor, we don't need to remove these

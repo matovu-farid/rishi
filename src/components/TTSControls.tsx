@@ -18,6 +18,7 @@ import { Player, PlayerEvent } from "@/models/Player";
 import { useDebug } from "@/hooks/useDebug";
 import { PlayerControlInterface } from "@/models/player_control";
 import { load } from "@tauri-apps/plugin-store";
+import { atom, useAtom } from "jotai";
 
 interface TTSControlsProps {
   bookId: string;
@@ -40,6 +41,9 @@ const getDefaultPosition = (): { x: number; y: number } => {
   return { x: defaultX, y: defaultY };
 };
 
+const playerAtom = atom<Player | null>(null);
+playerAtom.debugLabel = "playerAtom";
+
 export function TTSControls({
   bookId,
   playerControl,
@@ -57,11 +61,18 @@ export function TTSControls({
   const dragOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const error = errors.join("\n");
-  const [player] = useState<Player>(new Player(playerControl, bookId));
+  const playerRef = useRef<Player>(new Player(playerControl, bookId));
+  const [player, setPlayer] = useAtom(playerAtom);
+  useEffect(() => {
+    if (!player) {
+      setPlayer(playerRef.current);
+    }
+  }, [player, setPlayer]);
+
   const [playingState, setPlayingState] = useState<PlayingState>(
-    player.getPlayingState()
+    playerRef.current.getPlayingState()
   );
-  const { setIsDebugging, shouldDebug } = useDebug(player);
+  const { setIsDebugging, shouldDebug } = useDebug(playerRef.current);
 
   // Constrain position within viewport bounds
   const constrainPosition = useCallback((x: number, y: number) => {
@@ -121,17 +132,17 @@ export function TTSControls({
   }, [constrainPosition]);
 
   useEffect(() => {
-    player.on(PlayerEvent.PLAYING_STATE_CHANGED, setPlayingState);
+    playerRef.current.on(PlayerEvent.PLAYING_STATE_CHANGED, setPlayingState);
     return () => {
-      player.off(PlayerEvent.PLAYING_STATE_CHANGED, setPlayingState);
-      player.cleanup();
+      playerRef.current.off(PlayerEvent.PLAYING_STATE_CHANGED, setPlayingState);
+      playerRef.current.cleanup();
     };
-  }, [player]);
+  }, [playerRef.current]);
 
   // Check for errors using setTimeout to avoid cascading renders
   useEffect(() => {
     const checkForErrors = () => {
-      const currentErrors = player.getErrors();
+      const currentErrors = playerRef.current.getErrors();
       if (currentErrors.length !== 0 && !hasShownError) {
         setShowError(true);
         setErrors(currentErrors);
@@ -144,43 +155,43 @@ export function TTSControls({
     // Use setTimeout to defer the state update
     const timeoutId = setTimeout(checkForErrors, 0);
     return () => clearTimeout(timeoutId);
-  }, [player, hasShownError]);
+  }, [playerRef.current, hasShownError]);
 
   // Show error snackbar when error occurs
   const handleErrorClose = () => {
     setShowError(false);
     // Clear error from store
-    if (player) {
-      player.cleanup();
+    if (playerRef.current) {
+      playerRef.current.cleanup();
     }
   };
 
   const handlePlay = () => {
     if (playingState === PlayingState.Playing) {
-      player.pause();
+      playerRef.current.pause();
       return;
     }
     if (playingState === PlayingState.Paused) {
-      player.resume();
+      playerRef.current.resume();
       return;
     }
-    return player.play();
+    return playerRef.current.play();
   };
 
   const handleStop = async () => {
-    await player.stop();
+    await playerRef.current.stop();
   };
 
   const handlePrev = async () => {
-    await player.prev();
+    await playerRef.current.prev();
   };
 
   const handleNext = async () => {
-    await player.next();
+    await playerRef.current.next();
   };
 
   const handleShowErrorDetails = async () => {
-    const detailedInfo = await player.getDetailedErrorInfo();
+    const detailedInfo = await playerRef.current.getDetailedErrorInfo();
 
     // Show a toast with the basic info
     toast.info(

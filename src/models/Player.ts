@@ -42,6 +42,10 @@ export interface ErrorsChangedEvent {
 }
 
 export class Player extends EventEmitter<PlayerEventMap> {
+  private currentViewParagraphs: ParagraphWithIndex[] = [];
+  private nextPageParagraphs: ParagraphWithIndex[] = [];
+  private previousPageParagraphs: ParagraphWithIndex[] = [];
+  private playerControl: PlayerControlInterface;
   private playingState: PlayingState = PlayingState.Stopped;
   private currentParagraphIndex: number = 0;
   private bookId: string;
@@ -50,10 +54,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
   private errors: string[] = [];
   private audioElement: HTMLAudioElement = new Audio();
   private direction: Direction = Direction.Forward;
-  private currentViewParagraphs: ParagraphWithIndex[] = [];
-  private nextPageParagraphs: ParagraphWithIndex[] = [];
-  private previousPageParagraphs: ParagraphWithIndex[] = [];
-  private playerControl: PlayerControlInterface;
+
   constructor(playerControl: PlayerControlInterface, bookId: string) {
     super();
 
@@ -69,7 +70,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
     void this.initialize();
   }
   async initialize(): Promise<void> {
-    await this.playerControl.initialize();
+    // await this.playerControl.initialize();
     this.playerControl.on(
       PlayerControlEvent.NEW_PARAGRAPHS_AVAILABLE,
       async (paragraphs: ParagraphWithIndex[]) => {
@@ -257,6 +258,7 @@ export class Player extends EventEmitter<PlayerEventMap> {
   }
 
   public async playWithoutRetry(skipCache: boolean = false) {
+    debugger;
     if (this.playingState === PlayingState.Playing) return;
 
     if (this.currentViewParagraphs.length === 0) {

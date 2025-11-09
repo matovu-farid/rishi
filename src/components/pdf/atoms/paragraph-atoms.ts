@@ -2,8 +2,7 @@ import { ParagraphWithIndex } from "@/models/player_control";
 
 import { atomWithImmer } from "jotai-immer";
 import { atom } from "jotai";
-import { synchronizedUpdateBookLocation } from "@/modules/sync_books";
-import { BookData } from "@/generated";
+
 import type { TextContent } from "react-pdf";
 import { pageDataToParagraphs } from "../utils/getPageParagraphs";
 
@@ -18,8 +17,6 @@ export type Paragraph = ParagraphWithIndex & {
   };
 };
 
-export const currentBookDataAtom = atom<BookData | null>(null);
-
 export enum BookNavigationState {
   Idle,
   Navigating,
@@ -29,9 +26,12 @@ export enum BookNavigationState {
 export const bookNavigationStateAtom = atom<BookNavigationState>(
   BookNavigationState.Idle
 );
-export const setCurrentBookDataAtom = atom(
+
+export const pageNumberAtom = atom(0);
+
+export const setPageNumberAtom = atom(
   null,
-  (get, set, bookData: BookData) => {
+  (get, set, newPageNumber: number) => {
     const state = get(bookNavigationStateAtom);
     if (state === BookNavigationState.Navigating) {
       return;
@@ -39,43 +39,7 @@ export const setCurrentBookDataAtom = atom(
     if (state === BookNavigationState.Idle) {
       set(bookNavigationStateAtom, BookNavigationState.Navigating);
     }
-    const currentBook = get(currentBookDataAtom);
-    set(currentBookDataAtom, bookData);
-    if (bookData.current_location !== currentBook?.current_location) {
-      void synchronizedUpdateBookLocation(
-        bookData.id,
-        bookData.current_location
-      );
-    }
-  }
-);
-export const pageNumberAtom = atom((get) => {
-  try {
-    // block when no page data yet
-    const book = get(currentBookDataAtom);
-    if (book) {
-      const pageNumber = parseInt(book.current_location, 10);
-      if (isNaN(pageNumber) || pageNumber < 1) {
-        return 1;
-      }
-      return pageNumber;
-    }
-  } catch (error) {
-    console.error("Error getting page number:", error);
-  }
-  return 1;
-});
-
-export const setPageNumberAtom = atom(
-  null,
-  (get, set, newPageNumber: number) => {
-    const book = get(currentBookDataAtom);
-    if (book) {
-      set(setCurrentBookDataAtom, {
-        ...book,
-        current_location: newPageNumber.toString(),
-      });
-    }
+    set(pageNumberAtom, newPageNumber);
   }
 );
 export const isDualPageAtom = atom(false);
@@ -344,7 +308,7 @@ export const pdfsControllerAtom = atom(
 
 export const isRenderedAtom = atom<Record<string, boolean>>({});
 // debug label
-currentBookDataAtom.debugLabel = "currentBookDataAtom";
+
 isPdfRenderedAtom.debugLabel = "isPdfRenderedAtom";
 highlightedParagraphArrayIndexAtom.debugLabel =
   "highlightedParagraphArrayIndexAtom";

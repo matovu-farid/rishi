@@ -22,12 +22,14 @@ import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 
 import {
+  getCurrentViewParagraphsAtom,
+  getNextViewParagraphsAtom,
+  getPreviousViewParagraphsAtom,
   pageCountAtom,
   resetParaphStateAtom,
-  currentBookDataAtom,
   setPageNumberAtom,
 } from "@components/pdf/atoms/paragraph-atoms";
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { TTSControls } from "../../TTSControls";
 import { playerControl } from "@/models/pdf_player_control";
 import {
@@ -41,10 +43,11 @@ import { useChuncking } from "../hooks/useChunking";
 import { usePdfNavigation } from "../hooks/usePdfNavigation";
 import { PageComponent } from "./page";
 import { useSetupMenu } from "../hooks/useSetupMenu";
-import {
-  useCurrentPageNumber,
-  useCurrentPageNumberNavigation,
-} from "../hooks/useCurrentPageNumber";
+import { useCurrentPageNumberNavigation } from "../hooks/useCurrentPageNumber";
+import { useMutation } from "@tanstack/react-query";
+import { synchronizedUpdateBookLocation } from "@/modules/sync_books";
+import { toast } from "react-toastify";
+import { customStore } from "@/stores/jotai";
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -56,17 +59,18 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const [theme] = useState<ThemeType>(ThemeType.White);
   const [tocOpen, setTocOpen] = useState(false);
   // const [direction, setDirection] = useState<"left" | "right">("right");
-  const setCurrentBookData = useSetAtom(currentBookDataAtom);
+
+  const setPageNumber = useSetAtom(setPageNumberAtom);
   const { scrollContainerRef } = useChuncking();
-  useCurrentPageNumber(scrollContainerRef);
+  // useCurrentPageNumber(scrollContainerRef);
   useCurrentPageNumberNavigation(scrollContainerRef);
 
   useUpdateCoverIMage(book);
   useSetupMenu();
   // Set book data only when book prop changes, not on every render
   useEffect(() => {
-    setCurrentBookData(book);
-  }, [book.id, setCurrentBookData]);
+    setPageNumber(parseInt(book.current_location, 10));
+  }, [book.current_location, setPageNumber]);
 
   // Ref for the scrollable container
 
@@ -76,7 +80,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     return () => {
       resetParaphState();
     };
-  }, []);
+  }, [resetParaphState]);
 
   // Configure PDF.js options with CDN fallback for better font and image support
   const pdfOptions = useMemo<DocumentInitParameters>(
@@ -121,22 +125,26 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
       }
     })();
   }, [isDualPage]);
+  // Mount the paragraph atoms so they're available for the player control
+  const currentViewParagraphs = useAtomValue(getCurrentViewParagraphsAtom);
+  const nextViewParagraphs = useAtomValue(getNextViewParagraphsAtom);
+  const previousViewParagraphs = useAtomValue(getPreviousViewParagraphsAtom);
 
-  // const updateBookLocationMutation = useMutation({
-  //   mutationFn: async ({
-  //     bookId,
-  //     location,
-  //   }: {
-  //     bookId: string;
-  //     location: string;
-  //   }) => {
-  //     await synchronizedUpdateBookLocation(bookId, location);
-  //   },
+  const updateBookLocationMutation = useMutation({
+    mutationFn: async ({
+      bookId,
+      location,
+    }: {
+      bookId: string;
+      location: string;
+    }) => {
+      await synchronizedUpdateBookLocation(bookId, location);
+    },
 
-  //   onError(_error) {
-  //     toast.error("Can not change book page");
-  //   },
-  // });
+    onError(_error) {
+      toast.error("Can not change book page");
+    },
+  });
 
   function getTextColor() {
     switch (theme) {
@@ -149,8 +157,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     }
   }
 
-  const setPageNumber = useSetAtom(setPageNumberAtom);
-
   const [numPages, setPageCount] = useAtom(pageCountAtom);
 
   function onItemClick({ pageNumber: itemPageNumber }: { pageNumber: number }) {
@@ -158,10 +164,10 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     setPageNumber(itemPageNumber);
     setTocOpen(false);
     // Update book location when navigating via TOC
-    // updateBookLocationMutation.mutate({
-    //   bookId: book.id,
-    //   location: itemPageNumber.toString(),
-    // });
+    updateBookLocationMutation.mutate({
+      bookId: book.id,
+      location: itemPageNumber.toString(),
+    });
   }
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }): void {
