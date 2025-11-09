@@ -31,6 +31,9 @@ export function PageComponent({
   const isHighlighting = useAtomValue(isHighlightingAtom);
 
   function isInsideParagraph(wordTransform: Transform) {
+    // Return false if no paragraph is highlighted
+    if (!highlightedParagraph) return false;
+
     const highlightedPageNumber = Math.floor(
       Number(highlightedParagraph.index) / PARAGRAPH_INDEX_PER_PAGE
     );

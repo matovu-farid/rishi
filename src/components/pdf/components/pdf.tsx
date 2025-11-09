@@ -25,7 +25,9 @@ import {
   getCurrentViewParagraphsAtom,
   getNextViewParagraphsAtom,
   getPreviousViewParagraphsAtom,
+  highlightedParagraphArrayIndexAtom,
   highlightedParagraphAtom,
+  isPdfRenderedAtom,
   pageCountAtom,
   resetParaphStateAtom,
   setPageNumberAtom,
@@ -77,9 +79,9 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
 
   const resetParaphState = useSetAtom(resetParaphStateAtom);
   const highlightedParagraph = useAtomValue(highlightedParagraphAtom);
-  useEffect(() => {
-    console.log({ highlightedParagraph });
-  }, [highlightedParagraph]);
+  const [highlightIndex, setHighlightIndex] = useAtom(
+    highlightedParagraphArrayIndexAtom
+  );
 
   useEffect(() => {
     return () => {
@@ -160,6 +162,13 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   }
 
   const [numPages, setPageCount] = useAtom(pageCountAtom);
+  const isPdfRendered = useAtomValue(isPdfRenderedAtom);
+  const isRendered = isPdfRendered(book.id);
+  useEffect(() => {
+    if (numPages > 0 && highlightIndex === -1 && isRendered) {
+      setHighlightIndex(0);
+    }
+  }, [highlightedParagraph, highlightIndex, numPages, isPdfRendered, book.id]);
 
   function onItemClick({ pageNumber: itemPageNumber }: { pageNumber: number }) {
     // Determine direction based on page number comparison

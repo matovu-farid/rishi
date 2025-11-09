@@ -98,7 +98,7 @@ export const resetParaphStateAtom = atom(null, (_get, set) => {
   set(isDualPageAtom, false);
   set(pageCountAtom, 0);
 
-  set(highlightedParagraphArrayIndexAtom, 0);
+  set(highlightedParagraphArrayIndexAtom, -1);
   set(highlightedParagraphGlobalIndexAtom, "");
   set(isHighlightingAtom, false);
   set(isRenderedPageStateAtom, {});
@@ -120,7 +120,7 @@ export const getCurrentViewParagraphsAtom = atom((get) => {
   });
 });
 
-export const highlightedParagraphArrayIndexAtom = freezeAtom(atom(0));
+export const highlightedParagraphArrayIndexAtom = freezeAtom(atom(-1));
 export const isHighlightingAtom = atom(false);
 export const highlightedParagraphGlobalIndexAtom = atom(
   (get) => {
