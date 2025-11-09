@@ -25,6 +25,7 @@ import {
   getCurrentViewParagraphsAtom,
   getNextViewParagraphsAtom,
   getPreviousViewParagraphsAtom,
+  highlightedParagraphAtom,
   pageCountAtom,
   resetParaphStateAtom,
   setPageNumberAtom,
@@ -75,6 +76,10 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   // Ref for the scrollable container
 
   const resetParaphState = useSetAtom(resetParaphStateAtom);
+  const highlightedParagraph = useAtomValue(highlightedParagraphAtom);
+  useEffect(() => {
+    console.log({ highlightedParagraph });
+  }, [highlightedParagraph]);
 
   useEffect(() => {
     return () => {
@@ -126,9 +131,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     })();
   }, [isDualPage]);
   // Mount the paragraph atoms so they're available for the player control
-  const currentViewParagraphs = useAtomValue(getCurrentViewParagraphsAtom);
-  const nextViewParagraphs = useAtomValue(getNextViewParagraphsAtom);
-  const previousViewParagraphs = useAtomValue(getPreviousViewParagraphsAtom);
 
   const updateBookLocationMutation = useMutation({
     mutationFn: async ({

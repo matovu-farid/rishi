@@ -1,4 +1,4 @@
-import EventEmitter from "events";
+import EventEmitter from "eventemitter3";
 // @ts-ignore
 import {
   getTTSAudioPath,
@@ -8,6 +8,7 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import {
   ParagraphWithIndex,
   PlayerControlEvent,
+  PlayerControlEventMap,
   PlayerControlInterface,
 } from "./player_control";
 export enum PlayingState {
@@ -41,36 +42,136 @@ export interface ErrorsChangedEvent {
   errors: string[];
 }
 
-export class Player extends EventEmitter<PlayerEventMap> {
+export class DefaultPlayerControl implements PlayerControlInterface {
+  eventNames(): (keyof PlayerControlEventMap)[] {
+    throw new Error("Method not implemented.");
+  }
+  listeners<T extends keyof PlayerControlEventMap>(
+    event: T
+  ): ((
+    ...args: EventEmitter.ArgumentMap<PlayerControlEventMap>[Extract<
+      T,
+      keyof PlayerControlEventMap
+    >]
+  ) => void)[] {
+    throw new Error("Method not implemented.");
+  }
+  listenerCount(event: keyof PlayerControlEventMap): number {
+    throw new Error("Method not implemented.");
+  }
+  emit<T extends keyof PlayerControlEventMap>(
+    event: T,
+    ...args: EventEmitter.ArgumentMap<PlayerControlEventMap>[Extract<
+      T,
+      keyof PlayerControlEventMap
+    >]
+  ): boolean {
+    throw new Error("Method not implemented.");
+  }
+  on<T extends keyof PlayerControlEventMap>(
+    event: T,
+    fn: (
+      ...args: EventEmitter.ArgumentMap<PlayerControlEventMap>[Extract<
+        T,
+        keyof PlayerControlEventMap
+      >]
+    ) => void,
+    context?: any
+  ): this {
+    throw new Error("Method not implemented.");
+  }
+  addListener<T extends keyof PlayerControlEventMap>(
+    event: T,
+    fn: (
+      ...args: EventEmitter.ArgumentMap<PlayerControlEventMap>[Extract<
+        T,
+        keyof PlayerControlEventMap
+      >]
+    ) => void,
+    context?: any
+  ): this {
+    throw new Error("Method not implemented.");
+  }
+  once<T extends keyof PlayerControlEventMap>(
+    event: T,
+    fn: (
+      ...args: EventEmitter.ArgumentMap<PlayerControlEventMap>[Extract<
+        T,
+        keyof PlayerControlEventMap
+      >]
+    ) => void,
+    context?: any
+  ): this {
+    throw new Error("Method not implemented.");
+  }
+  removeListener<T extends keyof PlayerControlEventMap>(
+    event: T,
+    fn?:
+      | ((
+          ...args: EventEmitter.ArgumentMap<PlayerControlEventMap>[Extract<
+            T,
+            keyof PlayerControlEventMap
+          >]
+        ) => void)
+      | undefined,
+    context?: any,
+    once?: boolean
+  ): this {
+    throw new Error("Method not implemented.");
+  }
+  off<T extends keyof PlayerControlEventMap>(
+    event: T,
+    fn?:
+      | ((
+          ...args: EventEmitter.ArgumentMap<PlayerControlEventMap>[Extract<
+            T,
+            keyof PlayerControlEventMap
+          >]
+        ) => void)
+      | undefined,
+    context?: any,
+    once?: boolean
+  ): this {
+    throw new Error("Method not implemented.");
+  }
+  removeAllListeners(event?: keyof PlayerControlEventMap | undefined): this {
+    throw new Error("Method not implemented.");
+  }
+  async initialize(): Promise<void> {
+    return;
+  }
+}
+
+class Player extends EventEmitter<PlayerEventMap> {
   private currentViewParagraphs: ParagraphWithIndex[] = [];
   private nextPageParagraphs: ParagraphWithIndex[] = [];
   private previousPageParagraphs: ParagraphWithIndex[] = [];
-  private playerControl: PlayerControlInterface;
+  private playerControl: PlayerControlInterface = new DefaultPlayerControl();
   private playingState: PlayingState = PlayingState.Stopped;
   private currentParagraphIndex: number = 0;
-  private bookId: string;
-  private audioCache: Map<string, string>;
-  private priority: number;
+  private bookId: string = "";
+  private audioCache: Map<string, string> = new Map();
+  private priority: number = 3;
   private errors: string[] = [];
   private audioElement: HTMLAudioElement = new Audio();
   private direction: Direction = Direction.Forward;
 
-  constructor(playerControl: PlayerControlInterface, bookId: string) {
+  constructor() {
     super();
+  }
 
+  async initialize(
+    playerControl: PlayerControlInterface,
+    bookId: string
+  ): Promise<void> {
     this.playerControl = playerControl;
     this.setPlayingState(PlayingState.Stopped);
     void this.setParagraphIndex(0);
 
     this.bookId = bookId;
 
-    this.audioCache = new Map();
-    this.priority = 3;
     this.errors = [];
-    void this.initialize();
-  }
-  async initialize(): Promise<void> {
-    // await this.playerControl.initialize();
+    await this.playerControl.initialize();
     this.playerControl.on(
       PlayerControlEvent.NEW_PARAGRAPHS_AVAILABLE,
       async (paragraphs: ParagraphWithIndex[]) => {
@@ -674,3 +775,11 @@ export class Player extends EventEmitter<PlayerEventMap> {
     }
   }
 }
+
+/**
+ * Singleton instance of the Player class
+ * Must be initialized with a player control and book id
+ * @example
+ * void player.initialize(playerControl, bookId);
+ */
+export const player = new Player();

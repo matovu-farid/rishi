@@ -14,11 +14,11 @@ import {
 import { toast } from "react-toastify";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { PlayingState } from "@/stores/ttsStore";
-import { Player, PlayerEvent } from "@/models/Player";
+import { player, PlayerEvent } from "@/models/Player";
 import { useDebug } from "@/hooks/useDebug";
 import { PlayerControlInterface } from "@/models/player_control";
 import { load } from "@tauri-apps/plugin-store";
-import { atom, useAtom } from "jotai";
+import { atom, useAtom, useAtomValue } from "jotai";
 
 interface TTSControlsProps {
   bookId: string;
@@ -41,7 +41,7 @@ const getDefaultPosition = (): { x: number; y: number } => {
   return { x: defaultX, y: defaultY };
 };
 
-const playerAtom = atom<Player | null>(null);
+const playerAtom = atom(player);
 playerAtom.debugLabel = "playerAtom";
 
 export function TTSControls({
@@ -59,20 +59,20 @@ export function TTSControls({
   const dragRef = useRef<HTMLDivElement>(null);
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
   const dragOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const player = useAtomValue(playerAtom);
 
   const error = errors.join("\n");
-  const playerRef = useRef<Player>(new Player(playerControl, bookId));
-  const [player, setPlayer] = useAtom(playerAtom);
+
   useEffect(() => {
-    if (!player) {
-      setPlayer(playerRef.current);
-    }
-  }, [player, setPlayer]);
+    void (async () => {
+      await player.initialize(playerControl, bookId);
+    })();
+  }, [playerControl, bookId, player]);
 
   const [playingState, setPlayingState] = useState<PlayingState>(
-    playerRef.current.getPlayingState()
+    player.getPlayingState()
   );
-  const { setIsDebugging, shouldDebug } = useDebug(playerRef.current);
+  const { setIsDebugging, shouldDebug } = useDebug(player);
 
   // Constrain position within viewport bounds
   const constrainPosition = useCallback((x: number, y: number) => {
@@ -132,17 +132,17 @@ export function TTSControls({
   }, [constrainPosition]);
 
   useEffect(() => {
-    playerRef.current.on(PlayerEvent.PLAYING_STATE_CHANGED, setPlayingState);
+    player.on(PlayerEvent.PLAYING_STATE_CHANGED, setPlayingState);
     return () => {
-      playerRef.current.off(PlayerEvent.PLAYING_STATE_CHANGED, setPlayingState);
-      playerRef.current.cleanup();
+      player.off(PlayerEvent.PLAYING_STATE_CHANGED, setPlayingState);
+      player.cleanup();
     };
-  }, [playerRef.current]);
+  }, [player]);
 
   // Check for errors using setTimeout to avoid cascading renders
   useEffect(() => {
     const checkForErrors = () => {
-      const currentErrors = playerRef.current.getErrors();
+      const currentErrors = player.getErrors();
       if (currentErrors.length !== 0 && !hasShownError) {
         setShowError(true);
         setErrors(currentErrors);
@@ -155,43 +155,43 @@ export function TTSControls({
     // Use setTimeout to defer the state update
     const timeoutId = setTimeout(checkForErrors, 0);
     return () => clearTimeout(timeoutId);
-  }, [playerRef.current, hasShownError]);
+  }, [player, hasShownError]);
 
   // Show error snackbar when error occurs
   const handleErrorClose = () => {
     setShowError(false);
     // Clear error from store
-    if (playerRef.current) {
-      playerRef.current.cleanup();
+    if (player) {
+      player.cleanup();
     }
   };
 
   const handlePlay = () => {
     if (playingState === PlayingState.Playing) {
-      playerRef.current.pause();
+      player.pause();
       return;
     }
     if (playingState === PlayingState.Paused) {
-      playerRef.current.resume();
+      player.resume();
       return;
     }
-    return playerRef.current.play();
+    return player.play();
   };
 
   const handleStop = async () => {
-    await playerRef.current.stop();
+    await player.stop();
   };
 
   const handlePrev = async () => {
-    await playerRef.current.prev();
+    await player.prev();
   };
 
   const handleNext = async () => {
-    await playerRef.current.next();
+    await player.next();
   };
 
   const handleShowErrorDetails = async () => {
-    const detailedInfo = await playerRef.current.getDetailedErrorInfo();
+    const detailedInfo = await player.getDetailedErrorInfo();
 
     // Show a toast with the basic info
     toast.info(

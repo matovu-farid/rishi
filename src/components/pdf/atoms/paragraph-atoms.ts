@@ -6,6 +6,8 @@ import { atom } from "jotai";
 import type { TextContent } from "react-pdf";
 import { pageDataToParagraphs } from "../utils/getPageParagraphs";
 
+import { freezeAtom } from "jotai/utils";
+
 export const currentParagraphAtom = atom<ParagraphWithIndex>({
   index: "",
   text: "",
@@ -27,11 +29,10 @@ export const bookNavigationStateAtom = atom<BookNavigationState>(
   BookNavigationState.Idle
 );
 
-export const pageNumberAtom = atom(0);
+export const pageNumberAtom = freezeAtom(atom(0));
 
-export const setPageNumberAtom = atom(
-  null,
-  (get, set, newPageNumber: number) => {
+export const setPageNumberAtom = freezeAtom(
+  atom(null, (get, set, newPageNumber: number) => {
     const state = get(bookNavigationStateAtom);
     if (state === BookNavigationState.Navigating) {
       return;
@@ -40,7 +41,7 @@ export const setPageNumberAtom = atom(
       set(bookNavigationStateAtom, BookNavigationState.Navigating);
     }
     set(pageNumberAtom, newPageNumber);
-  }
+  })
 );
 export const isDualPageAtom = atom(false);
 export const currentViewPagesAtom = atom<number[]>((get) => {
@@ -119,7 +120,7 @@ export const getCurrentViewParagraphsAtom = atom((get) => {
   });
 });
 
-export const highlightedParagraphArrayIndexAtom = atom(0);
+export const highlightedParagraphArrayIndexAtom = freezeAtom(atom(0));
 export const isHighlightingAtom = atom(false);
 export const highlightedParagraphGlobalIndexAtom = atom(
   (get) => {
@@ -143,9 +144,10 @@ export const highlightedParagraphGlobalIndexAtom = atom(
 );
 
 export const highlightedParagraphAtom = atom((get) => {
-  return get(getCurrentViewParagraphsAtom)[
-    get(highlightedParagraphArrayIndexAtom)
-  ];
+  const currentViewParagraphs = get(getCurrentViewParagraphsAtom);
+  const index = get(highlightedParagraphArrayIndexAtom);
+  console.log({ currentViewParagraphs, index });
+  return currentViewParagraphs[index];
 });
 
 export const highlightedPageAtom = atom((get) => {

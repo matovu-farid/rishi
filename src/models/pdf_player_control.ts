@@ -9,6 +9,7 @@ import {
   getCurrentViewParagraphsAtom,
   getNextViewParagraphsAtom,
   getPreviousViewParagraphsAtom,
+  highlightedParagraphAtom,
   highlightedParagraphGlobalIndexAtom,
   isHighlightingAtom,
   nextPageAtom,
@@ -56,7 +57,10 @@ class PdfPlayerControl
         paragraphs
       );
     };
-
+    const updateHighlightedParagraph = () => {
+      const highlightedParagraph = customStore.get(highlightedParagraphAtom);
+      this.emit(PlayerControlEvent.PARAGRAPH_HIGHLIGHTED, highlightedParagraph);
+    };
     customStore.sub(getCurrentViewParagraphsAtom, updateCurrent);
     updateCurrent();
 
@@ -64,6 +68,8 @@ class PdfPlayerControl
     updateNext();
     customStore.sub(getPreviousViewParagraphsAtom, updatePrevious);
     updatePrevious();
+    customStore.sub(highlightedParagraphAtom, updateHighlightedParagraph);
+    updateHighlightedParagraph();
     // Register event handlers (only called once in constructor, so no need to clean up old ones)
     this.on(PlayerControlEvent.REMOVE_HIGHLIGHT, (index: string) => {
       void this.removeHighlight(index);
