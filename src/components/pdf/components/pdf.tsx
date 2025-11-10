@@ -170,13 +170,11 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   }
 
   const [numPages, setPageCount] = useAtom(pageCountAtom);
-  const isPdfRendered = useAtomValue(isPdfRenderedAtom);
-  const isRendered = isPdfRendered(book.id);
   useEffect(() => {
-    if (numPages > 0 && highlightIndex === -1 && isRendered) {
+    if (numPages > 0 && highlightIndex === -1) {
       setHighlightIndex(0);
     }
-  }, [highlightedParagraph, highlightIndex, numPages, isPdfRendered, book.id]);
+  }, [highlightIndex, numPages]);
 
   function onItemClick({ pageNumber: itemPageNumber }: { pageNumber: number }) {
     // Determine direction based on page number comparison
