@@ -12,8 +12,7 @@ export async function copyBookToAppData(filePath: string) {
 }
 
 export async function getBooks(storeParam?: Store) {
-
-  let store = storeParam || await getStore()
+  let store = storeParam || (await getStore());
   const books = await store.get<BookData[]>("books");
   if (!books) {
     return [];
@@ -22,69 +21,72 @@ export async function getBooks(storeParam?: Store) {
 }
 
 export async function getBook(id: String, storeParam?: Store) {
-  let store = storeParam || await getStore()
-  const books = await getBooks(store)
-  return books.find(book => book.id == id)
+  let store = storeParam || (await getStore());
+  const books = await getBooks(store);
+  return books.find((book) => book.id == id);
 }
 export async function storeBook(book: BookData, storeParam?: Store) {
-
-  let store = storeParam || await getStore()
+  let store = storeParam || (await getStore());
   let books = await getBooks(store);
   if (!books) {
-    console.log('>>> No books')
+    console.log(">>> No books");
     await store.set("books", [book]);
     return;
   }
-  const savedBook = books.find(currBook => currBook.id == book.id)
+  const savedBook = books.find((currBook) => currBook.id == book.id);
   if (!savedBook) {
-    console.log('>>> No saved book')
+    console.log(">>> No saved book");
 
     books.push(book);
   } else {
-    console.log('>>> Update saved book')
-    books = books.map(currBook => {
-
-      if (currBook.id != book.id) return currBook
+    console.log(">>> Update saved book");
+    books = books.map((currBook) => {
+      if (currBook.id != book.id) return currBook;
       // Object.create(currBook,)
       return {
         ...currBook,
         ...book,
-        version: (currBook.version || 0) + 1
-      }
-    })
+        version: (currBook.version || 0) + 1,
+      };
+    });
   }
-
 
   await store.set("books", books);
 }
-export async function updateCoverImage(blob: Blob, id: String, storeParam?: Store) {
-  let store = storeParam || await getStore()
+export async function updateCoverImage(
+  blob: Blob,
+  id: String,
+  storeParam?: Store
+) {
+  let store = storeParam || (await getStore());
 
-  const book = await getBook(id, store)
-  if (!book) return
+  const book = await getBook(id, store);
+  if (!book) return;
   // only update it once
-  if (book.version && book.version > 0) return
+  if (book.version && book.version > 0) return;
   // if (book.cover_kind && book.cover_kind != "fallback") return
-  if (book.kind != "pdf") return
-  const bytes = await blob.bytes()
-  const cover = Array.from(bytes)
-  console.log({ cover })
-  await updateBook({
-    id: book.id,
-    cover
-  }, store)
-
+  if (book.kind != "pdf") return;
+  const bytes = await blob.bytes();
+  const cover = Array.from(bytes);
+  console.log({ cover });
+  await updateBook(
+    {
+      id: book.id,
+      cover,
+    },
+    store
+  );
 }
 export async function getStore() {
   const store = await load("store.json", {
     autoSave: true,
     defaults: { books: [] },
   });
-  return store
+  return store;
 }
 
 export async function deleteBook(book: BookData, storeParam?: Store) {
-  const store = storeParam || await getStore()
+  const store = storeParam || (await getStore());
   const books = await store.get<BookData[]>("books");
   if (!books) {
     return;
@@ -96,21 +98,28 @@ export async function deleteBook(book: BookData, storeParam?: Store) {
   books.splice(index, 1);
   await store.set("books", books);
 }
-export async function updateBook(bookSlice: Partial<BookData> & { id: string }, storeParam?: Store) {
-  const store = storeParam || await getStore()
+export async function updateBook(
+  bookSlice: Partial<BookData> & { id: string },
+  storeParam?: Store
+) {
+  const store = storeParam || (await getStore());
 
-  const book = await getBook(bookSlice.id, store)
-  if (!book) return
-  await storeBook({ ...book, ...bookSlice }, storeParam)
+  const book = await getBook(bookSlice.id, store);
+  if (!book) return;
+  await storeBook({ ...book, ...bookSlice }, storeParam);
 }
 
-export async function updateBookLocation(bookId: string, location: string, storeParam?: Store) {
-  let store = storeParam || await getStore()
-  await updateBook({ id: bookId, current_location: location }, store)
+export async function updateBookLocation(
+  bookId: string,
+  location: string,
+  storeParam?: Store
+) {
+  let store = storeParam || (await getStore());
+  await updateBook({ id: bookId, location: location }, store);
 }
 
 export async function getBookLocation(bookId: string, storeParam?: Store) {
-  let store = storeParam || await getStore()
+  let store = storeParam || (await getStore());
   const books = await store.get<BookData[]>("books");
   if (!books) {
     return;
@@ -119,6 +128,5 @@ export async function getBookLocation(bookId: string, storeParam?: Store) {
   if (!book) {
     return;
   }
-  return book.current_location;
+  return book.location;
 }
-

@@ -82,8 +82,8 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   useSetupMenu();
   // Set book data only when book prop changes, not on every render
   useEffect(() => {
-    setPageNumber(parseInt(book.current_location, 10));
-  }, [book.current_location, setPageNumber]);
+    setPageNumber(parseInt(book.location, 10));
+  }, [book.location, setPageNumber]);
 
   // Ref for the scrollable container
 

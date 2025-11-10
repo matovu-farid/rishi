@@ -62,7 +62,7 @@ impl Extractable for Pdf {
         let digest = md5::compute(path.to_string_lossy().to_string());
         let id = format!("{:x}", digest);
         let kind = BookKind::Pdf.to_string();
-        let current_location = "".to_string();
+        let current_location = "1".to_string();
         let cover_kind = Some(cover.to_string());
 
         match cover {

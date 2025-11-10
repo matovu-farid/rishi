@@ -39,7 +39,7 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
   const [theme, setTheme] = useState<ThemeType>(ThemeType.White);
   const [menuOpen, setMenuOpen] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<string>(
-    book.current_location || "0"
+    book.location || "0"
   );
   const [direction, setDirection] = useState<"left" | "right">("right");
   const navigationDirectionRef = useRef<"left" | "right">("right");
@@ -163,7 +163,7 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
           }
           url={convertFileSrc(book.filepath)}
           title={book.title}
-          location={currentLocation || book.current_location || 0}
+          location={currentLocation || book.location || 0}
           locationChanged={(epubcfi: string) => {
             // Use tracked navigation direction from intercepted prev/next calls
             setDirection(navigationDirectionRef.current);
