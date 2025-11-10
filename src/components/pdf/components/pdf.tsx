@@ -1,5 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, {
+  useEffect,
+  useState,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import { Button } from "@components/ui/Button";
 import { IconButton } from "@components/ui/IconButton";
 import { ThemeType } from "@/themes/common";
@@ -14,6 +20,7 @@ import { Document, Outline, pdfjs } from "react-pdf";
 import type { DocumentInitParameters } from "pdfjs-dist/types/src/display/api";
 
 import { cn } from "@components/lib/utils";
+import { useVirtualizer, useWindowVirtualizer } from "@tanstack/react-virtual";
 
 import { BookData } from "@/generated";
 
@@ -120,12 +127,8 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     }),
     []
   );
-  const {
-    isDualPage,
-    pdfWidth,
-
-    isFullscreen,
-  } = usePdfNavigation();
+  const { isDualPage, pdfWidth, pdfHeight, dualPageWidth, isFullscreen } =
+    usePdfNavigation();
 
   // Setup View submenu in the app menu for PDF view
   const isDualPageRef = useRef(isDualPage);
@@ -200,24 +203,37 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     setPageCount(numPages);
     // If book has saved location, restore it
   }
-  const pages = useMemo(() => {
-    return Array.from(new Array(numPages), (_, index) => {
-      return (
-        <div
-          key={`page-${index + 1}`}
-          className="mb-8  px-4"
-          data-page-number={index + 1}
-        >
-          <PageComponent
-            key={`page-${index + 1}`}
-            thispageNumber={index + 1}
-            pdfWidth={pdfWidth}
-            bookId={book.id}
-          />
-        </div>
-      );
-    });
-  }, [numPages]);
+  const estimatedPageHeight = useMemo(() => {
+    if (isDualPage && pdfHeight) {
+      return pdfHeight + 64;
+    }
+
+    if (pdfWidth) {
+      const aspectRatio = 11 / 8.5;
+      return Math.round(pdfWidth * aspectRatio) + 64;
+    }
+
+    return 1200;
+  }, [isDualPage, pdfHeight, pdfWidth]);
+
+  const estimateVirtualSize = useCallback(
+    () => estimatedPageHeight,
+    [estimatedPageHeight]
+  );
+  const virtualizer = useVirtualizer({
+    count: numPages,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: estimateVirtualSize,
+    overscan: 3,
+    enabled: numPages > 0,
+  });
+
+  const virtualItems = virtualizer.getVirtualItems();
+  const pageWidth = isDualPage ? dualPageWidth : pdfWidth;
+
+  useEffect(() => {
+    virtualizer.measure();
+  }, [virtualizer, pageWidth, pdfHeight, numPages]);
 
   return (
     <div
@@ -229,11 +245,11 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
       )}
     >
       {/** White loading screen */}
-      {!hasNavigatedToPage && (
+      {/* {!hasNavigatedToPage && (
         <div className="w-screen h-screen grid place-items-center bg-white z-100 pointer-events-none">
           <Loader2 size={20} className="animate-spin" />
         </div>
-      )}
+      )} */}
       {/* Fixed Top Bar */}
       <div
         className={cn(
@@ -295,7 +311,40 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
           externalLinkTarget="_blank"
           externalLinkRel="noopener noreferrer nofollow"
         >
-          {pages}
+          <div
+            style={{
+              height: `${virtualizer.getTotalSize()}px`,
+              width: "100%",
+              position: "relative",
+            }}
+          >
+            {virtualItems.map((virtualItem) => (
+              <div
+                key={virtualItem.key}
+                data-index={virtualItem.index}
+                ref={virtualizer.measureElement}
+                className="absolute left-0 top-0 flex w-full justify-center"
+                style={{
+                  transform: `translateY(${virtualItem.start}px)`,
+                }}
+              >
+                <div
+                  className="mb-8 px-4"
+                  data-page-number={virtualItem.index + 1}
+                  style={{ width: "100%", maxWidth: pageWidth ?? "100%" }}
+                >
+                  <PageComponent
+                    key={`page-${virtualItem.index + 1}`}
+                    thispageNumber={virtualItem.index + 1}
+                    pdfWidth={pageWidth}
+                    pdfHeight={pdfHeight}
+                    isDualPage={isDualPage}
+                    bookId={book.id}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
         </Document>
         {/* TTS Controls - Draggable */}
         {
