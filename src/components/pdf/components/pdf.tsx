@@ -329,9 +329,9 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                 }}
               >
                 <div
-                  className="mb-8 px-4"
+                  className="mb-8 "
                   data-page-number={virtualItem.index + 1}
-                  style={{ width: "100%", maxWidth: pageWidth ?? "100%" }}
+                  style={{ width: pageWidth ?? "auto" }}
                 >
                   <PageComponent
                     key={`page-${virtualItem.index + 1}`}
