@@ -38,7 +38,6 @@ function BookView(): React.JSX.Element {
       if (!book) {
         throw new Error("Book not found");
       }
-      console.log({ book });
 
       return book;
     },

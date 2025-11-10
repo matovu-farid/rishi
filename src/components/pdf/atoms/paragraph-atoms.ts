@@ -104,6 +104,7 @@ export const resetParaphStateAtom = atom(null, (_get, set) => {
   set(isRenderedPageStateAtom, {});
 });
 export const getCurrentViewParagraphsAtom = atom((get) => {
+  get(pageNumberAtom);
   const paragraphs = get(currentViewPagesAtom)
     .map((pageNumber) => get(paragraphsAtom)(pageNumber))
     .flat()
@@ -124,6 +125,7 @@ export const highlightedParagraphArrayIndexAtom = freezeAtom(atom(-1));
 export const isHighlightingAtom = atom(false);
 export const highlightedParagraphGlobalIndexAtom = atom(
   (get) => {
+    get(pageNumberAtom);
     return get(getCurrentViewParagraphsAtom)[
       get(highlightedParagraphArrayIndexAtom)
     ].index;
@@ -144,6 +146,7 @@ export const highlightedParagraphGlobalIndexAtom = atom(
 );
 
 export const highlightedParagraphAtom = atom((get) => {
+  get(pageNumberAtom);
   const currentViewParagraphs = get(getCurrentViewParagraphsAtom);
   const index = get(highlightedParagraphArrayIndexAtom);
   console.log({ currentViewParagraphs, index });

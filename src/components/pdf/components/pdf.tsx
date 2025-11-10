@@ -46,7 +46,10 @@ import { useChuncking } from "../hooks/useChunking";
 import { usePdfNavigation } from "../hooks/usePdfNavigation";
 import { PageComponent } from "./page";
 import { useSetupMenu } from "../hooks/useSetupMenu";
-import { useCurrentPageNumberNavigation } from "../hooks/useCurrentPageNumber";
+import {
+  useCurrentPageNumber,
+  useCurrentPageNumberNavigation,
+} from "../hooks/useCurrentPageNumber";
 import { useMutation } from "@tanstack/react-query";
 import { synchronizedUpdateBookLocation } from "@/modules/sync_books";
 import { toast } from "react-toastify";
@@ -65,8 +68,13 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
 
   const setPageNumber = useSetAtom(setPageNumberAtom);
   const { scrollContainerRef } = useChuncking();
+
   // useCurrentPageNumber(scrollContainerRef);
-  useCurrentPageNumberNavigation(scrollContainerRef);
+  const { hasNavigatedToPage } = useCurrentPageNumberNavigation(
+    scrollContainerRef,
+    book.id
+  );
+  useCurrentPageNumber(scrollContainerRef, book.id);
 
   useUpdateCoverIMage(book);
   useSetupMenu();
@@ -213,6 +221,12 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
         "bg-gray-300"
       )}
     >
+      {/** White loading screen */}
+      {!hasNavigatedToPage && (
+        <div className="w-screen h-screen grid place-items-center bg-white z-100 pointer-events-none">
+          <Loader2 size={20} className="animate-spin" />
+        </div>
+      )}
       {/* Fixed Top Bar */}
       <div
         className={cn(
