@@ -11,6 +11,8 @@ import {
   PlayerControlEventMap,
   PlayerControlInterface,
 } from "./player_control";
+import { customStore } from "@/stores/jotai";
+import { isHighlightingAtom } from "@components/pdf/atoms/paragraph-atoms";
 export enum PlayingState {
   Playing = "playing",
   Paused = "paused",

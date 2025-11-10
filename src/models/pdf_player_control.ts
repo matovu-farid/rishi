@@ -10,7 +10,7 @@ import {
   getNextViewParagraphsAtom,
   getPreviousViewParagraphsAtom,
   highlightedParagraphAtom,
-  highlightedParagraphGlobalIndexAtom,
+  highlightedParagraphIndexAtom,
   isHighlightingAtom,
   nextPageAtom,
   pageNumberAtom,
@@ -59,7 +59,12 @@ class PdfPlayerControl
     };
     const updateHighlightedParagraph = () => {
       const highlightedParagraph = customStore.get(highlightedParagraphAtom);
-      this.emit(PlayerControlEvent.PARAGRAPH_HIGHLIGHTED, highlightedParagraph);
+      if (highlightedParagraph) {
+        this.emit(
+          PlayerControlEvent.PARAGRAPH_HIGHLIGHTED,
+          highlightedParagraph
+        );
+      }
     };
     customStore.sub(getCurrentViewParagraphsAtom, updateCurrent);
     updateCurrent();
@@ -103,7 +108,7 @@ class PdfPlayerControl
       return;
     }
     this.currentlyHighlightedParagraphIndex = index;
-    return customStore.set(highlightedParagraphGlobalIndexAtom, index);
+    return customStore.set(highlightedParagraphIndexAtom, index);
   }
 
   async moveToNextPage() {

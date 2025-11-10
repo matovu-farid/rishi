@@ -7,6 +7,8 @@ import type { TextContent } from "react-pdf";
 import { pageDataToParagraphs } from "../utils/getPageParagraphs";
 
 import { freezeAtom } from "jotai/utils";
+import { player, PlayerEvent, PlayingState } from "@/models/Player";
+import { customStore } from "@/stores/jotai";
 
 export const currentParagraphAtom = atom<ParagraphWithIndex>({
   index: "",
@@ -98,8 +100,7 @@ export const resetParaphStateAtom = atom(null, (_get, set) => {
   set(isDualPageAtom, false);
   set(pageCountAtom, 0);
 
-  set(highlightedParagraphArrayIndexAtom, -1);
-  set(highlightedParagraphGlobalIndexAtom, "");
+  set(highlightedParagraphIndexAtom, "");
   set(isHighlightingAtom, false);
   set(isRenderedPageStateAtom, {});
 });
@@ -121,36 +122,38 @@ export const getCurrentViewParagraphsAtom = atom((get) => {
   });
 });
 
-export const highlightedParagraphArrayIndexAtom = freezeAtom(atom(-1));
+// export const highlightedParagraphArrayIndexAtom = freezeAtom(atom(-1));
 export const isHighlightingAtom = atom(false);
-export const highlightedParagraphGlobalIndexAtom = atom(
-  (get) => {
-    get(pageNumberAtom);
-    return get(getCurrentViewParagraphsAtom)[
-      get(highlightedParagraphArrayIndexAtom)
-    ].index;
-  },
-  (get, set, newGlobalIndex: string) => {
-    const currentViewParagraphs = get(getCurrentViewParagraphsAtom);
-    const newArrayIndex = currentViewParagraphs.findIndex(
-      (paragraph) => paragraph.index === newGlobalIndex
-    );
+// export const highlightedParagraphGlobalIndexAtom = atom(
+//   (get) => {
+//     get(pageNumberAtom);
+//     return get(getCurrentViewParagraphsAtom)[
+//       get(highlightedParagraphArrayIndexAtom)
+//     ].index;
+//   },
+//   (get, set, newGlobalIndex: string) => {
+//     const currentViewParagraphs = get(getCurrentViewParagraphsAtom);
+//     const newArrayIndex = currentViewParagraphs.findIndex(
+//       (paragraph) => paragraph.index === newGlobalIndex
+//     );
 
-    if (newArrayIndex !== -1) {
-      set(highlightedParagraphArrayIndexAtom, newArrayIndex);
-      set(isHighlightingAtom, true);
-    } else {
-      set(isHighlightingAtom, false);
-    }
-  }
-);
-
+//     if (newArrayIndex !== -1) {
+//       set(highlightedParagraphArrayIndexAtom, newArrayIndex);
+//       set(isHighlightingAtom, true);
+//     } else {
+//       set(isHighlightingAtom, false);
+//     }
+//   }
+// );
+export const highlightedParagraphIndexAtom = atom("");
 export const highlightedParagraphAtom = atom((get) => {
-  get(pageNumberAtom);
   const currentViewParagraphs = get(getCurrentViewParagraphsAtom);
-  const index = get(highlightedParagraphArrayIndexAtom);
-  console.log({ currentViewParagraphs, index });
-  return currentViewParagraphs[index];
+  const index = get(highlightedParagraphIndexAtom);
+  const currentParagraph = currentViewParagraphs.find(
+    (paragraph) => paragraph.index === index
+  );
+
+  return currentParagraph;
 });
 
 export const highlightedPageAtom = atom((get) => {
@@ -158,7 +161,7 @@ export const highlightedPageAtom = atom((get) => {
   const paragraphs = get(paragraphsAtom);
   const hasParagraph = (paragraphs: ParagraphWithIndex[]) =>
     paragraphs.some(
-      (paragraph) => paragraph.index === highlightedParagraph.index
+      (paragraph) => paragraph.index === highlightedParagraph?.index
     );
   const pageNumber = Object.entries(paragraphs)
     .filter(([_, paragraphs]) => hasParagraph(paragraphs))
@@ -312,11 +315,18 @@ export const pdfsControllerAtom = atom(
 );
 
 export const isRenderedAtom = atom<Record<string, boolean>>({});
+
+player.on(PlayerEvent.PLAYING_STATE_CHANGED, (state) => {
+  if (state === PlayingState.Playing) {
+    customStore.set(isHighlightingAtom, true);
+  } else {
+    customStore.set(isHighlightingAtom, false);
+  }
+});
+
 // debug label
 
 isPdfRenderedAtom.debugLabel = "isPdfRenderedAtom";
-highlightedParagraphArrayIndexAtom.debugLabel =
-  "highlightedParagraphArrayIndexAtom";
 currentParagraphAtom.debugLabel = "currentParagraphAtom";
 pageNumberAtom.debugLabel = "pageNumberAtom";
 isDualPageAtom.debugLabel = "isDualPageAtom";
@@ -329,8 +339,7 @@ getCurrentViewParagraphsAtom.debugLabel = "getCurrentViewParagraphsAtom";
 getNextViewParagraphsAtom.debugLabel = "getNextViewParagraphsAtom";
 getPreviousViewParagraphsAtom.debugLabel = "getPreviousViewParagraphsAtom";
 isHighlightingAtom.debugLabel = "isHighlightingAtom";
-highlightedParagraphGlobalIndexAtom.debugLabel =
-  "highlightedParagraphGlobaolIndexAtom";
+highlightedParagraphIndexAtom.debugLabel = "highlightedParagraphIndexAtom";
 highlightedParagraphAtom.debugLabel = "highlightedParagraphAtom";
 highlightedPageAtom.debugLabel = "highlightedPageAtom";
 changePageAtom.debugLabel = "changePageAtom";

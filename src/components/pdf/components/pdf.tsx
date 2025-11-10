@@ -25,10 +25,12 @@ import {
   getCurrentViewParagraphsAtom,
   getNextViewParagraphsAtom,
   getPreviousViewParagraphsAtom,
-  highlightedParagraphArrayIndexAtom,
   highlightedParagraphAtom,
+  highlightedParagraphIndexAtom,
   isPdfRenderedAtom,
   pageCountAtom,
+  pageNumberAtom,
+  paragraphsAtom,
   resetParaphStateAtom,
   setPageNumberAtom,
 } from "@components/pdf/atoms/paragraph-atoms";
@@ -44,7 +46,7 @@ import {
 import { useUpdateCoverIMage } from "../hooks/useUpdateCoverIMage";
 import { useChuncking } from "../hooks/useChunking";
 import { usePdfNavigation } from "../hooks/usePdfNavigation";
-import { PageComponent } from "./page";
+import { PageComponent } from "./pdf-page";
 import { useSetupMenu } from "../hooks/useSetupMenu";
 import {
   useCurrentPageNumber,
@@ -87,9 +89,21 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
 
   const resetParaphState = useSetAtom(resetParaphStateAtom);
   const highlightedParagraph = useAtomValue(highlightedParagraphAtom);
-  const [highlightIndex, setHighlightIndex] = useAtom(
-    highlightedParagraphArrayIndexAtom
+
+  const currentPageNumber = useAtomValue(pageNumberAtom);
+  const paragraphs = useAtomValue(paragraphsAtom);
+  const currentParagraphs = paragraphs(currentPageNumber);
+  const setHighlightedParagraphIndex = useSetAtom(
+    highlightedParagraphIndexAtom
   );
+  const firstParagraphIndex =
+    currentParagraphs.length > 0 ? currentParagraphs[0].index : "";
+
+  useEffect(() => {
+    if (firstParagraphIndex) {
+      setHighlightedParagraphIndex(firstParagraphIndex);
+    }
+  }, [firstParagraphIndex]);
 
   useEffect(() => {
     return () => {
@@ -170,11 +184,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   }
 
   const [numPages, setPageCount] = useAtom(pageCountAtom);
-  useEffect(() => {
-    if (numPages > 0 && highlightIndex === -1) {
-      setHighlightIndex(0);
-    }
-  }, [highlightIndex, numPages]);
 
   function onItemClick({ pageNumber: itemPageNumber }: { pageNumber: number }) {
     // Determine direction based on page number comparison

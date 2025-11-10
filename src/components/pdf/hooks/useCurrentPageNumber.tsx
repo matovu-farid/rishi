@@ -1,6 +1,5 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import {
-  highlightedParagraphArrayIndexAtom,
   isPdfRenderedAtom,
   pageNumberAtom,
   setPageNumberAtom,
@@ -17,7 +16,6 @@ export function useCurrentPageNumber(
   const currentPageNumber = useAtomValue(pageNumberAtom);
   const setPageNumber = useSetAtom(setPageNumberAtom);
   const scrollDiv = scrollRef.current;
-  const setPageIndex = useSetAtom(highlightedParagraphArrayIndexAtom);
 
   const setCurrentPageNumberThrottled = useCallback(
     throttle(1000, () => {
