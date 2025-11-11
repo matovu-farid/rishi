@@ -1,6 +1,8 @@
+// --------------------------------------------------------------------------------------
+// Hook utilities and helpers for tracking and synchronizing the active PDF page.
+// --------------------------------------------------------------------------------------
 import { useAtomValue, useSetAtom } from "jotai";
 import {
-  booksAtom,
   isPdfRenderedAtom,
   pageNumberAtom,
   setPageNumberAtom,
@@ -15,6 +17,12 @@ import { synchronizedUpdateBookLocation } from "@/modules/sync_books";
 import { toast } from "react-toastify";
 import { BookData } from "@/generated";
 
+// --------------------------------------------------------------------------------------
+// Returns and maintains the current page number for the active PDF view. The hook:
+// - Seeds state from the persisted `book.location`.
+// - Watches scroll/resize events to keep the jotai atom in sync.
+// - Debounces writes so the backend location is updated sparingly.
+// --------------------------------------------------------------------------------------
 export function useCurrentPageNumber(
   scrollRef: React.RefObject<HTMLDivElement | null>,
   book: BookData
@@ -23,14 +31,18 @@ export function useCurrentPageNumber(
   const setPageNumber = useSetAtom(setPageNumberAtom);
   const bookId = book.id;
 
+  // ------------------------------------------------------------------------------------
+  // Dereference the scrolling container once so listeners can be registered cleanly.
+  // ------------------------------------------------------------------------------------
   const scrollDiv = scrollRef.current;
-    // Set book data only when book prop changes, not on every render
-    useEffect(() => {
-      setPageNumber(parseInt(book.location, 10));
-    }, []);
-  
-  
-// throttle the setCurrentPageNumber to prevent excessive re-renders
+  // Set book data only when book prop changes, not on every render
+  useEffect(() => {
+    setPageNumber(parseInt(book.location, 10));
+  }, []);
+
+  // ------------------------------------------------------------------------------------
+  // Throttle the page calculation to avoid noisy re-renders while the user scrolls.
+  // ------------------------------------------------------------------------------------
   const setCurrentPageNumberThrottled = useCallback(
     throttle(1000, () => {
       const newPageNumber = getCurrrentPageNumber(window);
@@ -78,7 +90,9 @@ export function useCurrentPageNumber(
     },
   });
 
-// sync the current page number with the book location
+  // ------------------------------------------------------------------------------------
+  // Persist the latest page to the backend after the user settles on a location.
+  // ------------------------------------------------------------------------------------
   useEffect(() => {
     debounce(1000, () => {
       updateBookLocationMutation.mutate({
@@ -86,19 +100,26 @@ export function useCurrentPageNumber(
         location: currentPageNumber.toString(),
       });
     })();
-  }, [currentPageNumber])
-  // 
+  }, [currentPageNumber]);
+  //
   return currentPageNumber;
 }
 export function findElementWithPageNumber(
   pageNumber: number,
   scrollContainerRef: HTMLDivElement
 ) {
+  // ------------------------------------------------------------------------------------
+  // Locate the DOM element tagged with the desired `data-page-number`.
+  // ------------------------------------------------------------------------------------
   return scrollContainerRef.querySelector<HTMLElement>(
     `[data-page-number="${pageNumber}"]`
   );
 }
 
+// --------------------------------------------------------------------------------------
+// Smoothly scrolls to the active page number the first time the PDF renders. Works with
+// both virtualized and non-virtualized layouts.
+// --------------------------------------------------------------------------------------
 export function useCurrentPageNumberNavigation(
   scrollContainerRef: React.RefObject<HTMLDivElement | null>,
   bookId: string,
@@ -128,7 +149,7 @@ export function useCurrentPageNumberNavigation(
     if (!container) return;
 
     const element = findElementWithPageNumber(currentPageNumber, container);
-    
+
     if (element) {
       element.scrollIntoView({ behavior: "auto", block: "start" });
       setHasNavigatedToPage(true);
