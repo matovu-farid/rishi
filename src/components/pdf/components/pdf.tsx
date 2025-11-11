@@ -63,6 +63,8 @@ import { useMutation } from "@tanstack/react-query";
 import { synchronizedUpdateBookLocation } from "@/modules/sync_books";
 import { toast } from "react-toastify";
 import { customStore } from "@/stores/jotai";
+import { queryClient } from "@components/providers";
+import { debounce } from "throttle-debounce";
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -79,10 +81,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const { scrollContainerRef } = useChuncking();
 
   // useCurrentPageNumber(scrollContainerRef);
-  const { hasNavigatedToPage } = useCurrentPageNumberNavigation(
-    scrollContainerRef,
-    book.id
-  );
   useCurrentPageNumber(scrollContainerRef, book.id);
 
   useUpdateCoverIMage(book);
@@ -173,6 +171,9 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     onError(_error) {
       toast.error("Can not change book page");
     },
+    onSuccess() {
+      void queryClient.invalidateQueries({ queryKey: ["books"] });
+    },
   });
 
   function getTextColor() {
@@ -187,17 +188,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   }
 
   const [numPages, setPageCount] = useAtom(pageCountAtom);
-
-  function onItemClick({ pageNumber: itemPageNumber }: { pageNumber: number }) {
-    // Determine direction based on page number comparison
-    setPageNumber(itemPageNumber);
-    setTocOpen(false);
-    // Update book location when navigating via TOC
-    updateBookLocationMutation.mutate({
-      bookId: book.id,
-      location: itemPageNumber.toString(),
-    });
-  }
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }): void {
     setPageCount(numPages);
@@ -220,12 +210,19 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     () => estimatedPageHeight,
     [estimatedPageHeight]
   );
+  const initialPageIndexRef = useRef(
+    Math.max(0, Number.parseInt(book.location, 10) - 1)
+  );
+  const initialOffsetRef = useRef(
+    initialPageIndexRef.current * estimatedPageHeight
+  );
   const virtualizer = useVirtualizer({
     count: numPages,
     getScrollElement: () => scrollContainerRef.current,
     estimateSize: estimateVirtualSize,
     overscan: 3,
     enabled: numPages > 0,
+    initialOffset: initialOffsetRef.current,
   });
 
   const virtualItems = virtualizer.getVirtualItems();
@@ -235,6 +232,30 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     virtualizer.measure();
   }, [virtualizer, pageWidth, pdfHeight, numPages]);
 
+  useEffect(() => {
+    debounce(1000, () => {
+      updateBookLocationMutation.mutate({
+        bookId: book.id,
+        location: currentPageNumber.toString(),
+      });
+    })();
+  }, [currentPageNumber]);
+
+  // useCurrentPageNumberNavigation(scrollContainerRef, book.id, virtualizer);
+  function onItemClick({ pageNumber: itemPageNumber }: { pageNumber: number }) {
+    // Determine direction based on page number comparison
+    virtualizer.scrollToIndex(itemPageNumber - 1, {
+      align: "start",
+      behavior: "smooth",
+    });
+    setPageNumber(itemPageNumber);
+    setTocOpen(false);
+    // Update book location when navigating via TOC
+    updateBookLocationMutation.mutate({
+      bookId: book.id,
+      location: itemPageNumber.toString(),
+    });
+  }
   return (
     <div
       ref={scrollContainerRef}

@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { getCurrrentPageNumber } from "../utils/getCurrentPageNumbers";
 import { throttle } from "throttle-debounce";
 import { playerControl } from "@/models/pdf_player_control";
+import type { Virtualizer } from "@tanstack/react-virtual";
 
 export function useCurrentPageNumber(
   scrollRef: React.RefObject<HTMLDivElement | null>,
@@ -24,7 +25,7 @@ export function useCurrentPageNumber(
         setPageNumber(newPageNumber);
       }
     }),
-    [setPageNumber]
+    [currentPageNumber, setPageNumber]
   );
   const isPdfRendered = useAtomValue(isPdfRenderedAtom);
   useEffect(() => {
@@ -57,30 +58,48 @@ export function findElementWithPageNumber(
 
 export function useCurrentPageNumberNavigation(
   scrollContainerRef: React.RefObject<HTMLDivElement | null>,
-  bookId: string
+  bookId: string,
+  virtualizer?: Virtualizer<HTMLDivElement, Element>
 ) {
   const currentPageNumber = useAtomValue(pageNumberAtom);
-  const elementRefValue = scrollContainerRef.current;
   const isPdfRendered = useAtomValue(isPdfRenderedAtom);
   const [hasNavigatedToPage, setHasNavigatedToPage] = useState(false);
 
   useEffect(() => {
-    if (!elementRefValue) return;
+    const container = scrollContainerRef.current;
     if (!isPdfRendered(bookId)) return;
     if (hasNavigatedToPage) return;
     void playerControl.initialize();
-    const element = findElementWithPageNumber(
-      currentPageNumber,
-      elementRefValue
-    );
+    const targetIndex = Math.max(0, currentPageNumber - 1);
+
+    if (virtualizer) {
+      virtualizer.scrollToIndex(targetIndex, {
+        align: "start",
+        behavior: "auto",
+      });
+
+      setHasNavigatedToPage(true);
+      return;
+    }
+
+    if (!container) return;
+
+    const element = findElementWithPageNumber(currentPageNumber, container);
     if (element) {
-      element.scrollIntoView({ behavior: "instant" });
+      element.scrollIntoView({ behavior: "auto", block: "start" });
       setHasNavigatedToPage(true);
     } else {
       console.error(
         `>>> Element with page number ${currentPageNumber} not found`
       );
     }
-  }, [elementRefValue, currentPageNumber, isPdfRendered]);
+  }, [
+    bookId,
+    currentPageNumber,
+    hasNavigatedToPage,
+    isPdfRendered,
+    scrollContainerRef,
+    virtualizer,
+  ]);
   return { hasNavigatedToPage };
 }
