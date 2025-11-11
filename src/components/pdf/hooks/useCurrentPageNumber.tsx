@@ -1,5 +1,6 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import {
+  booksAtom,
   isPdfRenderedAtom,
   pageNumberAtom,
   setPageNumberAtom,
@@ -12,14 +13,23 @@ import type { Virtualizer } from "@tanstack/react-virtual";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { synchronizedUpdateBookLocation } from "@/modules/sync_books";
 import { toast } from "react-toastify";
+import { BookData } from "@/generated";
 
 export function useCurrentPageNumber(
   scrollRef: React.RefObject<HTMLDivElement | null>,
-  bookId: string
+  book: BookData
 ) {
   const currentPageNumber = useAtomValue(pageNumberAtom);
   const setPageNumber = useSetAtom(setPageNumberAtom);
+  const bookId = book.id;
+
   const scrollDiv = scrollRef.current;
+    // Set book data only when book prop changes, not on every render
+    useEffect(() => {
+      setPageNumber(parseInt(book.location, 10));
+    }, []);
+  
+  
 // throttle the setCurrentPageNumber to prevent excessive re-renders
   const setCurrentPageNumberThrottled = useCallback(
     throttle(1000, () => {

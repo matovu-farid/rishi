@@ -61,15 +61,10 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   useChuncking(scrollContainerRef);
 
   // useCurrentPageNumber(scrollContainerRef);
-  useCurrentPageNumber(scrollContainerRef, book.id);
+  useCurrentPageNumber(scrollContainerRef, book);
 
   useUpdateCoverIMage(book);
   useSetupMenu();
-  // Set book data only when book prop changes, not on every render
-  useEffect(() => {
-    setPageNumber(parseInt(book.location, 10));
-  }, []);
-
   // Ref for the scrollable container
 
   const resetParaphState = useSetAtom(resetParaphStateAtom);
