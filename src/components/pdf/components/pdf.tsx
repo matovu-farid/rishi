@@ -91,7 +91,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   // Set book data only when book prop changes, not on every render
   useEffect(() => {
     setPageNumber(parseInt(book.location, 10));
-  }, [book.location, setPageNumber]);
+  }, []);
 
   // Ref for the scrollable container
 
@@ -208,7 +208,8 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   );
   const pageRefs = useRef(new Map<number, HTMLElement>());
   const measurementTimeouts = useRef(new Map<number, number>());
-  const hasRestoredInitialPage = useRef(false);
+  const hasRequestedInitialScroll = useRef(false);
+  const hasFinalizedInitialScroll = useRef(false);
   const scrollToFn: VirtualizerOptions<any, any>["scrollToFn"] =
     React.useCallback((offset, canSmooth, instance) => {
       const duration = 1000;
@@ -250,6 +251,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
       virtualizer.measureElement(element);
     });
   }, [virtualizer, pageWidth, pdfHeight]);
+  const [hasNavigatedToPage, setHasNavigatedToPage] = useState(false);
 
   const handlePageRendered = useCallback(
     (index: number) => {
@@ -262,6 +264,19 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
         const element = pageRefs.current.get(index);
         if (element) {
           virtualizer.measureElement(element);
+          if (
+            index === initialPageIndexRef.current &&
+            hasRequestedInitialScroll.current &&
+            !hasFinalizedInitialScroll.current
+          ) {
+            hasFinalizedInitialScroll.current = true;
+
+            virtualizer.scrollToIndex(initialPageIndexRef.current, {
+              align: "start",
+              behavior: "auto",
+            });
+            setHasNavigatedToPage(true);
+          }
         }
         measurementTimeouts.current.delete(index);
       }, 120);
@@ -281,11 +296,11 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   }, []);
 
   useEffect(() => {
-    if (hasRestoredInitialPage.current) return;
+    if (hasRequestedInitialScroll.current) return;
     if (numPages === 0) return;
     if (!scrollContainerRef.current) return;
 
-    hasRestoredInitialPage.current = true;
+    hasRequestedInitialScroll.current = true;
     virtualizer.scrollToIndex(initialPageIndexRef.current, {
       align: "start",
       behavior: "auto",
@@ -316,6 +331,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
       location: itemPageNumber.toString(),
     });
   }
+
   return (
     <div
       ref={scrollContainerRef}
@@ -326,11 +342,11 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
       )}
     >
       {/** White loading screen */}
-      {/* {!hasNavigatedToPage && (
+      {!hasNavigatedToPage && (
         <div className="w-screen h-screen grid place-items-center bg-white z-100 pointer-events-none">
           <Loader2 size={20} className="animate-spin" />
         </div>
-      )} */}
+      )}
       {/* Fixed Top Bar */}
       <div
         className={cn(

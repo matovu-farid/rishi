@@ -1,10 +1,8 @@
 import Loader from "@components/Loader";
 import { useQuery } from "@tanstack/react-query";
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { useMutation } from "@tanstack/react-query";
-import { toast } from "react-toastify";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import { EpubView } from "@components/epub";
 import { PdfView } from "@components/pdf/components/pdf";
 import { motion } from "framer-motion";
@@ -13,10 +11,7 @@ import {
   BookNavigationState,
   bookNavigationStateAtom,
 } from "@components/pdf/atoms/paragraph-atoms";
-import {
-  synchronizedGetBooks,
-  synchronizedUpdateBookLocation,
-} from "@/modules/sync_books";
+import { synchronizedGetBooks } from "@/modules/sync_books";
 export const Route = createLazyFileRoute("/books/$id")({
   component: () => <BookView />,
 });
@@ -51,25 +46,7 @@ function BookView(): React.JSX.Element {
     };
   }, []);
 
-  const updateBookLocationMutation = useMutation({
-    mutationFn: async ({
-      bookId,
-      location,
-    }: {
-      bookId: string;
-      location: string;
-    }) => {
-      await synchronizedUpdateBookLocation(bookId, location);
-    },
-
-    onError() {
-      toast.error("Can not change book page");
-    },
-  });
-
   // Create stable debounced function that uses the latest mutation
-  const mutationRef = useRef(updateBookLocationMutation);
-  mutationRef.current = updateBookLocationMutation;
 
   if (isError)
     return (
