@@ -55,10 +55,7 @@ import { useChuncking } from "../hooks/useChunking";
 import { usePdfNavigation } from "../hooks/usePdfNavigation";
 import { PageComponent } from "./pdf-page";
 import { useSetupMenu } from "../hooks/useSetupMenu";
-import {
-  useCurrentPageNumber,
-  useCurrentPageNumberNavigation,
-} from "../hooks/useCurrentPageNumber";
+import { useCurrentPageNumber } from "../hooks/useCurrentPageNumber";
 import { useMutation } from "@tanstack/react-query";
 import { synchronizedUpdateBookLocation } from "@/modules/sync_books";
 import { toast } from "react-toastify";
@@ -66,12 +63,17 @@ import { customStore } from "@/stores/jotai";
 import { queryClient } from "@components/providers";
 import { debounce } from "throttle-debounce";
 import { PDFDocumentProxy } from "pdfjs-dist";
+import { elementScroll } from "@tanstack/react-virtual";
+import type { VirtualizerOptions } from "@tanstack/react-virtual";
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
   import.meta.url
 ).toString();
+function easeInOutQuint(t: number) {
+  return t < 0.5 ? 16 * t * t * t * t * t : 1 + 16 * --t * t * t * t * t;
+}
 
 export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const [theme] = useState<ThemeType>(ThemeType.White);
@@ -200,9 +202,33 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     Math.max(0, Number.parseInt(book.location, 10) - 1)
   );
   const estimatedPageHeight = 1900;
+  const scrollingRef = useRef<number | null>(null);
   const initialOffsetRef = useRef(
     initialPageIndexRef.current * estimatedPageHeight
   );
+  const scrollToFn: VirtualizerOptions<any, any>["scrollToFn"] =
+    React.useCallback((offset, canSmooth, instance) => {
+      const duration = 1000;
+      const start = scrollContainerRef.current?.scrollTop || 0;
+      const startTime = (scrollingRef.current = Date.now());
+
+      const run = () => {
+        if (scrollingRef.current !== startTime) return;
+        const now = Date.now();
+        const elapsed = now - startTime;
+        const progress = easeInOutQuint(Math.min(elapsed / duration, 1));
+        const interpolated = start + (offset - start) * progress;
+
+        if (elapsed < duration) {
+          elementScroll(interpolated, canSmooth, instance);
+          requestAnimationFrame(run);
+        } else {
+          elementScroll(interpolated, canSmooth, instance);
+        }
+      };
+
+      requestAnimationFrame(run);
+    }, []);
   const virtualizer = useVirtualizer({
     count: numPages,
     getScrollElement: () => scrollContainerRef.current,
@@ -210,6 +236,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     overscan: 5,
     enabled: numPages > 0,
     initialOffset: initialOffsetRef.current,
+    scrollToFn,
   });
 
   const virtualItems = virtualizer.getVirtualItems();
