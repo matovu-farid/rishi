@@ -65,6 +65,7 @@ import { toast } from "react-toastify";
 import { customStore } from "@/stores/jotai";
 import { queryClient } from "@components/providers";
 import { debounce } from "throttle-debounce";
+import { PDFDocumentProxy } from "pdfjs-dist";
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -189,38 +190,24 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
 
   const [numPages, setPageCount] = useAtom(pageCountAtom);
 
-  function onDocumentLoadSuccess({ numPages }: { numPages: number }): void {
-    setPageCount(numPages);
+  function onDocumentLoadSuccess(pdf: PDFDocumentProxy): void {
+    setPageCount(pdf.numPages);
+
     // If book has saved location, restore it
   }
-  const estimatedPageHeight = useMemo(() => {
-    if (isDualPage && pdfHeight) {
-      return pdfHeight + 64;
-    }
 
-    if (pdfWidth) {
-      const aspectRatio = 11 / 8.5;
-      return Math.round(pdfWidth * aspectRatio) + 64;
-    }
-
-    return 1200;
-  }, [isDualPage, pdfHeight, pdfWidth]);
-
-  const estimateVirtualSize = useCallback(
-    () => estimatedPageHeight,
-    [estimatedPageHeight]
-  );
   const initialPageIndexRef = useRef(
     Math.max(0, Number.parseInt(book.location, 10) - 1)
   );
+  const estimatedPageHeight = 1900;
   const initialOffsetRef = useRef(
     initialPageIndexRef.current * estimatedPageHeight
   );
   const virtualizer = useVirtualizer({
     count: numPages,
     getScrollElement: () => scrollContainerRef.current,
-    estimateSize: estimateVirtualSize,
-    overscan: 3,
+    estimateSize: () => estimatedPageHeight,
+    overscan: 5,
     enabled: numPages > 0,
     initialOffset: initialOffsetRef.current,
   });
