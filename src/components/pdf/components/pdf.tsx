@@ -55,13 +55,13 @@ import { useChuncking } from "../hooks/useChunking";
 import { usePdfNavigation } from "../hooks/usePdfNavigation";
 import { PageComponent } from "./pdf-page";
 import { useSetupMenu } from "../hooks/useSetupMenu";
-import { useCurrentPageNumber } from "../hooks/useCurrentPageNumber";
 import { useMutation } from "@tanstack/react-query";
 import { synchronizedUpdateBookLocation } from "@/modules/sync_books";
 import { toast } from "react-toastify";
 import { customStore } from "@/stores/jotai";
 import { queryClient } from "@components/providers";
 import { debounce } from "throttle-debounce";
+import { useCurrentPageNumber } from "../hooks/useCurrentPageNumber";
 import { PDFDocumentProxy } from "pdfjs-dist";
 import { elementScroll } from "@tanstack/react-virtual";
 import type { VirtualizerOptions } from "@tanstack/react-virtual";
@@ -206,6 +206,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const initialOffsetRef = useRef(
     initialPageIndexRef.current * estimatedPageHeight
   );
+  const pageRefs = useRef(new Map<number, HTMLElement>());
   const scrollToFn: VirtualizerOptions<any, any>["scrollToFn"] =
     React.useCallback((offset, canSmooth, instance) => {
       const duration = 1000;
@@ -243,8 +244,20 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const pageWidth = isDualPage ? dualPageWidth : pdfWidth;
 
   useEffect(() => {
-    virtualizer.measure();
-  }, [virtualizer, pageWidth, pdfHeight, numPages]);
+    pageRefs.current.forEach((element) => {
+      virtualizer.measureElement(element);
+    });
+  }, [virtualizer, pageWidth, pdfHeight]);
+
+  const handlePageRendered = useCallback(
+    (index: number) => {
+      const element = pageRefs.current.get(index);
+      if (element) {
+        virtualizer.measureElement(element);
+      }
+    },
+    [virtualizer]
+  );
 
   useEffect(() => {
     debounce(1000, () => {
@@ -357,7 +370,13 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
               <div
                 key={virtualItem.key}
                 data-index={virtualItem.index}
-                ref={virtualizer.measureElement}
+                ref={(node) => {
+                  if (node) {
+                    pageRefs.current.set(virtualItem.index, node);
+                  } else {
+                    pageRefs.current.delete(virtualItem.index);
+                  }
+                }}
                 className="absolute left-0 top-0 flex w-full justify-center"
                 style={{
                   transform: `translateY(${virtualItem.start}px)`,
@@ -375,6 +394,9 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                     pdfHeight={pdfHeight}
                     isDualPage={isDualPage}
                     bookId={book.id}
+                    onRenderComplete={() =>
+                      handlePageRendered(virtualItem.index)
+                    }
                   />
                 </div>
               </div>

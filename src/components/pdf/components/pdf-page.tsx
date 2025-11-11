@@ -19,12 +19,14 @@ export function PageComponent({
   pdfWidth,
   isDualPage = false,
   bookId,
+  onRenderComplete,
 }: {
   thispageNumber: number;
   pdfHeight?: number;
   pdfWidth?: number;
   isDualPage?: boolean;
   bookId: string;
+  onRenderComplete?: () => void;
 }) {
   // const [pageData, setPageData] = useState<TextContent | null>(null);
   const setPageData = useSetAtom(setPageNumberToPageData);
@@ -89,6 +91,7 @@ export function PageComponent({
       }
       onRenderSuccess={() => {
         if (isActive) setIsCanvasRendered(bookId, true);
+        onRenderComplete?.();
       }}
     />
   );
