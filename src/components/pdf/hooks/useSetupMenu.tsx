@@ -10,6 +10,7 @@ import { ensureTray, setTrayMenu, clearTrayMenu } from "@components/lib/tray";
 
 import { isDualPageAtom } from "@components/pdf/atoms/paragraph-atoms";
 import { customStore } from "@/stores/jotai";
+import { useAtomValue } from "jotai";
 
 export function useSetupMenu() {
   // Setup menu on mount/unmount
@@ -90,4 +91,24 @@ export function useSetupMenu() {
       })();
     };
   }, []); // Only run on mount/unmount, not when isDualPage changes
+    // Update checkbox state when isDualPage changes
+    const isDualPage = useAtomValue(isDualPageAtom);
+    useEffect(() => {
+      void (async () => {
+        try {
+          const defaultMenu = await TauriMenu.default();
+          const viewSubmenu = (await defaultMenu.get("view")) as Submenu | null;
+          if (viewSubmenu) {
+            const twoPagesItem = (await viewSubmenu.get(
+              "two_pages"
+            )) as CheckMenuItem | null;
+            if (twoPagesItem) {
+              await twoPagesItem.setChecked(isDualPage);
+            }
+          }
+        } catch {
+          // ignore errors
+        }
+      })();
+    }, [isDualPage]);
 }

@@ -6,9 +6,12 @@ import {
 } from "../atoms/paragraph-atoms";
 import { useCallback, useEffect, useState } from "react";
 import { getCurrrentPageNumber } from "../utils/getCurrentPageNumbers";
-import { throttle } from "throttle-debounce";
+import { debounce, throttle } from "throttle-debounce";
 import { playerControl } from "@/models/pdf_player_control";
 import type { Virtualizer } from "@tanstack/react-virtual";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { synchronizedUpdateBookLocation } from "@/modules/sync_books";
+import { toast } from "react-toastify";
 
 export function useCurrentPageNumber(
   scrollRef: React.RefObject<HTMLDivElement | null>,
@@ -17,7 +20,7 @@ export function useCurrentPageNumber(
   const currentPageNumber = useAtomValue(pageNumberAtom);
   const setPageNumber = useSetAtom(setPageNumberAtom);
   const scrollDiv = scrollRef.current;
-
+// throttle the setCurrentPageNumber to prevent excessive re-renders
   const setCurrentPageNumberThrottled = useCallback(
     throttle(1000, () => {
       const newPageNumber = getCurrrentPageNumber(window);
@@ -45,6 +48,36 @@ export function useCurrentPageNumber(
       scrollDiv?.removeEventListener("scroll", handleScroll);
     };
   }, [scrollDiv, currentPageNumber, isPdfRendered]);
+  const queryClient = useQueryClient();
+  const updateBookLocationMutation = useMutation({
+    mutationFn: async ({
+      bookId,
+      location,
+    }: {
+      bookId: string;
+      location: string;
+    }) => {
+      await synchronizedUpdateBookLocation(bookId, location);
+    },
+
+    onError(_error) {
+      toast.error("Can not change book page");
+    },
+    onSuccess() {
+      void queryClient.invalidateQueries({ queryKey: ["books"] });
+    },
+  });
+
+// sync the current page number with the book location
+  useEffect(() => {
+    debounce(1000, () => {
+      updateBookLocationMutation.mutate({
+        bookId: bookId,
+        location: currentPageNumber.toString(),
+      });
+    })();
+  }, [currentPageNumber])
+  // 
   return currentPageNumber;
 }
 export function findElementWithPageNumber(
@@ -85,6 +118,7 @@ export function useCurrentPageNumberNavigation(
     if (!container) return;
 
     const element = findElementWithPageNumber(currentPageNumber, container);
+    
     if (element) {
       element.scrollIntoView({ behavior: "auto", block: "start" });
       setHasNavigatedToPage(true);

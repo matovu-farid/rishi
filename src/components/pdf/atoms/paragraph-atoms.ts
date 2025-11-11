@@ -323,9 +323,10 @@ player.on(PlayerEvent.PLAYING_STATE_CHANGED, (state) => {
     customStore.set(isHighlightingAtom, false);
   }
 });
+export const hasNavigatedToPageAtom = atom(false);
 
 // debug label
-
+hasNavigatedToPageAtom.debugLabel = "hasNavigatedToPageAtom";
 isPdfRenderedAtom.debugLabel = "isPdfRenderedAtom";
 currentParagraphAtom.debugLabel = "currentParagraphAtom";
 pageNumberAtom.debugLabel = "pageNumberAtom";
