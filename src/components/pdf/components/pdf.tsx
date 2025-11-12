@@ -61,7 +61,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   useChuncking(scrollContainerRef);
 
   // useCurrentPageNumber(scrollContainerRef);
-  useCurrentPageNumber(scrollContainerRef, book);
 
   useUpdateCoverIMage(book);
   useSetupMenu();
@@ -141,6 +140,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const { virtualizer, virtualItems, pageRefs, handlePageRendered } =
     useVirualization(scrollContainerRef, book);
 
+  useCurrentPageNumber(scrollContainerRef, book, virtualizer);
   // useCurrentPageNumberNavigation(scrollContainerRef, book.id, virtualizer);
   function onItemClick({ pageNumber: itemPageNumber }: { pageNumber: number }) {
     // Determine direction based on page number comparison

@@ -344,7 +344,11 @@ export function highlightRange(
       "mix-blend-mode": "multiply",
     };
     const mergedStyles = Object.assign(defaultStyles, styles);
-
+    const hash = encodeURI(cfiRange + "highlight");
+    const annotationExists = hash in rendition.annotations._annotations;
+    if (annotationExists) {
+      return Promise.resolve(annotationExists);
+    }
     // Use the existing highlight method with the CFI range
     // Pass the parsed EpubCFI instance as expected by the API
     const annotation = rendition.annotations.highlight(
@@ -407,10 +411,9 @@ export function removeHighlight(rendition: Rendition, cfiRange: string) {
     // Check if the annotation exists before removal
     const hash = encodeURI(cfiRange + "highlight");
     const annotationExists = hash in rendition.annotations._annotations;
-
     // Remove the highlight annotation
     // Pass the parsed EpubCFI instance as expected by the API
-    rendition.annotations.remove(rangeCfi, "highlight");
+    if (annotationExists) rendition.annotations.remove(rangeCfi, "highlight");
 
     // Return a resolved promise with the result
     return Promise.resolve(annotationExists);

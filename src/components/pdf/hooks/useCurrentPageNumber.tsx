@@ -5,6 +5,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import {
   isPdfRenderedAtom,
   pageNumberAtom,
+  scrollPageNumberAtom,
   setPageNumberAtom,
 } from "../atoms/paragraph-atoms";
 import { useCallback, useEffect, useState } from "react";
@@ -25,9 +26,11 @@ import { BookData } from "@/generated";
 // --------------------------------------------------------------------------------------
 export function useCurrentPageNumber(
   scrollRef: React.RefObject<HTMLDivElement | null>,
-  book: BookData
+  book: BookData,
+  virtualizer?: Virtualizer<HTMLDivElement, Element>
 ) {
   const currentPageNumber = useAtomValue(pageNumberAtom);
+  const setScrollPageNumber = useSetAtom(scrollPageNumberAtom);
   const setPageNumber = useSetAtom(setPageNumberAtom);
   const bookId = book.id;
 
@@ -41,16 +44,16 @@ export function useCurrentPageNumber(
   }, []);
 
   // ------------------------------------------------------------------------------------
-  // Throttle the page calculation to avoid noisy re-renders while the user scrolls.
+  // Debounce the page calculation .
   // ------------------------------------------------------------------------------------
   const setCurrentPageNumberThrottled = useCallback(
-    throttle(1000, () => {
+    debounce(3000, () => {
       const newPageNumber = getCurrrentPageNumber(window);
       if (newPageNumber !== currentPageNumber) {
-        setPageNumber(newPageNumber);
+        setScrollPageNumber(newPageNumber);
       }
     }),
-    [currentPageNumber, setPageNumber]
+    [currentPageNumber]
   );
   const isPdfRendered = useAtomValue(isPdfRenderedAtom);
   useEffect(() => {
@@ -90,6 +93,19 @@ export function useCurrentPageNumber(
     },
   });
 
+  // ------------------------------------------------------------------------------------
+  // Scroll to the current page number
+  // ------------------------------------------------------------------------------------
+  useEffect(() => {
+    if (!virtualizer) return;
+    if (currentPageNumber === 0) return;
+    const viewedPageNumber = getCurrrentPageNumber(window);
+    if (viewedPageNumber === currentPageNumber) return;
+    virtualizer.scrollToIndex(currentPageNumber - 1, {
+      align: "start",
+      behavior: "smooth",
+    });
+  }, [currentPageNumber, virtualizer]);
   // ------------------------------------------------------------------------------------
   // Persist the latest page to the backend after the user settles on a location.
   // ------------------------------------------------------------------------------------

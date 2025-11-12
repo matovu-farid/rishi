@@ -7,18 +7,12 @@ import {
 import { convertFileSrc } from "@tauri-apps/api/core";
 import {
   ParagraphWithIndex,
-  PlayerControlEvent,
   PlayerControlEventMap,
   PlayerControlInterface,
 } from "./player_control";
-import { customStore } from "@/stores/jotai";
-import { isHighlightingAtom } from "@components/pdf/atoms/paragraph-atoms";
-export enum PlayingState {
-  Playing = "playing",
-  Paused = "paused",
-  Stopped = "stopped",
-  Loading = "loading",
-}
+import { eventBus, EventBusEvent } from "@/utils/bus";
+import { PlayingState } from "@/utils/bus";
+
 export enum Direction {
   Forward = "forward",
   Backward = "backward",
@@ -148,7 +142,6 @@ class Player extends EventEmitter<PlayerEventMap> {
   private currentViewParagraphs: ParagraphWithIndex[] = [];
   private nextPageParagraphs: ParagraphWithIndex[] = [];
   private previousPageParagraphs: ParagraphWithIndex[] = [];
-  private playerControl: PlayerControlInterface = new DefaultPlayerControl();
   private playingState: PlayingState = PlayingState.Stopped;
   private currentParagraphIndex: number = 0;
   private bookId: string = "";
@@ -162,48 +155,47 @@ class Player extends EventEmitter<PlayerEventMap> {
     super();
   }
 
-  async initialize(
-    playerControl: PlayerControlInterface,
-    bookId: string
-  ): Promise<void> {
-    this.playerControl = playerControl;
+  async initialize(bookId: string): Promise<void> {
     this.setPlayingState(PlayingState.Stopped);
     void this.setParagraphIndex(0);
 
     this.bookId = bookId;
 
     this.errors = [];
-    await this.playerControl.initialize();
-    this.playerControl.on(
-      PlayerControlEvent.NEW_PARAGRAPHS_AVAILABLE,
+    eventBus.subscribe(
+      EventBusEvent.NEW_PARAGRAPHS_AVAILABLE,
       async (paragraphs: ParagraphWithIndex[]) => {
+        if (this.playingState === PlayingState.WaitingForNewParagraphs) {
+          this.setPlayingState(PlayingState.Playing);
+        }
+
         this.currentViewParagraphs = paragraphs;
         if (this.playingState === PlayingState.Playing) {
           await this.handleLocationChanged();
         }
       }
     );
-    this.playerControl.on(
-      PlayerControlEvent.NEXT_VIEW_PARAGRAPHS_AVAILABLE,
+    eventBus.subscribe(
+      EventBusEvent.NEXT_VIEW_PARAGRAPHS_AVAILABLE,
       (paragraphs: ParagraphWithIndex[]) => {
         this.nextPageParagraphs = paragraphs;
       }
     );
-    this.playerControl.on(
-      PlayerControlEvent.PREVIOUS_VIEW_PARAGRAPHS_AVAILABLE,
+    eventBus.subscribe(
+      EventBusEvent.PREVIOUS_VIEW_PARAGRAPHS_AVAILABLE,
       (paragraphs: ParagraphWithIndex[]) => {
         this.previousPageParagraphs = paragraphs.reverse();
       }
     );
-    this.playerControl.on(PlayerControlEvent.PAGE_CHANGED, async () => {
+    eventBus.subscribe(EventBusEvent.PAGE_CHANGED, async () => {
       await this.handleLocationChanged();
     });
   }
-  private async clearHighlights() {
-    for (const paragraph of this.currentViewParagraphs) {
-      await this.unhighlightParagraph(paragraph);
-    }
-  }
+  // private async clearHighlights() {
+  //   for (const paragraph of this.currentViewParagraphs) {
+  //     await this.unhighlightParagraph(paragraph);
+  //   }
+  // }
   private async resetParagraphs() {
     if (this.direction === Direction.Backward)
       await this.setParagraphIndex(this.currentViewParagraphs.length - 1);
@@ -211,7 +203,12 @@ class Player extends EventEmitter<PlayerEventMap> {
   }
 
   private handleLocationChanged = async () => {
-    await this.clearHighlights();
+    if (this.playingState === PlayingState.WaitingForNewParagraphs) {
+      await this.resetParagraphs();
+      // Don't call stop() or play() - let NEW_PARAGRAPHS_AVAILABLE handle resuming
+      return;
+    }
+    // await this.clearHighlights();
     if (this.playingState === PlayingState.Playing) {
       await this.stop();
       await this.resetParagraphs();
@@ -229,8 +226,10 @@ class Player extends EventEmitter<PlayerEventMap> {
     this.audioElement.src = "";
   }
   private handleEnded = async () => {
-    await this.clearHighlights();
+    // await this.clearHighlights();
+    const endedParagraph = await this.getCurrentParagraph();
     await this.next();
+    eventBus.publish(EventBusEvent.AUDIO_ENDED, endedParagraph);
   };
   private handleError = async (e: Event) => {
     const audioElement = e.target as HTMLAudioElement;
@@ -336,7 +335,7 @@ class Player extends EventEmitter<PlayerEventMap> {
 
     while (attempt < maxRetries) {
       try {
-        await this.clearHighlights();
+        // await this.clearHighlights();
 
         await this.playWithoutRetry(skipCache);
         return; // success
@@ -393,7 +392,7 @@ class Player extends EventEmitter<PlayerEventMap> {
 
     // Highlight current paragraph and store reference
 
-    await this.highlightParagraph(currentParagraph);
+    // await this.highlightParagraph(currentParagraph);
 
     // Set loading state while waiting for audio
     this.setPlayingState(PlayingState.Loading);
@@ -469,6 +468,7 @@ class Player extends EventEmitter<PlayerEventMap> {
     });
 
     await this.audioElement.play();
+    eventBus.publish(EventBusEvent.PLAYING_AUDIO, currentParagraph);
     this.setPlayingState(PlayingState.Playing);
 
     // Prefetch next paragraphs
@@ -526,7 +526,7 @@ class Player extends EventEmitter<PlayerEventMap> {
 
     this.audioElement.load();
 
-    await this.clearHighlights();
+    // await this.clearHighlights();
     this.setPlayingState(PlayingState.Stopped);
   }
   private prefetchNextPageAudio = (count: number = 3) => {
@@ -562,10 +562,16 @@ class Player extends EventEmitter<PlayerEventMap> {
     }
   };
   private moveToNextPage = async () => {
-    this.playerControl.emit(PlayerControlEvent.MOVE_TO_NEXT_PAGE);
+    this.setPlayingState(PlayingState.WaitingForNewParagraphs);
+    this.currentViewParagraphs = this.nextPageParagraphs;
+    this.nextPageParagraphs = [];
+    eventBus.publish(EventBusEvent.NEXT_PAGE_PARAGRAPHS_EMPTIED);
   };
   private moveToPreviousPage = async () => {
-    this.playerControl.emit(PlayerControlEvent.MOVE_TO_PREVIOUS_PAGE);
+    this.setPlayingState(PlayingState.WaitingForNewParagraphs);
+    this.currentViewParagraphs = this.previousPageParagraphs;
+    this.previousPageParagraphs = [];
+    eventBus.publish(EventBusEvent.PREVIOUS_PAGE_PARAGRAPHS_EMPTIED);
   };
   private updateParagaph = async (index: number) => {
     // bounds checks
@@ -599,14 +605,24 @@ class Player extends EventEmitter<PlayerEventMap> {
   };
   public prev = async () => {
     this.direction = Direction.Backward;
+    const beforeMovedParagraph = await this.getCurrentParagraph();
     const prevIndex = this.currentParagraphIndex - 1;
     await this.updateParagaph(prevIndex);
+    eventBus.publish(
+      EventBusEvent.MOVED_TO_PREV_PARAGRAPH,
+      beforeMovedParagraph
+    );
   };
   public next = async () => {
     this.direction = Direction.Forward;
+    const beforeMovedParagraph = await this.getCurrentParagraph();
     const nextIndex = this.currentParagraphIndex + 1;
 
     await this.updateParagaph(nextIndex);
+    eventBus.publish(
+      EventBusEvent.MOVED_TO_NEXT_PARAGRAPH,
+      beforeMovedParagraph
+    );
   };
 
   public getPlayingState() {
@@ -616,6 +632,7 @@ class Player extends EventEmitter<PlayerEventMap> {
     if (this.playingState === playingState) return;
     this.playingState = playingState;
     this.emit(PlayerEvent.PLAYING_STATE_CHANGED, playingState);
+    eventBus.publish(EventBusEvent.PLAYING_STATE_CHANGED, playingState);
   }
 
   public getErrors() {
@@ -676,18 +693,18 @@ class Player extends EventEmitter<PlayerEventMap> {
     return this.priority - 1;
   }
 
-  private highlightParagraph(paragraph: ParagraphWithIndex) {
-    this.playerControl.emit(
-      PlayerControlEvent.HIGHLIGHT_PARAGRAPH,
-      paragraph.index
-    );
-  }
-  private async unhighlightParagraph(paragraph: ParagraphWithIndex) {
-    this.playerControl.emit(
-      PlayerControlEvent.REMOVE_HIGHLIGHT,
-      paragraph.index
-    );
-  }
+  // private highlightParagraph(paragraph: ParagraphWithIndex) {
+  //   this.playerControl.emit(
+  //     PlayerControlEvent.HIGHLIGHT_PARAGRAPH,
+  //     paragraph.index
+  //   );
+  // }
+  // private async unhighlightParagraph(paragraph: ParagraphWithIndex) {
+  //   this.playerControl.emit(
+  //     PlayerControlEvent.REMOVE_HIGHLIGHT,
+  //     paragraph.index
+  //   );
+  // }
   public async requestAudio(
     paragraph: ParagraphWithIndex,
     priority: number,
@@ -782,6 +799,6 @@ class Player extends EventEmitter<PlayerEventMap> {
  * Singleton instance of the Player class
  * Must be initialized with a player control and book id
  * @example
- * void player.initialize(playerControl, bookId);
+ * void player.initialize( bookId);
  */
 export const player = new Player();

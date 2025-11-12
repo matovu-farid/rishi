@@ -7,8 +7,10 @@ import type { TextContent } from "react-pdf";
 import { pageDataToParagraphs } from "../utils/getPageParagraphs";
 
 import { freezeAtom } from "jotai/utils";
-import { player, PlayerEvent, PlayingState } from "@/models/Player";
+import { player, PlayerEvent } from "@/models/Player";
+import { PlayingState } from "@/utils/bus";
 import { customStore } from "@/stores/jotai";
+import { observe } from "jotai-effect";
 
 export const currentParagraphAtom = atom<ParagraphWithIndex>({
   index: "",
@@ -31,8 +33,20 @@ export const bookNavigationStateAtom = atom<BookNavigationState>(
   BookNavigationState.Idle
 );
 
-export const pageNumberAtom = freezeAtom(atom(0));
+const mutablePageNumberAtom = freezeAtom(atom(0));
+mutablePageNumberAtom.debugLabel = "mutablePageNumberAtom";
+export const pageNumberAtom = freezeAtom(
+  atom((get) => get(mutablePageNumberAtom))
+);
 
+export const scrollPageNumberAtom = freezeAtom(atom(0));
+scrollPageNumberAtom.debugLabel = "scrollPageNumberAtom";
+// sync the scroll page number to the mutable page number
+observe((get, set) => {
+  const scrollPageNumber = get(scrollPageNumberAtom);
+  set(mutablePageNumberAtom, scrollPageNumber);
+}, customStore);
+// TODO: Pull the current scroll page state before modification
 export const setPageNumberAtom = freezeAtom(
   atom(null, (get, set, newPageNumber: number) => {
     const state = get(bookNavigationStateAtom);
@@ -42,18 +56,28 @@ export const setPageNumberAtom = freezeAtom(
     if (state === BookNavigationState.Idle) {
       set(bookNavigationStateAtom, BookNavigationState.Navigating);
     }
-    set(pageNumberAtom, newPageNumber);
+    set(mutablePageNumberAtom, newPageNumber);
   })
 );
 export const isDualPageAtom = atom(false);
-export const currentViewPagesAtom = atom<number[]>((get) => {
+// export const currentViewPagesAtom = atom<number[]>((get) => {
+//   const pageNumber = get(pageNumberAtom);
+//   const isDualPage = get(isDualPageAtom);
+//   if (isDualPage) {
+//     return [pageNumber, pageNumber + 1];
+//   }
+//   return [pageNumber];
+// });
+export const currentViewPagesAtom = atom<number[]>([]);
+observe((get, set) => {
   const pageNumber = get(pageNumberAtom);
   const isDualPage = get(isDualPageAtom);
+
   if (isDualPage) {
-    return [pageNumber, pageNumber + 1];
+    set(currentViewPagesAtom, [pageNumber, pageNumber + 1]);
   }
-  return [pageNumber];
-});
+  set(currentViewPagesAtom, [pageNumber]);
+}, customStore);
 export const previousViewPagesAtom = atom<number[]>((get) => {
   const pageNumber = get(pageNumberAtom);
   const isDualPage = get(isDualPageAtom);

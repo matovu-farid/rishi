@@ -20,8 +20,21 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { BookData } from "@/generated";
 import { epubPlayerControl } from "@/models/epub_player_contol";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAtom, useSetAtom } from "jotai";
-import { currentEpubLocationAtom, renditionAtom } from "@/stores/epub_atoms";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import {
+  currentEpubLocationAtom,
+  getEpubCurrentViewParagraphsAtom,
+  renditionAtom,
+} from "@/stores/epub_atoms";
+import {
+  eventBus,
+  EventBusEvent,
+  eventBusLogsAtom,
+  PlayingState,
+} from "@/utils/bus";
+import { highlightRange, removeHighlight } from "@/epubwrapper";
+import { customStore } from "@/stores/jotai";
+import { getCurrentViewParagraphsAtom } from "./pdf/atoms/paragraph-atoms";
 
 function cn(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
@@ -46,6 +59,67 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
   const [animationKey, setAnimationKey] = useState(0);
   const animationTriggerRef = useRef(0);
   const [rendition, setRendition] = useAtom(renditionAtom);
+
+  async function clearAllHighlights() {
+    console.log("clearAllHighlights");
+    if (!rendition) return;
+    const paragraphs = await customStore.get(getEpubCurrentViewParagraphsAtom);
+    console.log("paragraphs", paragraphs);
+
+    return Promise.all(
+      paragraphs.map((paragraph) => removeHighlight(rendition, paragraph.index))
+    );
+  }
+
+  useAtomValue(eventBusLogsAtom);
+
+  useEffect(() => {
+    if (!rendition) return;
+    eventBus.subscribe(EventBusEvent.NEXT_PAGE_PARAGRAPHS_EMPTIED, async () => {
+      await clearAllHighlights();
+      await rendition.next();
+      eventBus.publish(EventBusEvent.PAGE_CHANGED);
+    });
+
+    eventBus.subscribe(
+      EventBusEvent.PREVIOUS_PAGE_PARAGRAPHS_EMPTIED,
+      async () => {
+        await clearAllHighlights();
+        await rendition.prev();
+        eventBus.publish(EventBusEvent.PAGE_CHANGED);
+      }
+    );
+    eventBus.subscribe(EventBusEvent.PLAYING_AUDIO, async (paragraph) => {
+      await highlightRange(rendition, paragraph.index);
+    });
+    eventBus.subscribe(EventBusEvent.AUDIO_ENDED, async (paragraph) => {
+      await removeHighlight(rendition, paragraph.index);
+    });
+    eventBus.subscribe(
+      EventBusEvent.MOVED_TO_NEXT_PARAGRAPH,
+      async (paragraph) => {
+        await removeHighlight(rendition, paragraph.index);
+      }
+    );
+    eventBus.subscribe(
+      EventBusEvent.MOVED_TO_PREV_PARAGRAPH,
+      async (paragraph) => {
+        await removeHighlight(rendition, paragraph.index);
+      }
+    );
+    eventBus.subscribe(
+      EventBusEvent.PLAYING_STATE_CHANGED,
+      async (playingState) => {
+        if (playingState !== PlayingState.Playing) {
+          await clearAllHighlights();
+          // const paragraphs = customStore.get(getCurrentViewParagraphsAtom);
+          // for (const paragraph of paragraphs) {
+          //   await removeHighlight(rendition, paragraph.index);
+          // }
+        }
+      }
+    );
+  }, [rendition]);
 
   useEffect(() => {
     if (rendition) {

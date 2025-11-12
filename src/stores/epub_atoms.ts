@@ -1,11 +1,15 @@
 import { atom } from "jotai";
 import type Rendition from "epubjs/types/rendition";
 import {
+  clearAllHighlights,
   getCurrentViewParagraphs,
   getNextViewParagraphs,
   getPreviousViewParagraphs,
 } from "@/epubwrapper";
 import { ParagraphWithIndex } from "@/models/player_control";
+import { observe } from "jotai-effect";
+import { customStore } from "./jotai";
+import { eventBus, EventBusEvent } from "@/utils/bus";
 export const renditionAtom = atom<Rendition | null>(null);
 renditionAtom.debugLabel = "renditionAtom";
 
@@ -30,7 +34,11 @@ export const getEpubCurrentViewParagraphsAtom = atom(async (get) => {
 });
 getEpubCurrentViewParagraphsAtom.debugLabel =
   "getEpubCurrentViewParagraphsAtom";
-
+observe((get) => {
+  void get(getEpubCurrentViewParagraphsAtom).then((paragraphs) => {
+    eventBus.publish(EventBusEvent.NEW_PARAGRAPHS_AVAILABLE, paragraphs);
+  });
+}, customStore);
 export const getEpubNextViewParagraphsAtom = atom(async (get) => {
   // Depend on version to trigger refetch
 
@@ -47,7 +55,11 @@ export const getEpubNextViewParagraphsAtom = atom(async (get) => {
   return [] as ParagraphWithIndex[];
 });
 getEpubNextViewParagraphsAtom.debugLabel = "getEpubNextViewParagraphsAtom";
-
+observe((get) => {
+  void get(getEpubNextViewParagraphsAtom).then((paragraphs) => {
+    eventBus.publish(EventBusEvent.NEXT_VIEW_PARAGRAPHS_AVAILABLE, paragraphs);
+  });
+}, customStore);
 export const getEpubPreviousViewParagraphsAtom = atom(async (get) => {
   // Depend on version to trigger refetch
 
@@ -65,3 +77,11 @@ export const getEpubPreviousViewParagraphsAtom = atom(async (get) => {
 });
 getEpubPreviousViewParagraphsAtom.debugLabel =
   "getEpubPreviousViewParagraphsAtom";
+observe((get) => {
+  void get(getEpubPreviousViewParagraphsAtom).then((paragraphs) => {
+    eventBus.publish(
+      EventBusEvent.PREVIOUS_VIEW_PARAGRAPHS_AVAILABLE,
+      paragraphs
+    );
+  });
+}, customStore);

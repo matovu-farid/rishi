@@ -13,12 +13,12 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useEffect, useState, useRef, useCallback } from "react";
-import { PlayingState } from "@/stores/ttsStore";
 import { player, PlayerEvent } from "@/models/Player";
 import { useDebug } from "@/hooks/useDebug";
 import { PlayerControlInterface } from "@/models/player_control";
 import { load } from "@tauri-apps/plugin-store";
 import { atom, useAtom, useAtomValue } from "jotai";
+import { PlayingState } from "@/utils/bus";
 
 interface TTSControlsProps {
   bookId: string;
@@ -65,7 +65,7 @@ export function TTSControls({
 
   useEffect(() => {
     void (async () => {
-      await player.initialize(playerControl, bookId);
+      await player.initialize( bookId);
     })();
   }, [playerControl, bookId, player]);
 
