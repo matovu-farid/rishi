@@ -3,6 +3,8 @@
 // --------------------------------------------------------------------------------------
 import { useAtomValue, useSetAtom } from "jotai";
 import {
+  bookNavigationStateAtom,
+  BookNavigationState,
   getCurrentViewParagraphsAtom,
   getNextViewParagraphsAtom,
   getPreviousViewParagraphsAtom,
@@ -25,6 +27,7 @@ import { BookData } from "@/generated";
 import { pageDataToParagraphs } from "../utils/getPageParagraphs";
 import { customStore } from "@/stores/jotai";
 import isEqual from "fast-deep-equal";
+import { eventBus, EventBusEvent } from "@/utils/bus";
 
 // --------------------------------------------------------------------------------------
 // Returns and maintains the current page number for the active PDF view. The hook:
@@ -89,28 +92,48 @@ export function useCurrentPageNumber(
   const setPreviousViewParagraphs = useSetAtom(getPreviousViewParagraphsAtom);
   useEffect(() => {
     const interval = setInterval(() => {
-      const newPageNumber = getCurrrentPageNumber(window);
+      const visiblePageNumber = getCurrrentPageNumber(window);
+      // Read current page number from atom (always up-to-date, even during async scroll)
+      const atomPageNumber = customStore.get(pageNumberAtom);
+      const navigationState = customStore.get(bookNavigationStateAtom);
 
-      if (newPageNumber !== currentPageNumber) {
-        setScrollPageNumber(newPageNumber);
+      // If navigation is in progress and scroll has completed (visible matches atom),
+      // reset navigation state to allow future navigation
+      if (
+        navigationState === BookNavigationState.Navigating &&
+        visiblePageNumber === atomPageNumber
+      ) {
+        customStore.set(bookNavigationStateAtom, BookNavigationState.Navigated);
       }
+
+      // Detect manual scrolling - update atom if user scrolled manually
+      // BUT: Don't overwrite programmatic navigation that's in progress!
+      if (
+        visiblePageNumber !== atomPageNumber &&
+        navigationState !== BookNavigationState.Navigating
+      ) {
+        setScrollPageNumber(visiblePageNumber);
+      }
+
+      // Use atomPageNumber (updated immediately on programmatic navigation)
+      // instead of visiblePageNumber (which lags during async scroll)
       const pageNumberToPageData = customStore.get(pageNumberToPageDataAtom);
-      const data = pageNumberToPageData[newPageNumber];
+      const data = pageNumberToPageData[atomPageNumber];
       if (!data) return;
 
-      // TODO: Ceck deep equality of the paragraphs and if not the same, update the paragraphs
       const newCurrentViewParagraphs = pageDataToParagraphs(
-        newPageNumber,
-        data || {}
+        atomPageNumber,
+        data
       );
-      const newNextViewParagraphs = pageDataToParagraphs(
-        newPageNumber + 1,
-        pageNumberToPageData[newPageNumber + 1] || {}
-      );
-      const newPreviousViewParagraphs = pageDataToParagraphs(
-        newPageNumber - 1,
-        pageNumberToPageData[newPageNumber - 1] || {}
-      );
+      const nextPageData = pageNumberToPageData[atomPageNumber + 1];
+      const newNextViewParagraphs = nextPageData
+        ? pageDataToParagraphs(atomPageNumber + 1, nextPageData)
+        : [];
+      const previousPageData = pageNumberToPageData[atomPageNumber - 1];
+      const newPreviousViewParagraphs = previousPageData
+        ? pageDataToParagraphs(atomPageNumber - 1, previousPageData)
+        : [];
+
       const currentViewParagraphs = customStore.get(
         getCurrentViewParagraphsAtom
       );
@@ -120,20 +143,28 @@ export function useCurrentPageNumber(
       );
 
       if (!isEqual(currentViewParagraphs, newCurrentViewParagraphs)) {
-        console.log({ currentViewParagraphs, newCurrentViewParagraphs });
         setCurrentViewParagraphs(newCurrentViewParagraphs);
         setIsTextGot(true);
+        // Publish immediately when paragraphs are updated
+        eventBus.publish(
+          EventBusEvent.NEW_PARAGRAPHS_AVAILABLE,
+          newCurrentViewParagraphs
+        );
       }
       if (!isEqual(nextViewParagraphs, newNextViewParagraphs)) {
         setNextViewParagraphs(newNextViewParagraphs);
+        eventBus.publish(
+          EventBusEvent.NEXT_VIEW_PARAGRAPHS_AVAILABLE,
+          newNextViewParagraphs
+        );
       }
       if (!isEqual(previousViewParagraphs, newPreviousViewParagraphs)) {
         setPreviousViewParagraphs(newPreviousViewParagraphs);
+        eventBus.publish(
+          EventBusEvent.PREVIOUS_VIEW_PARAGRAPHS_AVAILABLE,
+          newPreviousViewParagraphs
+        );
       }
-
-      // setNextViewParagraphs(pageDataToParagraphs(newPageNumber + 1, data));
-
-      // setPreviousViewParagraphs(pageDataToParagraphs(newPageNumber - 1, data));
     }, 500);
     return () => clearInterval(interval);
   }, []);

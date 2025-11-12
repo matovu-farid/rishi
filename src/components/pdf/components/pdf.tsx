@@ -71,20 +71,20 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const nextViewParagraphs = useAtomValue(getNextViewParagraphsAtom);
   const previousViewParagraphs = useAtomValue(getPreviousViewParagraphsAtom);
 
-  useEffect(() => {
-    eventBus.publish(
-      EventBusEvent.NEW_PARAGRAPHS_AVAILABLE,
-      currentViewParagraphs
-    );
-    eventBus.publish(
-      EventBusEvent.NEXT_VIEW_PARAGRAPHS_AVAILABLE,
-      nextViewParagraphs
-    );
-    eventBus.publish(
-      EventBusEvent.PREVIOUS_VIEW_PARAGRAPHS_AVAILABLE,
-      previousViewParagraphs
-    );
-  }, [currentPageNumber]);
+  // useEffect(() => {
+  //   eventBus.publish(
+  //     EventBusEvent.NEW_PARAGRAPHS_AVAILABLE,
+  //     currentViewParagraphs
+  //   );
+  //   eventBus.publish(
+  //     EventBusEvent.NEXT_VIEW_PARAGRAPHS_AVAILABLE,
+  //     nextViewParagraphs
+  //   );
+  //   eventBus.publish(
+  //     EventBusEvent.PREVIOUS_VIEW_PARAGRAPHS_AVAILABLE,
+  //     previousViewParagraphs
+  //   );
+  // }, [currentPageNumber]);
 
   const setPageNumber = useSetAtom(setPageNumberAtom);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -194,6 +194,8 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   useEffect(() => {
     eventBus.subscribe(EventBusEvent.NEXT_PAGE_PARAGRAPHS_EMPTIED, async () => {
       clearAllHighlights();
+      // Update page number IMMEDIATELY before scrolling
+      setPageNumber(currentPageNumber + 1);
       nextPage();
       eventBus.publish(EventBusEvent.PAGE_CHANGED);
     });
@@ -202,6 +204,8 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
       EventBusEvent.PREVIOUS_PAGE_PARAGRAPHS_EMPTIED,
       async () => {
         clearAllHighlights();
+        // Update page number IMMEDIATELY before scrolling
+        setPageNumber(currentPageNumber - 1);
         previousPage();
         eventBus.publish(EventBusEvent.PAGE_CHANGED);
       }
@@ -239,7 +243,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
         }
       }
     );
-  }, []);
+  }, [currentPageNumber, setPageNumber]);
   // useCurrentPageNumberNavigation(scrollContainerRef, book.id, virtualizer);
   function onItemClick({ pageNumber: itemPageNumber }: { pageNumber: number }) {
     // Determine direction based on page number comparison
