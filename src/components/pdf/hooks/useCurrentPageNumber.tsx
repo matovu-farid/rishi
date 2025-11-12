@@ -101,15 +101,15 @@ export function useCurrentPageNumber(
       // TODO: Ceck deep equality of the paragraphs and if not the same, update the paragraphs
       const newCurrentViewParagraphs = pageDataToParagraphs(
         newPageNumber,
-        data
+        data || {}
       );
       const newNextViewParagraphs = pageDataToParagraphs(
         newPageNumber + 1,
-        data
+        pageNumberToPageData[newPageNumber + 1] || {}
       );
       const newPreviousViewParagraphs = pageDataToParagraphs(
         newPageNumber - 1,
-        data
+        pageNumberToPageData[newPageNumber - 1] || {}
       );
       const currentViewParagraphs = customStore.get(
         getCurrentViewParagraphsAtom

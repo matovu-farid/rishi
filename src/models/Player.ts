@@ -608,14 +608,11 @@ class Player extends EventEmitter<PlayerEventMap> {
     const beforeMovedParagraph = await this.getCurrentParagraph();
     const prevIndex = this.currentParagraphIndex - 1;
     await this.updateParagaph(prevIndex);
-    eventBus.publish(
-      EventBusEvent.MOVED_TO_PREV_PARAGRAPH,
-      {
-        from: beforeMovedParagraph,
-        to: await this.getCurrentParagraph(),
-        direction: Direction.Backward,
-      }
-    );
+    eventBus.publish(EventBusEvent.MOVED_TO_PREV_PARAGRAPH, {
+      from: beforeMovedParagraph,
+      to: await this.getCurrentParagraph(),
+      direction: Direction.Backward,
+    });
   };
   public next = async () => {
     this.direction = Direction.Forward;
@@ -623,14 +620,11 @@ class Player extends EventEmitter<PlayerEventMap> {
     const nextIndex = this.currentParagraphIndex + 1;
 
     await this.updateParagaph(nextIndex);
-    eventBus.publish(
-      EventBusEvent.MOVED_TO_NEXT_PARAGRAPH,
-      {
-        from: beforeMovedParagraph,
-        to: await this.getCurrentParagraph(),
-        direction: Direction.Forward,
-      }
-    );
+    eventBus.publish(EventBusEvent.MOVED_TO_NEXT_PARAGRAPH, {
+      from: beforeMovedParagraph,
+      to: await this.getCurrentParagraph(),
+      direction: Direction.Forward,
+    });
   };
 
   public getPlayingState() {

@@ -1,7 +1,7 @@
 import EventEmitter from "eventemitter3";
 import { atom } from "jotai";
 export class EventBus extends EventEmitter<EventBusEventMap> {
-  private _logsBugger = [] as { event: string; args: any[] }[];
+  private _logsBugger = [] as { timestamp: number,event: string; args: any[] }[];
   private logsBufferSize = 100;
   constructor() {
     super();
@@ -11,7 +11,7 @@ export class EventBus extends EventEmitter<EventBusEventMap> {
     event: T,
     ...args: EventEmitter.EventArgs<EventBusEventMap, T>
   ): boolean {
-    this._logsBugger.unshift({ event, args });
+    this._logsBugger.unshift({ event, args, timestamp: Date.now() });
     while (this._logsBugger.length > this.logsBufferSize) {
       this._logsBugger.pop();
     }
