@@ -610,7 +610,11 @@ class Player extends EventEmitter<PlayerEventMap> {
     await this.updateParagaph(prevIndex);
     eventBus.publish(
       EventBusEvent.MOVED_TO_PREV_PARAGRAPH,
-      beforeMovedParagraph
+      {
+        from: beforeMovedParagraph,
+        to: await this.getCurrentParagraph(),
+        direction: Direction.Backward,
+      }
     );
   };
   public next = async () => {
@@ -621,7 +625,11 @@ class Player extends EventEmitter<PlayerEventMap> {
     await this.updateParagaph(nextIndex);
     eventBus.publish(
       EventBusEvent.MOVED_TO_NEXT_PARAGRAPH,
-      beforeMovedParagraph
+      {
+        from: beforeMovedParagraph,
+        to: await this.getCurrentParagraph(),
+        direction: Direction.Forward,
+      }
     );
   };
 

@@ -96,13 +96,13 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
     });
     eventBus.subscribe(
       EventBusEvent.MOVED_TO_NEXT_PARAGRAPH,
-      async (paragraph) => {
+      async ({from: paragraph}) => {
         await removeHighlight(rendition, paragraph.index);
       }
     );
     eventBus.subscribe(
       EventBusEvent.MOVED_TO_PREV_PARAGRAPH,
-      async (paragraph) => {
+      async ({from: paragraph}) => {
         await removeHighlight(rendition, paragraph.index);
       }
     );

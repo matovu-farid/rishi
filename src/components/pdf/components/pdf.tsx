@@ -55,7 +55,6 @@ import {
   PlayingState,
 } from "@/utils/bus";
 
-
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -212,18 +211,20 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
       setHighlightedParagraphIndex(paragraph.index);
     });
     eventBus.subscribe(EventBusEvent.AUDIO_ENDED, async (paragraph) => {
-      clearAllHighlights();
+      // clearAllHighlights();
     });
     eventBus.subscribe(
       EventBusEvent.MOVED_TO_NEXT_PARAGRAPH,
-      async (paragraph) => {
-        clearAllHighlights();
+      async ({ to: paragraph }) => {
+        // clearAllHighlights();
+        setHighlightedParagraphIndex(paragraph.index);
       }
     );
     eventBus.subscribe(
       EventBusEvent.MOVED_TO_PREV_PARAGRAPH,
-      async (paragraph) => {
-        clearAllHighlights();
+      async ({ to: paragraph }) => {
+        // clearAllHighlights();
+        setHighlightedParagraphIndex(paragraph.index);
       }
     );
     eventBus.subscribe(

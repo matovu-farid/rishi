@@ -79,12 +79,17 @@ export enum PlayerEvent {
   AUDIO_ENDED = "audioEnded",
   PLAYING_AUDIO = "playingAudio",
 }
+export type MoveChange = {
+  from: ParagraphWithIndex;
+  to: ParagraphWithIndex;
+  direction: Direction;
+};
 export type PlayerEventMap = {
   [PlayerEvent.PARAGRAPH_INDEX_CHANGED]: [ParagraphIndexChangedEvent];
   [PlayerEvent.PLAYING_STATE_CHANGED]: [PlayingState];
   [PlayerEvent.ERRORS_CHANGED]: [ErrorsChangedEvent];
-  [PlayerEvent.MOVED_TO_NEXT_PARAGRAPH]: [ParagraphWithIndex];
-  [PlayerEvent.MOVED_TO_PREV_PARAGRAPH]: [ParagraphWithIndex];
+  [PlayerEvent.MOVED_TO_NEXT_PARAGRAPH]: [MoveChange];
+  [PlayerEvent.MOVED_TO_PREV_PARAGRAPH]: [MoveChange];
   [PlayerEvent.AUDIO_ENDED]: [ParagraphWithIndex];
   [PlayerEvent.PLAYING_AUDIO]: [ParagraphWithIndex];
 };

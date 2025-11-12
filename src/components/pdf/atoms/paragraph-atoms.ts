@@ -12,7 +12,9 @@ import { PlayingState } from "@/utils/bus";
 import { customStore } from "@/stores/jotai";
 import { observe } from "jotai-effect";
 
-export const pageNumberToPageDataAtom = atomWithImmer<{ [pageNumber: number]: TextContent }>({});
+export const pageNumberToPageDataAtom = atomWithImmer<{
+  [pageNumber: number]: TextContent;
+}>({});
 pageNumberToPageDataAtom.debugLabel = "pageNumberToPageDataAtom";
 export const setPageNumberToPageDataAtom = atom(
   null,
