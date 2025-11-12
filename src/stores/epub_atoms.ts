@@ -1,7 +1,6 @@
 import { atom } from "jotai";
 import type Rendition from "epubjs/types/rendition";
 import {
-  clearAllHighlights,
   getCurrentViewParagraphs,
   getNextViewParagraphs,
   getPreviousViewParagraphs,

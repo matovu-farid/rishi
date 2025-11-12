@@ -5,10 +5,15 @@ import {
   isHighlightingAtom,
   pageNumberAtom,
   isPdfRenderedAtom,
-  setPageNumberToPageData,
+  getCurrentViewParagraphsAtom,
+  getNextViewParagraphsAtom,
+  getPreviousViewParagraphsAtom,
+  isTextGotAtom,
+  setPageNumberToPageDataAtom,
 } from "@components/pdf/atoms/paragraph-atoms";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Loader2 } from "lucide-react";
+import { pageDataToParagraphs } from "../utils/getPageParagraphs";
 
 type Transform = [number, number, number, number, number, number];
 
@@ -29,7 +34,6 @@ export function PageComponent({
   onRenderComplete?: () => void;
 }) {
   // const [pageData, setPageData] = useState<TextContent | null>(null);
-  const setPageData = useSetAtom(setPageNumberToPageData);
   const isHighlighting = useAtomValue(isHighlightingAtom);
 
   function isInsideParagraph(wordTransform: Transform) {
@@ -47,11 +51,17 @@ export function PageComponent({
     return isBelowOrEqualTop && isAboveOrEqualBottom;
   }
   const currentPage = useAtomValue(pageNumberAtom);
-  const isActive = currentPage === pageNumber;
-
+  const isCurrentlyViewedPage = currentPage === pageNumber;
+  const isNextPage = currentPage === pageNumber + 1;
+  const isPreviousPage = currentPage === pageNumber - 1;
+  const setCurrentViewParagraphs = useSetAtom(getCurrentViewParagraphsAtom);
+  const setNextViewParagraphs = useSetAtom(getNextViewParagraphsAtom);
+  const setPreviousViewParagraphs = useSetAtom(getPreviousViewParagraphsAtom);
   const setIsCanvasRendered = useSetAtom(isPdfRenderedAtom);
+  const setPageNumberToPageData = useSetAtom(setPageNumberToPageDataAtom);
 
   const highlightedParagraph = useAtomValue(highlightedParagraphAtom);
+  const setIsTextGot = useSetAtom(isTextGotAtom);
 
   return (
     <Page
@@ -79,7 +89,7 @@ export function PageComponent({
       renderAnnotationLayer={true}
       canvasBackground="white"
       onGetTextSuccess={(data) => {
-        setPageData({
+        setPageNumberToPageData({
           pageNumber,
           pageData: data,
         });
@@ -90,7 +100,9 @@ export function PageComponent({
         </div>
       }
       onRenderSuccess={() => {
-        if (isActive) setIsCanvasRendered(bookId, true);
+        if (isCurrentlyViewedPage) {
+          setIsCanvasRendered(bookId, true);
+        }
         onRenderComplete?.();
       }}
     />

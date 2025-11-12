@@ -1,5 +1,4 @@
 import {
-  pageNumberToPageDataAtom,
   Paragraph,
 } from "@components/pdf/atoms/paragraph-atoms";
 import { useAtomValue } from "jotai";
@@ -13,10 +12,10 @@ import { getParagraphThreshold } from "../utils/getParagraphThreshold";
 const MIN_PARAGRAPH_LENGTH = 50;
 
 const PARAGRAPH_INDEX_PER_PAGE = 10000;
-export function getPageParagraphs(pageNumber: number): Paragraph[] {
-  const pageData = useAtomValue(pageNumberToPageDataAtom);
-  return pageDataToParagraphs(pageNumber, pageData[pageNumber]);
-}
+// export function getPageParagraphs(pageNumber: number): Paragraph[] {
+//   const pageData = useAtomValue(pageNumberToPageDataAtom);
+//   return pageDataToParagraphs(pageNumber, pageData[pageNumber]);
+// }
 
 export function pageDataToParagraphs(
   pageNumber: number,

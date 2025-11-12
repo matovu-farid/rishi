@@ -12,6 +12,21 @@ import { PlayingState } from "@/utils/bus";
 import { customStore } from "@/stores/jotai";
 import { observe } from "jotai-effect";
 
+export const pageNumberToPageDataAtom = atomWithImmer<{ [pageNumber: number]: TextContent }>({});
+pageNumberToPageDataAtom.debugLabel = "pageNumberToPageDataAtom";
+export const setPageNumberToPageDataAtom = atom(
+  null,
+  (
+    _,
+    set,
+    { pageNumber, pageData }: { pageNumber: number; pageData: TextContent }
+  ) => {
+    set(pageNumberToPageDataAtom, (draft) => {
+      draft[pageNumber] = pageData;
+    });
+  }
+);
+setPageNumberToPageDataAtom.debugLabel = "setPageNumberToPageDataAtom";
 export const currentParagraphAtom = atom<ParagraphWithIndex>({
   index: "",
   text: "",
@@ -68,16 +83,7 @@ export const isDualPageAtom = atom(false);
 //   }
 //   return [pageNumber];
 // });
-export const currentViewPagesAtom = atom<number[]>([]);
-observe((get, set) => {
-  const pageNumber = get(pageNumberAtom);
-  const isDualPage = get(isDualPageAtom);
 
-  if (isDualPage) {
-    set(currentViewPagesAtom, [pageNumber, pageNumber + 1]);
-  }
-  set(currentViewPagesAtom, [pageNumber]);
-}, customStore);
 export const previousViewPagesAtom = atom<number[]>((get) => {
   const pageNumber = get(pageNumberAtom);
   const isDualPage = get(isDualPageAtom);
@@ -95,30 +101,30 @@ export const nextViewPagesAtom = atom<number[]>((get) => {
   return [pageNumber + 1];
 });
 export const pageCountAtom = atom(0);
-export const pageNumberToPageDataAtom = atomWithImmer<{
-  [pageNumber: number]: TextContent;
-}>({});
-export const setPageNumberToPageData = atom(
-  null,
-  (
-    _,
-    set,
-    { pageNumber, pageData }: { pageNumber: number; pageData: TextContent }
-  ) => {
-    set(pageNumberToPageDataAtom, (draft) => {
-      draft[pageNumber] = pageData;
-    });
-  }
-);
-export const paragraphsAtom = atom((get) => {
-  return (pageNumber: number) => {
-    const pageData = get(pageNumberToPageDataAtom)[pageNumber];
-    if (!pageData) {
-      return [];
-    }
-    return pageDataToParagraphs(pageNumber, pageData);
-  };
-});
+// export const pageNumberToPageDataAtom = atomWithImmer<{
+//   [pageNumber: number]: TextContent;
+// }>({});
+// export const setPageNumberToPageData = atom(
+//   null,
+//   (
+//     _,
+//     set,
+//     { pageNumber, pageData }: { pageNumber: number; pageData: TextContent }
+//   ) => {
+//     set(pageNumberToPageDataAtom, (draft) => {
+//       draft[pageNumber] = pageData;
+//     });
+//   }
+// );
+// export const paragraphsAtom = atom((get) => {
+//   return (pageNumber: number) => {
+//     const pageData = get(pageNumberToPageDataAtom)[pageNumber];
+//     if (!pageData) {
+//       return [];
+//     }
+//     return pageDataToParagraphs(pageNumber, pageData);
+//   };
+// });
 
 export const resetParaphStateAtom = atom(null, (_get, set) => {
   set(isDualPageAtom, false);
@@ -128,47 +134,10 @@ export const resetParaphStateAtom = atom(null, (_get, set) => {
   set(isHighlightingAtom, false);
   set(isRenderedPageStateAtom, {});
 });
-export const getCurrentViewParagraphsAtom = atom((get) => {
-  get(pageNumberAtom);
-  const paragraphs = get(currentViewPagesAtom)
-    .map((pageNumber) => get(paragraphsAtom)(pageNumber))
-    .flat()
-    .filter((p): p is Paragraph => p !== undefined);
+export const getCurrentViewParagraphsAtom = atom<Paragraph[]>([]);
 
-  // Deduplicate by index, keeping the first occurrence as a safety measure
-  const seen = new Set<string>();
-  return paragraphs.filter((paragraph) => {
-    if (seen.has(paragraph.index)) {
-      return false;
-    }
-    seen.add(paragraph.index);
-    return true;
-  });
-});
-
-// export const highlightedParagraphArrayIndexAtom = freezeAtom(atom(-1));
 export const isHighlightingAtom = atom(false);
-// export const highlightedParagraphGlobalIndexAtom = atom(
-//   (get) => {
-//     get(pageNumberAtom);
-//     return get(getCurrentViewParagraphsAtom)[
-//       get(highlightedParagraphArrayIndexAtom)
-//     ].index;
-//   },
-//   (get, set, newGlobalIndex: string) => {
-//     const currentViewParagraphs = get(getCurrentViewParagraphsAtom);
-//     const newArrayIndex = currentViewParagraphs.findIndex(
-//       (paragraph) => paragraph.index === newGlobalIndex
-//     );
 
-//     if (newArrayIndex !== -1) {
-//       set(highlightedParagraphArrayIndexAtom, newArrayIndex);
-//       set(isHighlightingAtom, true);
-//     } else {
-//       set(isHighlightingAtom, false);
-//     }
-//   }
-// );
 export const highlightedParagraphIndexAtom = atom("");
 export const highlightedParagraphAtom = atom((get) => {
   const currentViewParagraphs = get(getCurrentViewParagraphsAtom);
@@ -180,57 +149,28 @@ export const highlightedParagraphAtom = atom((get) => {
   return currentParagraph;
 });
 
-export const highlightedPageAtom = atom((get) => {
-  const highlightedParagraph = get(highlightedParagraphAtom);
-  const paragraphs = get(paragraphsAtom);
-  const hasParagraph = (paragraphs: ParagraphWithIndex[]) =>
-    paragraphs.some(
-      (paragraph) => paragraph.index === highlightedParagraph?.index
-    );
-  const pageNumber = Object.entries(paragraphs)
-    .filter(([_, paragraphs]) => hasParagraph(paragraphs))
-    .map(([pageNumber, _]) => parseInt(pageNumber));
-  if (pageNumber.length === 0) {
-    if (get(currentViewPagesAtom).length > 0) {
-      return get(currentViewPagesAtom)[0];
-    }
-    return 1;
-  }
-  return pageNumber[0];
-});
+// export const highlightedPageAtom = atom((get) => {
+//   const highlightedParagraph = get(highlightedParagraphAtom);
+//   const paragraphs = get(paragraphsAtom);
+//   const hasParagraph = (paragraphs: ParagraphWithIndex[]) =>
+//     paragraphs.some(
+//       (paragraph) => paragraph.index === highlightedParagraph?.index
+//     );
+//   const pageNumber = Object.entries(paragraphs)
+//     .filter(([_, paragraphs]) => hasParagraph(paragraphs))
+//     .map(([pageNumber, _]) => parseInt(pageNumber));
+//   if (pageNumber.length === 0) {
+//     if (get(currentViewPagesAtom).length > 0) {
+//       return get(currentViewPagesAtom)[0];
+//     }
+//     return 1;
+//   }
+//   return pageNumber[0];
+// });
 
-export const getNextViewParagraphsAtom = atom((get) => {
-  const paragraphs = get(nextViewPagesAtom)
-    .map((pageNumber) => get(paragraphsAtom)(pageNumber))
-    .flat()
-    .filter((p): p is Paragraph => p !== undefined);
+export const getNextViewParagraphsAtom = atom<Paragraph[]>([]);
 
-  // Deduplicate by index, keeping the first occurrence as a safety measure
-  const seen = new Set<string>();
-  return paragraphs.filter((paragraph) => {
-    if (seen.has(paragraph.index)) {
-      return false;
-    }
-    seen.add(paragraph.index);
-    return true;
-  });
-});
-export const getPreviousViewParagraphsAtom = atom((get) => {
-  const paragraphs = get(previousViewPagesAtom)
-    .map((pageNumber) => get(paragraphsAtom)(pageNumber))
-    .flat()
-    .filter((p): p is Paragraph => p !== undefined);
-
-  // Deduplicate by index, keeping the first occurrence as a safety measure
-  const seen = new Set<string>();
-  return paragraphs.filter((paragraph) => {
-    if (seen.has(paragraph.index)) {
-      return false;
-    }
-    seen.add(paragraph.index);
-    return true;
-  });
-});
+export const getPreviousViewParagraphsAtom = atom<Paragraph[]>([]);
 
 export const changePageAtom = atom(null, async (get, set, offset: number) => {
   set(isRenderedPageStateAtom, {});
@@ -253,30 +193,8 @@ export const nextPageAtom = atom(null, async (get, set) => {
   await set(changePageAtom, pageIncrement);
 });
 const isRenderedPageStateAtom = atom<{ [pageNumber: number]: boolean }>({});
-export const isRenderedPageAtom = atom(
-  (get) => {
-    const state = get(isRenderedPageStateAtom);
-    return get(currentViewPagesAtom).reduce(
-      (acc, pageNumber) => {
-        acc[pageNumber] = state[pageNumber] ?? false;
-        return acc;
-      },
-      {} as { [pageNumber: number]: boolean }
-    );
-  },
-  (get, set, pageNumber: number, isRendered: boolean) => {
-    const current = get(isRenderedPageStateAtom);
-    set(isRenderedPageStateAtom, {
-      ...current,
-      [pageNumber]: isRendered,
-    });
-  }
-);
-export const isTextGotAtom = atom((get) => {
-  return get(currentViewPagesAtom)
-    .map((pageNumber) => get(isRenderedPageAtom)[pageNumber])
-    .every((rendered) => rendered);
-});
+
+export const isTextGotAtom = atom(false);
 export const booksAtom = atom<string[]>([]);
 export const pdfsRenderedAtom = atom<{ [bookId: string]: boolean }>({});
 export const isPdfRenderedAtom = atom(
@@ -355,29 +273,23 @@ isPdfRenderedAtom.debugLabel = "isPdfRenderedAtom";
 currentParagraphAtom.debugLabel = "currentParagraphAtom";
 pageNumberAtom.debugLabel = "pageNumberAtom";
 isDualPageAtom.debugLabel = "isDualPageAtom";
-currentViewPagesAtom.debugLabel = "currentViewPagesAtom";
 previousViewPagesAtom.debugLabel = "previousViewPagesAtom";
 nextViewPagesAtom.debugLabel = "nextViewPagesAtom";
 pageCountAtom.debugLabel = "pageCountAtom";
-paragraphsAtom.debugLabel = "paragraphsAtom";
 getCurrentViewParagraphsAtom.debugLabel = "getCurrentViewParagraphsAtom";
 getNextViewParagraphsAtom.debugLabel = "getNextViewParagraphsAtom";
 getPreviousViewParagraphsAtom.debugLabel = "getPreviousViewParagraphsAtom";
 isHighlightingAtom.debugLabel = "isHighlightingAtom";
 highlightedParagraphIndexAtom.debugLabel = "highlightedParagraphIndexAtom";
 highlightedParagraphAtom.debugLabel = "highlightedParagraphAtom";
-highlightedPageAtom.debugLabel = "highlightedPageAtom";
 changePageAtom.debugLabel = "changePageAtom";
 pageIncrementAtom.debugLabel = "pageIncrementAtom";
 previousPageAtom.debugLabel = "previousPageAtom";
 nextPageAtom.debugLabel = "nextPageAtom";
 isRenderedPageStateAtom.debugLabel = "isRenderedPageStateAtom";
-isRenderedPageAtom.debugLabel = "isRenderedPageAtom";
 isTextGotAtom.debugLabel = "isTextGotAtom";
 isPdfRenderedAtom.debugLabel = "isPdfRenderedAtom";
 
 pdfsRenderedAtom.debugLabel = "PdfsRenderedAtom";
 booksAtom.debugLabel = "booksAtom";
-pageNumberToPageDataAtom.debugLabel = "pageNumberToPageDataAtom";
-setPageNumberToPageData.debugLabel = "setPageNumberToPageData";
 bookNavigationStateAtom.debugLabel = "bookNavigationStateAtom";

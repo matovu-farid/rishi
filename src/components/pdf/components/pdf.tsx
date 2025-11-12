@@ -17,8 +17,15 @@ import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 
 import {
+  getCurrentViewParagraphsAtom,
+  getNextViewParagraphsAtom,
+  getPreviousViewParagraphsAtom,
   hasNavigatedToPageAtom,
+  highlightedParagraphIndexAtom,
+  isHighlightingAtom,
+  isPdfRenderedAtom,
   pageCountAtom,
+  pageNumberAtom,
   resetParaphStateAtom,
   setPageNumberAtom,
 } from "@components/pdf/atoms/paragraph-atoms";
@@ -42,8 +49,15 @@ import { toast } from "react-toastify";
 import { queryClient } from "@components/providers";
 import { useCurrentPageNumber } from "../hooks/useCurrentPageNumber";
 import { PDFDocumentProxy } from "pdfjs-dist";
-import { useHighlightParagraph } from "../hooks/useHighlightParagraph";
 import { useVirualization } from "../hooks/useVirualization";
+import {
+  eventBus,
+  EventBusEvent,
+  eventBusLogsAtom,
+  PlayingState,
+} from "@/utils/bus";
+import { pageDataToParagraphs } from "../utils/getPageParagraphs";
+import { customStore } from "@/stores/jotai";
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -54,21 +68,42 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const [theme] = useState<ThemeType>(ThemeType.White);
   const [tocOpen, setTocOpen] = useState(false);
-  // const [direction, setDirection] = useState<"left" | "right">("right");
+  const currentPageNumber = useAtomValue(pageNumberAtom);
+  useAtomValue(eventBusLogsAtom);
+
+  const currentViewParagraphs = useAtomValue(getCurrentViewParagraphsAtom);
+  const nextViewParagraphs = useAtomValue(getNextViewParagraphsAtom);
+  const previousViewParagraphs = useAtomValue(getPreviousViewParagraphsAtom);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      eventBus.publish(
+        EventBusEvent.NEW_PARAGRAPHS_AVAILABLE,
+        currentViewParagraphs
+      );
+      eventBus.publish(
+        EventBusEvent.NEXT_VIEW_PARAGRAPHS_AVAILABLE,
+        nextViewParagraphs
+      );
+      eventBus.publish(
+        EventBusEvent.PREVIOUS_VIEW_PARAGRAPHS_AVAILABLE,
+        previousViewParagraphs
+      );
+    }, 1000);
+    return () => clearTimeout(interval);
+  }, [currentPageNumber]);
 
   const setPageNumber = useSetAtom(setPageNumberAtom);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   useChuncking(scrollContainerRef);
 
-  // useCurrentPageNumber(scrollContainerRef);
+  useCurrentPageNumber(scrollContainerRef, book);
 
   useUpdateCoverIMage(book);
   useSetupMenu();
   // Ref for the scrollable container
 
   const resetParaphState = useSetAtom(resetParaphStateAtom);
-
-  useHighlightParagraph();
 
   useEffect(() => {
     return () => {
@@ -141,6 +176,75 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     useVirualization(scrollContainerRef, book);
 
   useCurrentPageNumber(scrollContainerRef, book, virtualizer);
+  const setIsHighlighting = useSetAtom(isHighlightingAtom);
+  const setHighlightedParagraphIndex = useSetAtom(
+    highlightedParagraphIndexAtom
+  );
+  function nextPage() {
+    virtualizer.scrollToIndex(currentPageNumber + 1, {
+      align: "start",
+      behavior: "smooth",
+    });
+  }
+  function previousPage() {
+    virtualizer.scrollToIndex(currentPageNumber - 1, {
+      align: "start",
+      behavior: "smooth",
+    });
+  }
+
+  function clearAllHighlights() {
+    setIsHighlighting(false);
+    setHighlightedParagraphIndex("");
+  }
+
+  useEffect(() => {
+    eventBus.subscribe(EventBusEvent.NEXT_PAGE_PARAGRAPHS_EMPTIED, async () => {
+      clearAllHighlights();
+      nextPage();
+      eventBus.publish(EventBusEvent.PAGE_CHANGED);
+    });
+
+    eventBus.subscribe(
+      EventBusEvent.PREVIOUS_PAGE_PARAGRAPHS_EMPTIED,
+      async () => {
+        clearAllHighlights();
+        previousPage();
+        eventBus.publish(EventBusEvent.PAGE_CHANGED);
+      }
+    );
+    eventBus.subscribe(EventBusEvent.PLAYING_AUDIO, async (paragraph) => {
+      setIsHighlighting(true);
+      setHighlightedParagraphIndex(paragraph.index);
+    });
+    eventBus.subscribe(EventBusEvent.AUDIO_ENDED, async (paragraph) => {
+      clearAllHighlights();
+    });
+    eventBus.subscribe(
+      EventBusEvent.MOVED_TO_NEXT_PARAGRAPH,
+      async (paragraph) => {
+        clearAllHighlights();
+      }
+    );
+    eventBus.subscribe(
+      EventBusEvent.MOVED_TO_PREV_PARAGRAPH,
+      async (paragraph) => {
+        clearAllHighlights();
+      }
+    );
+    eventBus.subscribe(
+      EventBusEvent.PLAYING_STATE_CHANGED,
+      async (playingState) => {
+        if (playingState !== PlayingState.Playing) {
+          clearAllHighlights();
+          // const paragraphs = customStore.get(getCurrentViewParagraphsAtom);
+          // for (const paragraph of paragraphs) {
+          //   await removeHighlight(rendition, paragraph.index);
+          // }
+        }
+      }
+    );
+  }, []);
   // useCurrentPageNumberNavigation(scrollContainerRef, book.id, virtualizer);
   function onItemClick({ pageNumber: itemPageNumber }: { pageNumber: number }) {
     // Determine direction based on page number comparison

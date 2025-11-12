@@ -3,8 +3,13 @@
 // --------------------------------------------------------------------------------------
 import { useAtomValue, useSetAtom } from "jotai";
 import {
+  getCurrentViewParagraphsAtom,
+  getNextViewParagraphsAtom,
+  getPreviousViewParagraphsAtom,
   isPdfRenderedAtom,
+  isTextGotAtom,
   pageNumberAtom,
+  pageNumberToPageDataAtom,
   scrollPageNumberAtom,
   setPageNumberAtom,
 } from "../atoms/paragraph-atoms";
@@ -17,6 +22,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { synchronizedUpdateBookLocation } from "@/modules/sync_books";
 import { toast } from "react-toastify";
 import { BookData } from "@/generated";
+import { pageDataToParagraphs } from "../utils/getPageParagraphs";
+import { customStore } from "@/stores/jotai";
+import isEqual from "fast-deep-equal";
 
 // --------------------------------------------------------------------------------------
 // Returns and maintains the current page number for the active PDF view. The hook:
@@ -47,8 +55,9 @@ export function useCurrentPageNumber(
   // Debounce the page calculation .
   // ------------------------------------------------------------------------------------
   const setCurrentPageNumberThrottled = useCallback(
-    debounce(3000, () => {
+    throttle(3000, () => {
       const newPageNumber = getCurrrentPageNumber(window);
+      console.log("newPageNumber", newPageNumber);
       if (newPageNumber !== currentPageNumber) {
         setScrollPageNumber(newPageNumber);
       }
@@ -73,6 +82,61 @@ export function useCurrentPageNumber(
       scrollDiv?.removeEventListener("scroll", handleScroll);
     };
   }, [scrollDiv, currentPageNumber, isPdfRendered]);
+
+  const setCurrentViewParagraphs = useSetAtom(getCurrentViewParagraphsAtom);
+  const setIsTextGot = useSetAtom(isTextGotAtom);
+  const setNextViewParagraphs = useSetAtom(getNextViewParagraphsAtom);
+  const setPreviousViewParagraphs = useSetAtom(getPreviousViewParagraphsAtom);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const newPageNumber = getCurrrentPageNumber(window);
+
+      if (newPageNumber !== currentPageNumber) {
+        setScrollPageNumber(newPageNumber);
+      }
+      const pageNumberToPageData = customStore.get(pageNumberToPageDataAtom);
+      const data = pageNumberToPageData[newPageNumber];
+      if (!data) return;
+
+      // TODO: Ceck deep equality of the paragraphs and if not the same, update the paragraphs
+      const newCurrentViewParagraphs = pageDataToParagraphs(
+        newPageNumber,
+        data
+      );
+      const newNextViewParagraphs = pageDataToParagraphs(
+        newPageNumber + 1,
+        data
+      );
+      const newPreviousViewParagraphs = pageDataToParagraphs(
+        newPageNumber - 1,
+        data
+      );
+      const currentViewParagraphs = customStore.get(
+        getCurrentViewParagraphsAtom
+      );
+      const nextViewParagraphs = customStore.get(getNextViewParagraphsAtom);
+      const previousViewParagraphs = customStore.get(
+        getPreviousViewParagraphsAtom
+      );
+
+      if (!isEqual(currentViewParagraphs, newCurrentViewParagraphs)) {
+        console.log({ currentViewParagraphs, newCurrentViewParagraphs });
+        setCurrentViewParagraphs(newCurrentViewParagraphs);
+        setIsTextGot(true);
+      }
+      if (!isEqual(nextViewParagraphs, newNextViewParagraphs)) {
+        setNextViewParagraphs(newNextViewParagraphs);
+      }
+      if (!isEqual(previousViewParagraphs, newPreviousViewParagraphs)) {
+        setPreviousViewParagraphs(newPreviousViewParagraphs);
+      }
+
+      // setNextViewParagraphs(pageDataToParagraphs(newPageNumber + 1, data));
+
+      // setPreviousViewParagraphs(pageDataToParagraphs(newPageNumber - 1, data));
+    }, 500);
+    return () => clearInterval(interval);
+  }, []);
   const queryClient = useQueryClient();
   const updateBookLocationMutation = useMutation({
     mutationFn: async ({
@@ -90,6 +154,7 @@ export function useCurrentPageNumber(
     },
     onSuccess() {
       void queryClient.invalidateQueries({ queryKey: ["books"] });
+      void queryClient.invalidateQueries({ queryKey: ["book", bookId] });
     },
   });
 
@@ -101,10 +166,10 @@ export function useCurrentPageNumber(
     if (currentPageNumber === 0) return;
     const viewedPageNumber = getCurrrentPageNumber(window);
     if (viewedPageNumber === currentPageNumber) return;
-    virtualizer.scrollToIndex(currentPageNumber - 1, {
-      align: "start",
-      behavior: "smooth",
-    });
+    // virtualizer.scrollToIndex(currentPageNumber - 1, {
+    //   align: "start",
+    //   behavior: "smooth",
+    // });
   }, [currentPageNumber, virtualizer]);
   // ------------------------------------------------------------------------------------
   // Persist the latest page to the backend after the user settles on a location.
