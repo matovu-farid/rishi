@@ -18,7 +18,6 @@ import { Rendition } from "epubjs/types";
 import { synchronizedUpdateBookLocation } from "@/modules/sync_books";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { BookData } from "@/generated";
-import { epubPlayerControl } from "@/models/epub_player_contol";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
@@ -296,7 +295,7 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
         </AnimatePresence>
       </div>
       {/* TTS Controls - Draggable */}
-      {<TTSControls bookId={book.id} playerControl={epubPlayerControl} />}
+      {<TTSControls bookId={book.id} />}
     </div>
   );
 }

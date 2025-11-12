@@ -16,7 +16,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { getCurrrentPageNumber } from "../utils/getCurrentPageNumbers";
 import { debounce, throttle } from "throttle-debounce";
-import { playerControl } from "@/models/pdf_player_control";
+// import { playerControl } from "@/models/pdf_player_control";
 import type { Virtualizer } from "@tanstack/react-virtual";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { synchronizedUpdateBookLocation } from "@/modules/sync_books";
@@ -45,7 +45,7 @@ export function useCurrentPageNumber(
   // ------------------------------------------------------------------------------------
   // Dereference the scrolling container once so listeners can be registered cleanly.
   // ------------------------------------------------------------------------------------
-  const scrollDiv = scrollRef.current;
+  // const scrollDiv = scrollRef.current;
   // Set book data only when book prop changes, not on every render
   useEffect(() => {
     setPageNumber(parseInt(book.location, 10));
@@ -54,34 +54,34 @@ export function useCurrentPageNumber(
   // ------------------------------------------------------------------------------------
   // Debounce the page calculation .
   // ------------------------------------------------------------------------------------
-  const setCurrentPageNumberThrottled = useCallback(
-    throttle(3000, () => {
-      const newPageNumber = getCurrrentPageNumber(window);
-      console.log("newPageNumber", newPageNumber);
-      if (newPageNumber !== currentPageNumber) {
-        setScrollPageNumber(newPageNumber);
-      }
-    }),
-    [currentPageNumber]
-  );
-  const isPdfRendered = useAtomValue(isPdfRenderedAtom);
-  useEffect(() => {
-    if (!isPdfRendered(bookId)) return;
-    void playerControl.initialize();
-    const handleResize = () => {
-      setCurrentPageNumberThrottled();
-    };
-    const handleScroll = () => {
-      setCurrentPageNumberThrottled();
-    };
-    scrollDiv?.addEventListener("resize", handleResize);
-    scrollDiv?.addEventListener("scroll", handleScroll);
+  // const setCurrentPageNumberThrottled = useCallback(
+  //   throttle(3000, () => {
+  //     const newPageNumber = getCurrrentPageNumber(window);
+  //     console.log("newPageNumber", newPageNumber);
+  //     if (newPageNumber !== currentPageNumber) {
+  //       setScrollPageNumber(newPageNumber);
+  //     }
+  //   }),
+  //   [currentPageNumber]
+  // );
+  // const isPdfRendered = useAtomValue(isPdfRenderedAtom);
+  // useEffect(() => {
+  //   if (!isPdfRendered(bookId)) return;
+  //   void playerControl.initialize();
+  //   const handleResize = () => {
+  //     setCurrentPageNumberThrottled();
+  //   };
+  //   const handleScroll = () => {
+  //     setCurrentPageNumberThrottled();
+  //   };
+  //   scrollDiv?.addEventListener("resize", handleResize);
+  //   scrollDiv?.addEventListener("scroll", handleScroll);
 
-    return () => {
-      scrollDiv?.removeEventListener("resize", handleResize);
-      scrollDiv?.removeEventListener("scroll", handleScroll);
-    };
-  }, [scrollDiv, currentPageNumber, isPdfRendered]);
+  //   return () => {
+  //     scrollDiv?.removeEventListener("resize", handleResize);
+  //     scrollDiv?.removeEventListener("scroll", handleScroll);
+  //   };
+  // }, [scrollDiv, currentPageNumber, isPdfRendered]);
 
   const setCurrentViewParagraphs = useSetAtom(getCurrentViewParagraphsAtom);
   const setIsTextGot = useSetAtom(isTextGotAtom);
@@ -201,51 +201,51 @@ export function findElementWithPageNumber(
 // Smoothly scrolls to the active page number the first time the PDF renders. Works with
 // both virtualized and non-virtualized layouts.
 // --------------------------------------------------------------------------------------
-export function useCurrentPageNumberNavigation(
-  scrollContainerRef: React.RefObject<HTMLDivElement | null>,
-  bookId: string,
-  virtualizer?: Virtualizer<HTMLDivElement, Element>
-) {
-  const currentPageNumber = useAtomValue(pageNumberAtom);
-  const isPdfRendered = useAtomValue(isPdfRenderedAtom);
-  const [hasNavigatedToPage, setHasNavigatedToPage] = useState(false);
+// export function useCurrentPageNumberNavigation(
+//   scrollContainerRef: React.RefObject<HTMLDivElement | null>,
+//   bookId: string,
+//   virtualizer?: Virtualizer<HTMLDivElement, Element>
+// ) {
+//   const currentPageNumber = useAtomValue(pageNumberAtom);
+//   const isPdfRendered = useAtomValue(isPdfRenderedAtom);
+//   const [hasNavigatedToPage, setHasNavigatedToPage] = useState(false);
 
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!isPdfRendered(bookId)) return;
-    if (hasNavigatedToPage) return;
-    void playerControl.initialize();
-    const targetIndex = Math.max(0, currentPageNumber - 1);
+//   useEffect(() => {
+//     const container = scrollContainerRef.current;
+//     if (!isPdfRendered(bookId)) return;
+//     if (hasNavigatedToPage) return;
+//     void playerControl.initialize();
+//     const targetIndex = Math.max(0, currentPageNumber - 1);
 
-    if (virtualizer) {
-      virtualizer.scrollToIndex(targetIndex, {
-        align: "start",
-        behavior: "auto",
-      });
+//     if (virtualizer) {
+//       virtualizer.scrollToIndex(targetIndex, {
+//         align: "start",
+//         behavior: "auto",
+//       });
 
-      setHasNavigatedToPage(true);
-      return;
-    }
+//       setHasNavigatedToPage(true);
+//       return;
+//     }
 
-    if (!container) return;
+//     if (!container) return;
 
-    const element = findElementWithPageNumber(currentPageNumber, container);
+//     const element = findElementWithPageNumber(currentPageNumber, container);
 
-    if (element) {
-      element.scrollIntoView({ behavior: "auto", block: "start" });
-      setHasNavigatedToPage(true);
-    } else {
-      console.error(
-        `>>> Element with page number ${currentPageNumber} not found`
-      );
-    }
-  }, [
-    bookId,
-    currentPageNumber,
-    hasNavigatedToPage,
-    isPdfRendered,
-    scrollContainerRef,
-    virtualizer,
-  ]);
-  return { hasNavigatedToPage };
-}
+//     if (element) {
+//       element.scrollIntoView({ behavior: "auto", block: "start" });
+//       setHasNavigatedToPage(true);
+//     } else {
+//       console.error(
+//         `>>> Element with page number ${currentPageNumber} not found`
+//       );
+//     }
+//   }, [
+//     bookId,
+//     currentPageNumber,
+//     hasNavigatedToPage,
+//     isPdfRendered,
+//     scrollContainerRef,
+//     virtualizer,
+//   ]);
+//   return { hasNavigatedToPage };
+// }

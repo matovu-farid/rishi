@@ -15,14 +15,12 @@ import { toast } from "react-toastify";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { player, PlayerEvent } from "@/models/Player";
 import { useDebug } from "@/hooks/useDebug";
-import { PlayerControlInterface } from "@/models/player_control";
 import { load } from "@tauri-apps/plugin-store";
 import { atom, useAtom, useAtomValue } from "jotai";
 import { PlayingState } from "@/utils/bus";
 
 interface TTSControlsProps {
   bookId: string;
-  playerControl: PlayerControlInterface;
   disabled?: boolean;
 }
 
@@ -44,11 +42,7 @@ const getDefaultPosition = (): { x: number; y: number } => {
 const playerAtom = atom(player);
 playerAtom.debugLabel = "playerAtom";
 
-export function TTSControls({
-  bookId,
-  playerControl,
-  disabled = false,
-}: TTSControlsProps) {
+export function TTSControls({ bookId, disabled = false }: TTSControlsProps) {
   const [showError, setShowError] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [hasShownError, setHasShownError] = useState(false);
@@ -65,9 +59,9 @@ export function TTSControls({
 
   useEffect(() => {
     void (async () => {
-      await player.initialize( bookId);
+      await player.initialize(bookId);
     })();
-  }, [playerControl, bookId, player]);
+  }, [bookId, player]);
 
   const [playingState, setPlayingState] = useState<PlayingState>(
     player.getPlayingState()

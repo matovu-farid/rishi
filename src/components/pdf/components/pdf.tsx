@@ -23,7 +23,6 @@ import {
   hasNavigatedToPageAtom,
   highlightedParagraphIndexAtom,
   isHighlightingAtom,
-  isPdfRenderedAtom,
   pageCountAtom,
   pageNumberAtom,
   resetParaphStateAtom,
@@ -31,7 +30,6 @@ import {
 } from "@components/pdf/atoms/paragraph-atoms";
 import { useAtomValue, useSetAtom } from "jotai";
 import { TTSControls } from "../../TTSControls";
-import { playerControl } from "@/models/pdf_player_control";
 import {
   Sheet,
   SheetContent,
@@ -56,8 +54,7 @@ import {
   eventBusLogsAtom,
   PlayingState,
 } from "@/utils/bus";
-import { pageDataToParagraphs } from "../utils/getPageParagraphs";
-import { customStore } from "@/stores/jotai";
+
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -76,21 +73,18 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const previousViewParagraphs = useAtomValue(getPreviousViewParagraphsAtom);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      eventBus.publish(
-        EventBusEvent.NEW_PARAGRAPHS_AVAILABLE,
-        currentViewParagraphs
-      );
-      eventBus.publish(
-        EventBusEvent.NEXT_VIEW_PARAGRAPHS_AVAILABLE,
-        nextViewParagraphs
-      );
-      eventBus.publish(
-        EventBusEvent.PREVIOUS_VIEW_PARAGRAPHS_AVAILABLE,
-        previousViewParagraphs
-      );
-    }, 1000);
-    return () => clearTimeout(interval);
+    eventBus.publish(
+      EventBusEvent.NEW_PARAGRAPHS_AVAILABLE,
+      currentViewParagraphs
+    );
+    eventBus.publish(
+      EventBusEvent.NEXT_VIEW_PARAGRAPHS_AVAILABLE,
+      nextViewParagraphs
+    );
+    eventBus.publish(
+      EventBusEvent.PREVIOUS_VIEW_PARAGRAPHS_AVAILABLE,
+      previousViewParagraphs
+    );
   }, [currentPageNumber]);
 
   const setPageNumber = useSetAtom(setPageNumberAtom);
@@ -382,13 +376,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
           </div>
         </Document>
         {/* TTS Controls - Draggable */}
-        {
-          <TTSControls
-            key={book.id}
-            bookId={book.id}
-            playerControl={playerControl}
-          />
-        }
+        {<TTSControls key={book.id} bookId={book.id} />}
       </div>
       {/* TOC Sidebar */}
       <Sheet open={tocOpen} onOpenChange={setTocOpen}>
