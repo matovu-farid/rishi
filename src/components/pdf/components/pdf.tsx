@@ -23,12 +23,13 @@ import {
   hasNavigatedToPageAtom,
   highlightedParagraphIndexAtom,
   isHighlightingAtom,
+  isLookingForNextParagraphAtom,
   pageCountAtom,
   pageNumberAtom,
   resetParaphStateAtom,
   setPageNumberAtom,
 } from "@components/pdf/atoms/paragraph-atoms";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { TTSControls } from "../../TTSControls";
 import {
   Sheet,
@@ -55,6 +56,7 @@ import {
   PlayingState,
 } from "@/utils/bus";
 import { animate } from "framer-motion";
+import { customStore } from "@/stores/jotai";
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -174,26 +176,30 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const setHighlightedParagraphIndex = useSetAtom(
     highlightedParagraphIndexAtom
   );
+  const setIsLookingForNextParagraph = useSetAtom(
+    isLookingForNextParagraphAtom
+  );
+
   function nextPage() {
-    // virtualizer.scrollToIndex(currentPageNumber + 1, {
-    //   align: "start",
-    //   behavior: "smooth",
-    // });
-    virtualizer.scrollBy(500, { behavior: "smooth", align: "auto" });
-    // animate(500, {
-    //   duration: 0.8,
-    //   ease: [0.4, 0, 0.2, 1], // Custom easing curve for smoother feel
-    //   onUpdate: (latest) => {
-    //     container.scrollTop = latest;
-    //   },
-    // });
+    setIsLookingForNextParagraph(true);
+    const pageIndex = customStore.get(pageNumberAtom) - 1;
+    virtualizer.scrollToIndex(pageIndex + 1, {
+      align: "start",
+      behavior: "auto",
+    });
+    setIsLookingForNextParagraph(false);
+
   }
   function previousPage() {
-    virtualizer.scrollBy(-500, { behavior: "smooth", align: "auto" });
-    // virtualizer.scrollToIndex(currentPageNumber - 1, {
-    //   align: "start",
-    //   behavior: "smooth",
-    // });
+    // virtualizer.scrollBy(-500, { behavior: "smooth", align: "auto" });
+    setIsLookingForNextParagraph(true);
+    const pageIndex = customStore.get(pageNumberAtom) - 1;
+    virtualizer.scrollToIndex(pageIndex - 1, {
+      align: "end",
+      behavior: "auto",
+    });
+    setIsLookingForNextParagraph(false);
+
   }
 
   function clearAllHighlights() {
