@@ -336,13 +336,6 @@ class Player extends EventEmitter<PlayerEventMap> {
     // Add listeners using the bound method references directly
     this.audioElement.addEventListener("ended", this.handleEnded);
     this.audioElement.addEventListener("error", this.handleError);
-    console.log(
-      `>>> Player: currentViewParagraphs: ${this.currentViewParagraphs}`
-    );
-    console.log(`>>> Player: nextPageParagraphs: ${this.nextPageParagraphs}`);
-    console.log(
-      `>>> Player: previousPageParagraphs: ${this.previousPageParagraphs}`
-    );
 
     let attempt = 0;
     let skipCache = false;
@@ -374,7 +367,6 @@ class Player extends EventEmitter<PlayerEventMap> {
   }
 
   public async playWithoutRetry(skipCache: boolean = false) {
-    debugger;
     if (this.playingState === PlayingState.Playing) return;
 
     if (this.currentViewParagraphs.length === 0) {

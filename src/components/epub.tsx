@@ -60,10 +60,8 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
   const [rendition, setRendition] = useAtom(renditionAtom);
 
   async function clearAllHighlights() {
-    console.log("clearAllHighlights");
     if (!rendition) return;
     const paragraphs = await customStore.get(getEpubCurrentViewParagraphsAtom);
-    console.log("paragraphs", paragraphs);
 
     return Promise.all(
       paragraphs.map((paragraph) => removeHighlight(rendition, paragraph.index))
@@ -89,6 +87,7 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
       }
     );
     eventBus.subscribe(EventBusEvent.PLAYING_AUDIO, async (paragraph) => {
+      console.log(">>> PLAYING_AUDIO", paragraph);
       await highlightRange(rendition, paragraph.index);
     });
     eventBus.subscribe(EventBusEvent.AUDIO_ENDED, async (paragraph) => {
@@ -96,13 +95,13 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
     });
     eventBus.subscribe(
       EventBusEvent.MOVED_TO_NEXT_PARAGRAPH,
-      async ({from: paragraph}) => {
+      async ({ from: paragraph }) => {
         await removeHighlight(rendition, paragraph.index);
       }
     );
     eventBus.subscribe(
       EventBusEvent.MOVED_TO_PREV_PARAGRAPH,
-      async ({from: paragraph}) => {
+      async ({ from: paragraph }) => {
         await removeHighlight(rendition, paragraph.index);
       }
     );
