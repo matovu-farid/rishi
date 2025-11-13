@@ -12,6 +12,7 @@ import {
 } from "./player_control";
 import { eventBus, EventBusEvent } from "@/utils/bus";
 import { PlayingState } from "@/utils/bus";
+import isEqual from "fast-deep-equal";
 
 export enum Direction {
   Forward = "forward",
@@ -162,13 +163,14 @@ class Player extends EventEmitter<PlayerEventMap> {
     this.bookId = bookId;
 
     this.errors = [];
+
     eventBus.subscribe(
       EventBusEvent.NEW_PARAGRAPHS_AVAILABLE,
       async (paragraphs: ParagraphWithIndex[]) => {
         if (this.playingState === PlayingState.WaitingForNewParagraphs) {
           this.setPlayingState(PlayingState.Playing);
         }
-
+        if (isEqual(this.currentViewParagraphs, paragraphs)) return;
         this.currentViewParagraphs = paragraphs;
         if (this.playingState === PlayingState.Playing) {
           await this.handleLocationChanged();
@@ -178,18 +180,30 @@ class Player extends EventEmitter<PlayerEventMap> {
     eventBus.subscribe(
       EventBusEvent.NEXT_VIEW_PARAGRAPHS_AVAILABLE,
       (paragraphs: ParagraphWithIndex[]) => {
+        if (isEqual(this.nextPageParagraphs, paragraphs)) return;
         this.nextPageParagraphs = paragraphs;
       }
     );
     eventBus.subscribe(
       EventBusEvent.PREVIOUS_VIEW_PARAGRAPHS_AVAILABLE,
       (paragraphs: ParagraphWithIndex[]) => {
+        if (isEqual(this.previousPageParagraphs, paragraphs)) return;
         this.previousPageParagraphs = paragraphs.reverse();
       }
     );
     eventBus.subscribe(EventBusEvent.PAGE_CHANGED, async () => {
       await this.handleLocationChanged();
     });
+    // eventBus.publish(
+    //   EventBusEvent.PLAYING_AUDIO,
+    //   await this.getCurrentParagraph()
+    // );
+    this.audioElement.onplay = async () => {
+      eventBus.publish(
+        EventBusEvent.PLAYING_AUDIO,
+        await this.getCurrentParagraph()
+      );
+    };
   }
   // private async clearHighlights() {
   //   for (const paragraph of this.currentViewParagraphs) {
@@ -468,7 +482,7 @@ class Player extends EventEmitter<PlayerEventMap> {
     });
 
     await this.audioElement.play();
-    eventBus.publish(EventBusEvent.PLAYING_AUDIO, currentParagraph);
+
     this.setPlayingState(PlayingState.Playing);
 
     // Prefetch next paragraphs
@@ -565,13 +579,21 @@ class Player extends EventEmitter<PlayerEventMap> {
     this.setPlayingState(PlayingState.WaitingForNewParagraphs);
     this.currentViewParagraphs = this.nextPageParagraphs;
     this.nextPageParagraphs = [];
+
     eventBus.publish(EventBusEvent.NEXT_PAGE_PARAGRAPHS_EMPTIED);
+    await this.stop();
+    await this.resetParagraphs();
+    await this.play();
   };
   private moveToPreviousPage = async () => {
     this.setPlayingState(PlayingState.WaitingForNewParagraphs);
-    this.currentViewParagraphs = this.previousPageParagraphs;
+    this.currentViewParagraphs = this.previousPageParagraphs.reverse();
     this.previousPageParagraphs = [];
+
     eventBus.publish(EventBusEvent.PREVIOUS_PAGE_PARAGRAPHS_EMPTIED);
+    await this.stop();
+    await this.resetParagraphs();
+    await this.play();
   };
   private updateParagaph = async (index: number) => {
     // bounds checks

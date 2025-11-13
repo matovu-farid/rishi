@@ -6,7 +6,7 @@ import {
   isTextGotAtom,
 } from "@components/pdf/atoms/paragraph-atoms";
 import { useAtomValue } from "jotai";
-export function useChuncking(
+export function useScrolling(
   scrollContainerRef: React.RefObject<HTMLDivElement | null>
 ) {
   const highlightedParagraph = useAtomValue(highlightedParagraphAtom);
@@ -50,6 +50,5 @@ export function useChuncking(
       });
     }, 100);
     return () => clearTimeout(timeout);
-
   }, [highlightedParagraph, isRendered]);
 }
