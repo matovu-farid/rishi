@@ -179,6 +179,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     //   align: "start",
     //   behavior: "smooth",
     // });
+    virtualizer.scrollBy(500, { behavior: "smooth", align: "auto" });
     // animate(500, {
     //   duration: 0.8,
     //   ease: [0.4, 0, 0.2, 1], // Custom easing curve for smoother feel
@@ -188,6 +189,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     // });
   }
   function previousPage() {
+    virtualizer.scrollBy(-500, { behavior: "smooth", align: "auto" });
     // virtualizer.scrollToIndex(currentPageNumber - 1, {
     //   align: "start",
     //   behavior: "smooth",
