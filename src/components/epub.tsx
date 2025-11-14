@@ -23,6 +23,9 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   currentEpubLocationAtom,
   getEpubCurrentViewParagraphsAtom,
+  getEpubNextViewParagraphsAtom,
+  getEpubPreviousViewParagraphsAtom,
+  loadableEpubNextViewParagraphsAtom,
   renditionAtom,
 } from "@/stores/epub_atoms";
 import {

@@ -9,6 +9,7 @@ import { ParagraphWithIndex } from "@/models/player_control";
 import { observe } from "jotai-effect";
 import { customStore } from "./jotai";
 import { eventBus, EventBusEvent } from "@/utils/bus";
+import { loadable } from "jotai/utils";
 export const renditionAtom = atom<Rendition | null>(null);
 renditionAtom.debugLabel = "renditionAtom";
 
@@ -54,11 +55,11 @@ export const getEpubNextViewParagraphsAtom = atom(async (get) => {
   return [] as ParagraphWithIndex[];
 });
 getEpubNextViewParagraphsAtom.debugLabel = "getEpubNextViewParagraphsAtom";
-observe((get) => {
-  void get(getEpubNextViewParagraphsAtom).then((paragraphs) => {
-    eventBus.publish(EventBusEvent.NEXT_VIEW_PARAGRAPHS_AVAILABLE, paragraphs);
-  });
-}, customStore);
+// observe((get) => {
+//   void get(getEpubNextViewParagraphsAtom).then((paragraphs) => {
+//     eventBus.publish(EventBusEvent.NEXT_VIEW_PARAGRAPHS_AVAILABLE, paragraphs);
+//   });
+// }, customStore);
 export const getEpubPreviousViewParagraphsAtom = atom(async (get) => {
   // Depend on version to trigger refetch
 
@@ -76,11 +77,37 @@ export const getEpubPreviousViewParagraphsAtom = atom(async (get) => {
 });
 getEpubPreviousViewParagraphsAtom.debugLabel =
   "getEpubPreviousViewParagraphsAtom";
+export const loadableEpubNextViewParagraphsAtom = loadable(
+  getEpubNextViewParagraphsAtom
+);
+loadableEpubNextViewParagraphsAtom.debugLabel =
+  "loadableEpubNextViewParagraphsAtom";
 observe((get) => {
-  void get(getEpubPreviousViewParagraphsAtom).then((paragraphs) => {
+  const loadableEpubNextViewParagraphs = get(
+    loadableEpubNextViewParagraphsAtom
+  );
+  if (loadableEpubNextViewParagraphs.state === "hasData") {
+    eventBus.publish(
+      EventBusEvent.NEXT_VIEW_PARAGRAPHS_AVAILABLE,
+      loadableEpubNextViewParagraphs.data
+    );
+  }
+}, customStore);
+
+
+const loadableEpubPreviousViewParagraphsAtom = loadable(
+  getEpubPreviousViewParagraphsAtom
+);
+loadableEpubPreviousViewParagraphsAtom.debugLabel =
+  "loadableEpubPreviousViewParagraphsAtom";
+observe((get) => {
+  const loadableEpubPreviousViewParagraphs = get(
+    loadableEpubPreviousViewParagraphsAtom
+  );
+  if (loadableEpubPreviousViewParagraphs.state === "hasData") {
     eventBus.publish(
       EventBusEvent.PREVIOUS_VIEW_PARAGRAPHS_AVAILABLE,
-      paragraphs
+      loadableEpubPreviousViewParagraphs.data
     );
-  });
+  }
 }, customStore);

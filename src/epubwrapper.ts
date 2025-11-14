@@ -131,7 +131,6 @@ export async function getNextViewParagraphs(
   if (!currentView || !currentView.section || !currentView.contents) {
     return [];
   }
-
   const hasNextPageInSection = _hasNextPageInCurrentSection(currentSection);
   /**
    * Paragraphs array
@@ -152,11 +151,11 @@ export async function getNextViewParagraphs(
     paragraphs = nextSectionParagraphs;
   }
 
-  if (minLength > 0) {
-    paragraphs = paragraphs.filter(
-      (p: { text: string | any[] }) => p.text.length >= minLength
-    );
-  }
+  // if (minLength > 0) {
+  //   paragraphs = paragraphs.filter(
+  //     (p: { text: string | any[] }) => p.text.length >= minLength
+  //   );
+  // }
 
   return paragraphs;
 }
@@ -164,7 +163,7 @@ export async function getPreviousViewParagraphs(
   rendition: Rendition,
   options = { minLength: 50 }
 ): Promise<ParagraphWithCFI[]> {
-  const { minLength = 50 } = options;
+  // const { minLength = 50 } = options;
   if (!rendition.manager) {
     return [];
   }
@@ -216,11 +215,11 @@ export async function getPreviousViewParagraphs(
     paragraphs = previousSectionParagraphs;
   }
 
-  if (minLength > 0) {
-    paragraphs = paragraphs.filter(
-      (p: { text: string | any[] }) => p.text.length >= minLength
-    );
-  }
+  // if (minLength > 0) {
+  //   paragraphs = paragraphs.filter(
+  //     (p: { text: string | any[] }) => p.text.length >= minLength
+  //   );
+  // }
 
   return paragraphs;
 }
@@ -720,6 +719,11 @@ function _getParagraphsFromRange(
   }
 }
 
+function _getEndFomStart(nextPageStart: number, pageWidth: number) {
+  const pagesViewed = 2;
+  return nextPageStart + pageWidth * pagesViewed;
+}
+
 async function _getNextPageParagraphsInSectionAsync(
   rendition: Rendition,
   currentView: View,
@@ -732,7 +736,8 @@ async function _getNextPageParagraphsInSectionAsync(
       : 1;
 
     const nextPageStart = currentPage * layout.pageWidth;
-    const nextPageEnd = nextPageStart + layout.pageWidth;
+
+    const nextPageEnd = _getEndFomStart(nextPageStart, layout.pageWidth);
 
     const nextPageMapping = rendition.manager.mapping.page(
       currentView.contents,
@@ -772,7 +777,6 @@ async function _getNextPageParagraphsInSectionAsync(
     const range = currentView.contents.document.createRange();
     range.setStart(startRange.startContainer, startRange.startOffset);
     range.setEnd(endRange.endContainer, endRange.endOffset);
-
     const paragraphs = _getParagraphsFromRange(
       rendition,
       range,
@@ -971,9 +975,13 @@ async function _getPreviousPageParagraphsInSectionAsync(
   try {
     const layout = rendition.manager.layout;
     const currentPage = currentSection.pages ? currentSection.pages[0] : 1; // First page in the current view
+    const currentIndex = currentPage - 1;
+    const previousPageStart = Math.max(0, currentIndex - 2) * layout.pageWidth;
 
-    const previousPageEnd = (currentPage - 1) * layout.pageWidth;
-    const previousPageStart = Math.max(0, previousPageEnd - layout.pageWidth);
+    const previousPageEnd = _getEndFomStart(
+      previousPageStart,
+      layout.pageWidth
+    );
 
     const previousPageMapping = rendition.manager.mapping.page(
       currentView.contents,
