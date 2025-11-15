@@ -27,7 +27,7 @@ export function useVirualization(
   );
   const numPages = useAtomValue(pageCountAtom);
   const setHasNavigatedToPage = useSetAtom(hasNavigatedToPageAtom);
-  const estimatedPageHeight = 1900;
+  const estimatedPageHeight = 1550;
   const scrollingRef = useRef<number | null>(null);
   const initialOffsetRef = useRef(
     initialPageIndexRef.current * estimatedPageHeight
@@ -71,6 +71,8 @@ export function useVirualization(
     enabled: numPages > 0,
     initialOffset: initialOffsetRef.current,
     scrollToFn,
+    gap: 32,
+
   });
   useEffect(() => {
     pageRefs.current.forEach((element) => {
@@ -79,6 +81,8 @@ export function useVirualization(
   }, [virtualizer, pageWidth, pdfHeight]);
   const handlePageRendered = useCallback(
     (index: number) => {
+      setHasNavigatedToPage(true);
+
       const existingTimeout = measurementTimeouts.current.get(index);
       if (existingTimeout !== undefined) {
         window.clearTimeout(existingTimeout);
@@ -96,7 +100,6 @@ export function useVirualization(
             hasFinalizedInitialScroll.current = true;
 
 
-            setHasNavigatedToPage(true);
           }
         }
         measurementTimeouts.current.delete(index);

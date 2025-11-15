@@ -166,7 +166,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
 
   const pageWidth = isDualPage ? dualPageWidth : pdfWidth;
 
-  const hasNavigatedToPage = useAtomValue(hasNavigatedToPageAtom);
+  const [hasNavigatedToPage, setHasNavigatedToPage] = useAtom(hasNavigatedToPageAtom);
   const { virtualizer, virtualItems, pageRefs, handlePageRendered } =
     useVirualization(scrollContainerRef, book);
 
@@ -283,12 +283,12 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
       )}
     >
       {/** White loading screen */}
-      {/**  {!hasNavigatedToPage && (
+      {!hasNavigatedToPage && (
         <div className="w-screen h-screen grid place-items-center bg-white z-100 pointer-events-none">
           <Loader2 size={20} className="animate-spin" />
         </div>
       )}
-      */}
+
       {/* Fixed Top Bar */}
       <div
         className={cn(
@@ -309,7 +309,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
             <MenuIcon size={20} />
           </IconButton>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 bg-white">
             <Link to="/">
               <Button
                 variant="ghost"
@@ -364,6 +364,10 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                 ref={(node) => {
                   if (node) {
                     pageRefs.current.set(virtualItem.index, node);
+                    // virtualizer.measureElement(element);
+                    virtualizer.measureElement(node)
+
+
                   } else {
                     pageRefs.current.delete(virtualItem.index);
                   }
@@ -374,7 +378,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                 }}
               >
                 <div
-                  className="mb-8 "
+                  className=" "
                   data-page-number={virtualItem.index + 1}
                   style={{ width: pageWidth ?? "auto" }}
                 >
@@ -385,8 +389,12 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
                     pdfHeight={pdfHeight}
                     isDualPage={isDualPage}
                     bookId={book.id}
-                    onRenderComplete={() =>
-                      handlePageRendered(virtualItem.index)
+                    onRenderComplete={() => {
+                      // setHasNavigatedToPage(true);
+                      // handlePageRendered(virtualItem.index)
+                      handlePageRendered(virtualItem.index);
+
+                    }
                     }
                   />
                 </div>
