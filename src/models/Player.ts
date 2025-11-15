@@ -224,11 +224,11 @@ class Player extends EventEmitter<PlayerEventMap> {
     }
     // await this.clearHighlights();
     if (this.playingState === PlayingState.Playing) {
-      await this.stop();
+      await this.pause();
       await this.resetParagraphs();
       await this.play();
     } else {
-      await this.stop();
+      await this.pause();
       await this.resetParagraphs();
     }
   };
@@ -396,12 +396,15 @@ class Player extends EventEmitter<PlayerEventMap> {
       return;
     }
 
-    // Highlight current paragraph and store reference
+    let audioFetched = false;
 
-    // await this.highlightParagraph(currentParagraph);
 
     // Set loading state while waiting for audio
-    this.setPlayingState(PlayingState.Loading);
+    setTimeout(() => {
+      if (!audioFetched) {
+        this.setPlayingState(PlayingState.Loading);
+      }
+    }, 500); // delay before showing loading state
 
     // Request audio with high priority
 
@@ -410,6 +413,7 @@ class Player extends EventEmitter<PlayerEventMap> {
       this.getNextPriority(),
       skipCache
     );
+    audioFetched = true;
 
     if (!audioPath) {
       console.error("🎵 Failed to get audio path");
