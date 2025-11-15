@@ -3,10 +3,12 @@ import { animate } from "framer-motion";
 
 import {
   highlightedParagraphAtom,
+  isLookingForNextParagraphAtom,
   isTextGotAtom,
 } from "@components/pdf/atoms/paragraph-atoms";
 import { useAtomValue } from "jotai";
-export function useChuncking(
+import { customStore } from "@/stores/jotai";
+export function useScrolling(
   scrollContainerRef: React.RefObject<HTMLDivElement | null>
 ) {
   const highlightedParagraph = useAtomValue(highlightedParagraphAtom);
@@ -24,6 +26,12 @@ export function useChuncking(
       );
       if (!el) return;
       console.log({ el });
+      const isLookingForNextParagraph = customStore.get(
+        isLookingForNextParagraphAtom
+      );
+      if (isLookingForNextParagraph) {
+        return;
+      }
 
       // Calculate the target scroll position
       const containerRect = container.getBoundingClientRect();
@@ -50,6 +58,5 @@ export function useChuncking(
       });
     }, 100);
     return () => clearTimeout(timeout);
-
   }, [highlightedParagraph, isRendered]);
 }

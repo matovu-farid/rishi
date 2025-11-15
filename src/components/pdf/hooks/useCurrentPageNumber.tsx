@@ -197,10 +197,7 @@ export function useCurrentPageNumber(
     if (currentPageNumber === 0) return;
     const viewedPageNumber = getCurrrentPageNumber(window);
     if (viewedPageNumber === currentPageNumber) return;
-    // virtualizer.scrollToIndex(currentPageNumber - 1, {
-    //   align: "start",
-    //   behavior: "smooth",
-    // });
+
   }, [currentPageNumber, virtualizer]);
   // ------------------------------------------------------------------------------------
   // Persist the latest page to the backend after the user settles on a location.
@@ -228,55 +225,3 @@ export function findElementWithPageNumber(
   );
 }
 
-// --------------------------------------------------------------------------------------
-// Smoothly scrolls to the active page number the first time the PDF renders. Works with
-// both virtualized and non-virtualized layouts.
-// --------------------------------------------------------------------------------------
-// export function useCurrentPageNumberNavigation(
-//   scrollContainerRef: React.RefObject<HTMLDivElement | null>,
-//   bookId: string,
-//   virtualizer?: Virtualizer<HTMLDivElement, Element>
-// ) {
-//   const currentPageNumber = useAtomValue(pageNumberAtom);
-//   const isPdfRendered = useAtomValue(isPdfRenderedAtom);
-//   const [hasNavigatedToPage, setHasNavigatedToPage] = useState(false);
-
-//   useEffect(() => {
-//     const container = scrollContainerRef.current;
-//     if (!isPdfRendered(bookId)) return;
-//     if (hasNavigatedToPage) return;
-//     void playerControl.initialize();
-//     const targetIndex = Math.max(0, currentPageNumber - 1);
-
-//     if (virtualizer) {
-//       virtualizer.scrollToIndex(targetIndex, {
-//         align: "start",
-//         behavior: "auto",
-//       });
-
-//       setHasNavigatedToPage(true);
-//       return;
-//     }
-
-//     if (!container) return;
-
-//     const element = findElementWithPageNumber(currentPageNumber, container);
-
-//     if (element) {
-//       element.scrollIntoView({ behavior: "auto", block: "start" });
-//       setHasNavigatedToPage(true);
-//     } else {
-//       console.error(
-//         `>>> Element with page number ${currentPageNumber} not found`
-//       );
-//     }
-//   }, [
-//     bookId,
-//     currentPageNumber,
-//     hasNavigatedToPage,
-//     isPdfRendered,
-//     scrollContainerRef,
-//     virtualizer,
-//   ]);
-//   return { hasNavigatedToPage };
-// }

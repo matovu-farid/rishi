@@ -17,7 +17,8 @@ import { player, PlayerEvent } from "@/models/Player";
 import { useDebug } from "@/hooks/useDebug";
 import { load } from "@tauri-apps/plugin-store";
 import { atom, useAtom, useAtomValue } from "jotai";
-import { PlayingState } from "@/utils/bus";
+import { EventBusEvent, PlayingState } from "@/utils/bus";
+import { eventBus } from "@/utils/bus";
 
 interface TTSControlsProps {
   bookId: string;
@@ -64,7 +65,7 @@ export function TTSControls({ bookId, disabled = false }: TTSControlsProps) {
   }, [bookId, player]);
 
   const [playingState, setPlayingState] = useState<PlayingState>(
-    player.getPlayingState()
+    PlayingState.Stopped
   );
   const { setIsDebugging, shouldDebug } = useDebug(player);
 
@@ -126,12 +127,11 @@ export function TTSControls({ bookId, disabled = false }: TTSControlsProps) {
   }, [constrainPosition]);
 
   useEffect(() => {
-    player.on(PlayerEvent.PLAYING_STATE_CHANGED, setPlayingState);
+    eventBus.on(EventBusEvent.PLAYING_STATE_CHANGED, setPlayingState);
     return () => {
-      player.off(PlayerEvent.PLAYING_STATE_CHANGED, setPlayingState);
       player.cleanup();
     };
-  }, [player]);
+  }, []);
 
   // Check for errors using setTimeout to avoid cascading renders
   useEffect(() => {
@@ -370,11 +370,10 @@ export function TTSControls({ bookId, disabled = false }: TTSControlsProps) {
             size="large"
             onClick={handlePlay}
             disabled={disabled}
-            className={`text-white hover:bg-white/10 disabled:text-white/30 ${
-              playingState === PlayingState.Playing
-                ? "text-white"
-                : "text-white/80"
-            }`}
+            className={`text-white hover:bg-white/10 disabled:text-white/30 ${playingState === PlayingState.Playing
+              ? "text-white"
+              : "text-white/80"
+              }`}
           >
             {getPlayIcon()}
           </IconButton>

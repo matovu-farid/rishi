@@ -23,12 +23,13 @@ import {
   hasNavigatedToPageAtom,
   highlightedParagraphIndexAtom,
   isHighlightingAtom,
+  isLookingForNextParagraphAtom,
   pageCountAtom,
   pageNumberAtom,
   resetParaphStateAtom,
   setPageNumberAtom,
 } from "@components/pdf/atoms/paragraph-atoms";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { TTSControls } from "../../TTSControls";
 import {
   Sheet,
@@ -37,7 +38,7 @@ import {
   SheetTitle,
 } from "../../components/ui/sheet";
 import { useUpdateCoverIMage } from "../hooks/useUpdateCoverIMage";
-import { useChuncking } from "../hooks/useChunking";
+import { useScrolling } from "../hooks/useScrolling";
 import { usePdfNavigation } from "../hooks/usePdfNavigation";
 import { PageComponent } from "./pdf-page";
 import { useSetupMenu } from "../hooks/useSetupMenu";
@@ -54,6 +55,8 @@ import {
   eventBusLogsAtom,
   PlayingState,
 } from "@/utils/bus";
+import { animate } from "framer-motion";
+import { customStore } from "@/stores/jotai";
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -88,7 +91,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
 
   const setPageNumber = useSetAtom(setPageNumberAtom);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  useChuncking(scrollContainerRef);
+  useScrolling(scrollContainerRef);
 
   useCurrentPageNumber(scrollContainerRef, book);
 
@@ -173,17 +176,30 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const setHighlightedParagraphIndex = useSetAtom(
     highlightedParagraphIndexAtom
   );
+  const setIsLookingForNextParagraph = useSetAtom(
+    isLookingForNextParagraphAtom
+  );
+
   function nextPage() {
-    virtualizer.scrollToIndex(currentPageNumber + 1, {
+    setIsLookingForNextParagraph(true);
+    const pageIndex = customStore.get(pageNumberAtom) - 1;
+    virtualizer.scrollToIndex(pageIndex + 1, {
       align: "start",
-      behavior: "smooth",
+      behavior: "auto",
     });
+    setIsLookingForNextParagraph(false);
+
   }
   function previousPage() {
-    virtualizer.scrollToIndex(currentPageNumber - 1, {
-      align: "start",
-      behavior: "smooth",
+    // virtualizer.scrollBy(-500, { behavior: "smooth", align: "auto" });
+    setIsLookingForNextParagraph(true);
+    const pageIndex = customStore.get(pageNumberAtom) - 1;
+    virtualizer.scrollToIndex(pageIndex - 1, {
+      align: "end",
+      behavior: "auto",
     });
+    setIsLookingForNextParagraph(false);
+
   }
 
   function clearAllHighlights() {
@@ -193,21 +209,21 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
 
   useEffect(() => {
     eventBus.subscribe(EventBusEvent.NEXT_PAGE_PARAGRAPHS_EMPTIED, async () => {
-      clearAllHighlights();
+      // clearAllHighlights();
       // Update page number IMMEDIATELY before scrolling
-      setPageNumber(currentPageNumber + 1);
+      // setPageNumber(currentPageNumber + 1);
       nextPage();
-      eventBus.publish(EventBusEvent.PAGE_CHANGED);
+      // eventBus.publish(EventBusEvent.PAGE_CHANGED);
     });
 
     eventBus.subscribe(
       EventBusEvent.PREVIOUS_PAGE_PARAGRAPHS_EMPTIED,
       async () => {
-        clearAllHighlights();
+        // clearAllHighlights();
         // Update page number IMMEDIATELY before scrolling
-        setPageNumber(currentPageNumber - 1);
+        // setPageNumber(currentPageNumber - 1);
         previousPage();
-        eventBus.publish(EventBusEvent.PAGE_CHANGED);
+        // eventBus.publish(EventBusEvent.PAGE_CHANGED);
       }
     );
     eventBus.subscribe(EventBusEvent.PLAYING_AUDIO, async (paragraph) => {
@@ -221,21 +237,21 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
       EventBusEvent.MOVED_TO_NEXT_PARAGRAPH,
       async ({ to: paragraph }) => {
         // clearAllHighlights();
-        setHighlightedParagraphIndex(paragraph.index);
+        // setHighlightedParagraphIndex(paragraph.index);
       }
     );
     eventBus.subscribe(
       EventBusEvent.MOVED_TO_PREV_PARAGRAPH,
       async ({ to: paragraph }) => {
         // clearAllHighlights();
-        setHighlightedParagraphIndex(paragraph.index);
+        // setHighlightedParagraphIndex(paragraph.index);
       }
     );
     eventBus.subscribe(
       EventBusEvent.PLAYING_STATE_CHANGED,
       async (playingState) => {
         if (playingState !== PlayingState.Playing) {
-          clearAllHighlights();
+          // clearAllHighlights();
           // const paragraphs = customStore.get(getCurrentViewParagraphsAtom);
           // for (const paragraph of paragraphs) {
           //   await removeHighlight(rendition, paragraph.index);
@@ -270,11 +286,12 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
       )}
     >
       {/** White loading screen */}
-      {!hasNavigatedToPage && (
+      {/**  {!hasNavigatedToPage && (
         <div className="w-screen h-screen grid place-items-center bg-white z-100 pointer-events-none">
           <Loader2 size={20} className="animate-spin" />
         </div>
       )}
+      */}
       {/* Fixed Top Bar */}
       <div
         className={cn(

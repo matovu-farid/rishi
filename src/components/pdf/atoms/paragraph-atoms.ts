@@ -268,8 +268,10 @@ player.on(PlayerEvent.PLAYING_STATE_CHANGED, (state) => {
   }
 });
 export const hasNavigatedToPageAtom = atom(false);
+export const isLookingForNextParagraphAtom = atom(false);
 
 // debug label
+isLookingForNextParagraphAtom.debugLabel = "isLookingForNextParagraphAtom";
 hasNavigatedToPageAtom.debugLabel = "hasNavigatedToPageAtom";
 isPdfRenderedAtom.debugLabel = "isPdfRenderedAtom";
 currentParagraphAtom.debugLabel = "currentParagraphAtom";

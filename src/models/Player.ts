@@ -12,6 +12,7 @@ import {
 } from "./player_control";
 import { eventBus, EventBusEvent } from "@/utils/bus";
 import { PlayingState } from "@/utils/bus";
+import isEqual from "fast-deep-equal";
 
 export enum Direction {
   Forward = "forward",
@@ -38,106 +39,6 @@ export interface ErrorsChangedEvent {
   errors: string[];
 }
 
-export class DefaultPlayerControl implements PlayerControlInterface {
-  eventNames(): (keyof PlayerControlEventMap)[] {
-    throw new Error("Method not implemented.");
-  }
-  listeners<T extends keyof PlayerControlEventMap>(
-    event: T
-  ): ((
-    ...args: EventEmitter.ArgumentMap<PlayerControlEventMap>[Extract<
-      T,
-      keyof PlayerControlEventMap
-    >]
-  ) => void)[] {
-    throw new Error("Method not implemented.");
-  }
-  listenerCount(event: keyof PlayerControlEventMap): number {
-    throw new Error("Method not implemented.");
-  }
-  emit<T extends keyof PlayerControlEventMap>(
-    event: T,
-    ...args: EventEmitter.ArgumentMap<PlayerControlEventMap>[Extract<
-      T,
-      keyof PlayerControlEventMap
-    >]
-  ): boolean {
-    throw new Error("Method not implemented.");
-  }
-  on<T extends keyof PlayerControlEventMap>(
-    event: T,
-    fn: (
-      ...args: EventEmitter.ArgumentMap<PlayerControlEventMap>[Extract<
-        T,
-        keyof PlayerControlEventMap
-      >]
-    ) => void,
-    context?: any
-  ): this {
-    throw new Error("Method not implemented.");
-  }
-  addListener<T extends keyof PlayerControlEventMap>(
-    event: T,
-    fn: (
-      ...args: EventEmitter.ArgumentMap<PlayerControlEventMap>[Extract<
-        T,
-        keyof PlayerControlEventMap
-      >]
-    ) => void,
-    context?: any
-  ): this {
-    throw new Error("Method not implemented.");
-  }
-  once<T extends keyof PlayerControlEventMap>(
-    event: T,
-    fn: (
-      ...args: EventEmitter.ArgumentMap<PlayerControlEventMap>[Extract<
-        T,
-        keyof PlayerControlEventMap
-      >]
-    ) => void,
-    context?: any
-  ): this {
-    throw new Error("Method not implemented.");
-  }
-  removeListener<T extends keyof PlayerControlEventMap>(
-    event: T,
-    fn?:
-      | ((
-          ...args: EventEmitter.ArgumentMap<PlayerControlEventMap>[Extract<
-            T,
-            keyof PlayerControlEventMap
-          >]
-        ) => void)
-      | undefined,
-    context?: any,
-    once?: boolean
-  ): this {
-    throw new Error("Method not implemented.");
-  }
-  off<T extends keyof PlayerControlEventMap>(
-    event: T,
-    fn?:
-      | ((
-          ...args: EventEmitter.ArgumentMap<PlayerControlEventMap>[Extract<
-            T,
-            keyof PlayerControlEventMap
-          >]
-        ) => void)
-      | undefined,
-    context?: any,
-    once?: boolean
-  ): this {
-    throw new Error("Method not implemented.");
-  }
-  removeAllListeners(event?: keyof PlayerControlEventMap | undefined): this {
-    throw new Error("Method not implemented.");
-  }
-  async initialize(): Promise<void> {
-    return;
-  }
-}
-
 class Player extends EventEmitter<PlayerEventMap> {
   private currentViewParagraphs: ParagraphWithIndex[] = [];
   private nextPageParagraphs: ParagraphWithIndex[] = [];
@@ -162,13 +63,14 @@ class Player extends EventEmitter<PlayerEventMap> {
     this.bookId = bookId;
 
     this.errors = [];
+
     eventBus.subscribe(
       EventBusEvent.NEW_PARAGRAPHS_AVAILABLE,
       async (paragraphs: ParagraphWithIndex[]) => {
         if (this.playingState === PlayingState.WaitingForNewParagraphs) {
           this.setPlayingState(PlayingState.Playing);
         }
-
+        if (isEqual(this.currentViewParagraphs, paragraphs)) return;
         this.currentViewParagraphs = paragraphs;
         if (this.playingState === PlayingState.Playing) {
           await this.handleLocationChanged();
@@ -178,24 +80,27 @@ class Player extends EventEmitter<PlayerEventMap> {
     eventBus.subscribe(
       EventBusEvent.NEXT_VIEW_PARAGRAPHS_AVAILABLE,
       (paragraphs: ParagraphWithIndex[]) => {
+        if (isEqual(this.nextPageParagraphs, paragraphs)) return;
         this.nextPageParagraphs = paragraphs;
       }
     );
     eventBus.subscribe(
       EventBusEvent.PREVIOUS_VIEW_PARAGRAPHS_AVAILABLE,
       (paragraphs: ParagraphWithIndex[]) => {
+        if (isEqual(this.previousPageParagraphs, paragraphs)) return;
         this.previousPageParagraphs = paragraphs.reverse();
       }
     );
     eventBus.subscribe(EventBusEvent.PAGE_CHANGED, async () => {
       await this.handleLocationChanged();
     });
+    this.audioElement.onplay = async () => {
+      eventBus.publish(
+        EventBusEvent.PLAYING_AUDIO,
+        await this.getCurrentParagraph()
+      );
+    };
   }
-  // private async clearHighlights() {
-  //   for (const paragraph of this.currentViewParagraphs) {
-  //     await this.unhighlightParagraph(paragraph);
-  //   }
-  // }
   private async resetParagraphs() {
     if (this.direction === Direction.Backward)
       await this.setParagraphIndex(this.currentViewParagraphs.length - 1);
@@ -208,13 +113,12 @@ class Player extends EventEmitter<PlayerEventMap> {
       // Don't call stop() or play() - let NEW_PARAGRAPHS_AVAILABLE handle resuming
       return;
     }
-    // await this.clearHighlights();
     if (this.playingState === PlayingState.Playing) {
-      await this.stop();
+      this.pause();
       await this.resetParagraphs();
       await this.play();
     } else {
-      await this.stop();
+      this.pause();
       await this.resetParagraphs();
     }
   };
@@ -246,17 +150,17 @@ class Player extends EventEmitter<PlayerEventMap> {
       networkState: audioElement.networkState,
       mediaError: mediaError
         ? {
-            code: mediaError.code,
-            message: mediaError.message,
-            errorName: this.getMediaErrorName(mediaError.code),
-          }
+          code: mediaError.code,
+          message: mediaError.message,
+          errorName: this.getMediaErrorName(mediaError.code),
+        }
         : null,
       currentParagraph: currentParagraph
         ? {
-            index: this.currentParagraphIndex,
-            text: currentParagraph?.text.substring(0, 100) + "...",
-            cfiRange: currentParagraph?.index,
-          }
+          index: this.currentParagraphIndex,
+          text: currentParagraph?.text.substring(0, 100) + "...",
+          cfiRange: currentParagraph?.index,
+        }
         : null,
     };
 
@@ -322,13 +226,6 @@ class Player extends EventEmitter<PlayerEventMap> {
     // Add listeners using the bound method references directly
     this.audioElement.addEventListener("ended", this.handleEnded);
     this.audioElement.addEventListener("error", this.handleError);
-    console.log(
-      `>>> Player: currentViewParagraphs: ${this.currentViewParagraphs}`
-    );
-    console.log(`>>> Player: nextPageParagraphs: ${this.nextPageParagraphs}`);
-    console.log(
-      `>>> Player: previousPageParagraphs: ${this.previousPageParagraphs}`
-    );
 
     let attempt = 0;
     let skipCache = false;
@@ -360,7 +257,6 @@ class Player extends EventEmitter<PlayerEventMap> {
   }
 
   public async playWithoutRetry(skipCache: boolean = false) {
-    debugger;
     if (this.playingState === PlayingState.Playing) return;
 
     if (this.currentViewParagraphs.length === 0) {
@@ -390,12 +286,15 @@ class Player extends EventEmitter<PlayerEventMap> {
       return;
     }
 
-    // Highlight current paragraph and store reference
+    let audioFetched = false;
 
-    // await this.highlightParagraph(currentParagraph);
 
     // Set loading state while waiting for audio
-    this.setPlayingState(PlayingState.Loading);
+    setTimeout(() => {
+      if (!audioFetched) {
+        this.setPlayingState(PlayingState.Loading);
+      }
+    }, 500); // delay before showing loading state
 
     // Request audio with high priority
 
@@ -404,6 +303,7 @@ class Player extends EventEmitter<PlayerEventMap> {
       this.getNextPriority(),
       skipCache
     );
+    audioFetched = true;
 
     if (!audioPath) {
       console.error("🎵 Failed to get audio path");
@@ -438,10 +338,10 @@ class Player extends EventEmitter<PlayerEventMap> {
           readyStateName: this.getReadyStateName(audioElement.readyState),
           mediaError: mediaError
             ? {
-                code: mediaError.code,
-                message: mediaError.message,
-                errorName: this.getMediaErrorName(mediaError.code),
-              }
+              code: mediaError.code,
+              message: mediaError.message,
+              errorName: this.getMediaErrorName(mediaError.code),
+            }
             : null,
           currentParagraph: {
             index: this.currentParagraphIndex,
@@ -468,7 +368,7 @@ class Player extends EventEmitter<PlayerEventMap> {
     });
 
     await this.audioElement.play();
-    eventBus.publish(EventBusEvent.PLAYING_AUDIO, currentParagraph);
+
     this.setPlayingState(PlayingState.Playing);
 
     // Prefetch next paragraphs
@@ -565,13 +465,21 @@ class Player extends EventEmitter<PlayerEventMap> {
     this.setPlayingState(PlayingState.WaitingForNewParagraphs);
     this.currentViewParagraphs = this.nextPageParagraphs;
     this.nextPageParagraphs = [];
+
     eventBus.publish(EventBusEvent.NEXT_PAGE_PARAGRAPHS_EMPTIED);
+    await this.stop();
+    await this.resetParagraphs();
+    await this.play();
   };
   private moveToPreviousPage = async () => {
     this.setPlayingState(PlayingState.WaitingForNewParagraphs);
-    this.currentViewParagraphs = this.previousPageParagraphs;
+    this.currentViewParagraphs = this.previousPageParagraphs.reverse();
     this.previousPageParagraphs = [];
+
     eventBus.publish(EventBusEvent.PREVIOUS_PAGE_PARAGRAPHS_EMPTIED);
+    await this.stop();
+    await this.resetParagraphs();
+    await this.play();
   };
   private updateParagaph = async (index: number) => {
     // bounds checks
@@ -659,10 +567,10 @@ class Player extends EventEmitter<PlayerEventMap> {
         ended: this.audioElement.ended,
         error: this.audioElement.error
           ? {
-              code: this.audioElement.error.code,
-              message: this.audioElement.error.message,
-              errorName: this.getMediaErrorName(this.audioElement.error.code),
-            }
+            code: this.audioElement.error.code,
+            message: this.audioElement.error.message,
+            errorName: this.getMediaErrorName(this.audioElement.error.code),
+          }
           : null,
       },
       currentState: {
@@ -671,9 +579,9 @@ class Player extends EventEmitter<PlayerEventMap> {
         totalParagraphs: this.currentViewParagraphs.length,
         currentParagraph: currentParagraph
           ? {
-              text: currentParagraph?.text.substring(0, 100) + "...",
-              cfiRange: currentParagraph?.index,
-            }
+            text: currentParagraph?.text.substring(0, 100) + "...",
+            cfiRange: currentParagraph?.index,
+          }
           : null,
       },
       cacheInfo: {
@@ -695,18 +603,6 @@ class Player extends EventEmitter<PlayerEventMap> {
     return this.priority - 1;
   }
 
-  // private highlightParagraph(paragraph: ParagraphWithIndex) {
-  //   this.playerControl.emit(
-  //     PlayerControlEvent.HIGHLIGHT_PARAGRAPH,
-  //     paragraph.index
-  //   );
-  // }
-  // private async unhighlightParagraph(paragraph: ParagraphWithIndex) {
-  //   this.playerControl.emit(
-  //     PlayerControlEvent.REMOVE_HIGHLIGHT,
-  //     paragraph.index
-  //   );
-  // }
   public async requestAudio(
     paragraph: ParagraphWithIndex,
     priority: number,
@@ -736,10 +632,10 @@ class Player extends EventEmitter<PlayerEventMap> {
           error:
             error instanceof Error
               ? {
-                  name: error.name,
-                  message: error.message,
-                  stack: error.stack,
-                }
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+              }
               : String(error),
           paragraph: {
             cfiRange: paragraph.index,
@@ -767,10 +663,10 @@ class Player extends EventEmitter<PlayerEventMap> {
         error:
           error instanceof Error
             ? {
-                name: error.name,
-                message: error.message,
-                stack: error.stack,
-              }
+              name: error.name,
+              message: error.message,
+              stack: error.stack,
+            }
             : String(error),
         paragraph: {
           cfiRange: paragraph.index,

@@ -95,10 +95,7 @@ export function useVirualization(
           ) {
             hasFinalizedInitialScroll.current = true;
 
-            virtualizer.scrollToIndex(initialPageIndexRef.current, {
-              align: "start",
-              behavior: "auto",
-            });
+          
             setHasNavigatedToPage(true);
           }
         }
@@ -125,10 +122,7 @@ export function useVirualization(
     if (!scrollContainerRef.current) return;
 
     hasRequestedInitialScroll.current = true;
-    virtualizer.scrollToIndex(initialPageIndexRef.current, {
-      align: "start",
-      behavior: "auto",
-    });
+  
   }, [numPages, virtualizer]);
 
   const virtualItems = virtualizer.getVirtualItems();

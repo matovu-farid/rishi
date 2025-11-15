@@ -372,10 +372,6 @@ export class EpubView extends Component<IEpubViewProps, IEpubViewState> {
       } else {
         // Always log previous page paragraphs even if no callback is provided
         this.getPreviousViewParagraphs().then((previousPageParagraphsData) => {
-          console.log(
-            "Previous page paragraphs:",
-            previousPageParagraphsData.paragraphs
-          );
         });
       }
     }
