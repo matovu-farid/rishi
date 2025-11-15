@@ -4,15 +4,14 @@ import {
   getTTSAudioPath,
   requestTTSAudio,
 } from "@/modules/ipc_handel_functions";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import {
   ParagraphWithIndex,
-  PlayerControlEventMap,
-  PlayerControlInterface,
 } from "./player_control";
 import { eventBus, EventBusEvent } from "@/utils/bus";
 import { PlayingState } from "@/utils/bus";
 import isEqual from "fast-deep-equal";
+import { isHighlightingAtom } from "@components/pdf/atoms/paragraph-atoms";
+import { customStore } from "@/stores/jotai";
 
 export enum Direction {
   Forward = "forward",
@@ -315,7 +314,7 @@ class Player extends EventEmitter<PlayerEventMap> {
     this.audioElement.currentTime = 0;
 
     // Set new source and wait for it to be ready
-    this.audioElement.src = convertFileSrc(audioPath);
+    this.audioElement.src = audioPath;
     this.audioElement.load();
 
     await new Promise((resolve, reject) => {
@@ -418,9 +417,8 @@ class Player extends EventEmitter<PlayerEventMap> {
 
     const currentParagraph = await this.getCurrentParagraph();
     if (!currentParagraph) return;
-    const audioPath = convertFileSrc(
-      (await this.requestAudio(currentParagraph, this.getNextPriority())) || ""
-    );
+    const audioPath = (await this.requestAudio(currentParagraph, this.getNextPriority())) || ""
+
     // set the souce to the first paragraph
     this.audioElement.src = audioPath || "";
 
@@ -700,3 +698,11 @@ class Player extends EventEmitter<PlayerEventMap> {
  * void player.initialize( bookId);
  */
 export const player = new Player();
+player.on(PlayerEvent.PLAYING_STATE_CHANGED, (state) => {
+  if (state === PlayingState.Playing) {
+    customStore.set(isHighlightingAtom, true);
+  } else {
+    customStore.set(isHighlightingAtom, false);
+  }
+});
+export default player;

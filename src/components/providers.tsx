@@ -7,15 +7,30 @@ import { Provider } from "jotai";
 import { DevTools } from "jotai-devtools";
 import "jotai-devtools/styles.css";
 import { customStore } from "@/stores/jotai";
+import { isDev } from "@/generated";
 
 export const queryClient = new QueryClient();
 
 function Providers({ children }: PropsWithChildren): JSX.Element {
+  if (!isDev) {
+    console.log("Production mode - DevTools disabled");
+    return (
+      <div>
+        <QueryClientProvider client={queryClient}>
+          <Provider store={customStore}>
+            {children}
+          </Provider>
+
+        </QueryClientProvider>
+        <ToastContainer />
+      </div>
+    )
+  }
   return (
     <div>
       <QueryClientProvider client={queryClient}>
         <Provider store={customStore}>
-          <DevTools store={customStore} />
+          {isDev && <DevTools store={customStore} />}
           {children}
         </Provider>
 

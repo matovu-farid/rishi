@@ -12,6 +12,7 @@ import {
   bookNavigationStateAtom,
 } from "@components/pdf/atoms/paragraph-atoms";
 import { synchronizedGetBooks } from "@/modules/sync_books";
+import { convertFileSrc } from "@tauri-apps/api/core";
 export const Route = createLazyFileRoute("/books/$id")({
   component: () => <BookView />,
 });
@@ -64,7 +65,7 @@ function BookView(): React.JSX.Element {
 
   return (
     <motion.div layout className="">
-      {book?.kind === "pdf" && <PdfView key={book.id} book={book} />}
+      {book?.kind === "pdf" && <PdfView filepath={convertFileSrc(book.filepath)} key={book.id} book={book} />}
       {book?.kind === "epub" && <EpubView key={book.id} book={book} />}
     </motion.div>
   );

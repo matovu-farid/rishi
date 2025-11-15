@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useEffect, useState, useRef, useCallback } from "react";
-import { player, PlayerEvent } from "@/models/Player";
+import  player  from "@/models/Player";
 import { useDebug } from "@/hooks/useDebug";
 import { load } from "@tauri-apps/plugin-store";
 import { atom, useAtom, useAtomValue } from "jotai";
@@ -43,7 +43,7 @@ const getDefaultPosition = (): { x: number; y: number } => {
 const playerAtom = atom(player);
 playerAtom.debugLabel = "playerAtom";
 
-export function TTSControls({ bookId, disabled = false }: TTSControlsProps) {
+export default function TTSControls({ bookId, disabled = false }: TTSControlsProps) {
   const [showError, setShowError] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [hasShownError, setHasShownError] = useState(false);

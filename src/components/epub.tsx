@@ -13,7 +13,7 @@ import { ThemeType } from "@/themes/common";
 import { themes } from "@/themes/themes";
 import createIReactReaderTheme from "@/themes/readerThemes";
 import { Palette } from "lucide-react";
-import { TTSControls } from "@components/TTSControls";
+import TTSControls from "@components/TTSControls";
 import { Rendition } from "epubjs/types";
 import { synchronizedUpdateBookLocation } from "@/modules/sync_books";
 import { convertFileSrc } from "@tauri-apps/api/core";

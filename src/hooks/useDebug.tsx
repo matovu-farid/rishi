@@ -1,8 +1,8 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
-import { Player } from "@/models/Player";
+import player  from "@/models/Player";
 import { shouldDebug } from "@/modules/shouldDebug";
 
-export const useDebug = (player: Player) => {
+export const useDebug = () => {
   const debugPlayingState = useRef<string[]>([]);
   const [isDebugging, setIsDebugging] = useState(false);
   const [shouldDebugState, setShouldDebug] = useState(false);

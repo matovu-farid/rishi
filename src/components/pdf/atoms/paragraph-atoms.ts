@@ -4,11 +4,8 @@ import { atomWithImmer } from "jotai-immer";
 import { atom } from "jotai";
 
 import type { TextContent } from "react-pdf";
-import { pageDataToParagraphs } from "../utils/getPageParagraphs";
 
 import { freezeAtom } from "jotai/utils";
-import { player, PlayerEvent } from "@/models/Player";
-import { PlayingState } from "@/utils/bus";
 import { customStore } from "@/stores/jotai";
 import { observe } from "jotai-effect";
 
@@ -260,13 +257,7 @@ export const pdfsControllerAtom = atom(
 
 export const isRenderedAtom = atom<Record<string, boolean>>({});
 
-player.on(PlayerEvent.PLAYING_STATE_CHANGED, (state) => {
-  if (state === PlayingState.Playing) {
-    customStore.set(isHighlightingAtom, true);
-  } else {
-    customStore.set(isHighlightingAtom, false);
-  }
-});
+
 export const hasNavigatedToPageAtom = atom(false);
 export const isLookingForNextParagraphAtom = atom(false);
 

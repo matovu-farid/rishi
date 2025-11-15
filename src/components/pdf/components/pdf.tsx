@@ -4,7 +4,6 @@ import { Button } from "@components/ui/Button";
 import { IconButton } from "@components/ui/IconButton";
 import { ThemeType } from "@/themes/common";
 import { Loader2, Menu as MenuIcon } from "lucide-react";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { Document, Outline, pdfjs } from "react-pdf";
 import type { DocumentInitParameters } from "pdfjs-dist/types/src/display/api";
 
@@ -30,7 +29,7 @@ import {
   setPageNumberAtom,
 } from "@components/pdf/atoms/paragraph-atoms";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { TTSControls } from "../../TTSControls";
+import TTSControls from "@/components/TTSControls";
 import {
   Sheet,
   SheetContent,
@@ -64,7 +63,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
-export function PdfView({ book }: { book: BookData }): React.JSX.Element {
+export function PdfView({ book, filepath }: { book: BookData, filepath: String }): React.JSX.Element {
   const [theme] = useState<ThemeType>(ThemeType.White);
   const [tocOpen, setTocOpen] = useState(false);
   const currentPageNumber = useAtomValue(pageNumberAtom);
@@ -74,20 +73,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const nextViewParagraphs = useAtomValue(getNextViewParagraphsAtom);
   const previousViewParagraphs = useAtomValue(getPreviousViewParagraphsAtom);
 
-  // useEffect(() => {
-  //   eventBus.publish(
-  //     EventBusEvent.NEW_PARAGRAPHS_AVAILABLE,
-  //     currentViewParagraphs
-  //   );
-  //   eventBus.publish(
-  //     EventBusEvent.NEXT_VIEW_PARAGRAPHS_AVAILABLE,
-  //     nextViewParagraphs
-  //   );
-  //   eventBus.publish(
-  //     EventBusEvent.PREVIOUS_VIEW_PARAGRAPHS_AVAILABLE,
-  //     previousViewParagraphs
-  //   );
-  // }, [currentPageNumber]);
+
 
   const setPageNumber = useSetAtom(setPageNumberAtom);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -272,7 +258,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
       location: itemPageNumber.toString(),
     });
   }
-
+  console.log({ filepath })
   return (
     <div
       ref={scrollContainerRef}
@@ -326,7 +312,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
       <div className="flex items-center justify-center  px-2 py-1">
         <Document
           className="flex items-center justify-center flex-col"
-          file={convertFileSrc(book.filepath)}
+          file={filepath}
           options={pdfOptions}
           onLoadSuccess={onDocumentLoadSuccess}
           onItemClick={onItemClick}
@@ -441,7 +427,7 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
             )}
           >
             <Document
-              file={convertFileSrc(book.filepath)}
+              file={filepath}
               options={pdfOptions}
               onLoadSuccess={onDocumentLoadSuccess}
             >
