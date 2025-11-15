@@ -95,7 +95,7 @@ export function useVirualization(
           ) {
             hasFinalizedInitialScroll.current = true;
 
-          
+
             setHasNavigatedToPage(true);
           }
         }
@@ -122,7 +122,7 @@ export function useVirualization(
     if (!scrollContainerRef.current) return;
 
     hasRequestedInitialScroll.current = true;
-  
+
   }, [numPages, virtualizer]);
 
   const virtualItems = virtualizer.getVirtualItems();

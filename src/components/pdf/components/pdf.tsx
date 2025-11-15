@@ -93,7 +93,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   useScrolling(scrollContainerRef);
 
-  useCurrentPageNumber(scrollContainerRef, book);
 
   useUpdateCoverIMage(book);
   useSetupMenu();
@@ -211,7 +210,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
     eventBus.subscribe(EventBusEvent.NEXT_PAGE_PARAGRAPHS_EMPTIED, async () => {
       // clearAllHighlights();
       // Update page number IMMEDIATELY before scrolling
-      // setPageNumber(currentPageNumber + 1);
       nextPage();
       // eventBus.publish(EventBusEvent.PAGE_CHANGED);
     });
@@ -221,7 +219,6 @@ export function PdfView({ book }: { book: BookData }): React.JSX.Element {
       async () => {
         // clearAllHighlights();
         // Update page number IMMEDIATELY before scrolling
-        // setPageNumber(currentPageNumber - 1);
         previousPage();
         // eventBus.publish(EventBusEvent.PAGE_CHANGED);
       }

@@ -50,42 +50,6 @@ export function useCurrentPageNumber(
   // ------------------------------------------------------------------------------------
   // const scrollDiv = scrollRef.current;
   // Set book data only when book prop changes, not on every render
-  useEffect(() => {
-    setPageNumber(parseInt(book.location, 10));
-  }, []);
-
-  // ------------------------------------------------------------------------------------
-  // Debounce the page calculation .
-  // ------------------------------------------------------------------------------------
-  // const setCurrentPageNumberThrottled = useCallback(
-  //   throttle(3000, () => {
-  //     const newPageNumber = getCurrrentPageNumber(window);
-  //     console.log("newPageNumber", newPageNumber);
-  //     if (newPageNumber !== currentPageNumber) {
-  //       setScrollPageNumber(newPageNumber);
-  //     }
-  //   }),
-  //   [currentPageNumber]
-  // );
-  // const isPdfRendered = useAtomValue(isPdfRenderedAtom);
-  // useEffect(() => {
-  //   if (!isPdfRendered(bookId)) return;
-  //   void playerControl.initialize();
-  //   const handleResize = () => {
-  //     setCurrentPageNumberThrottled();
-  //   };
-  //   const handleScroll = () => {
-  //     setCurrentPageNumberThrottled();
-  //   };
-  //   scrollDiv?.addEventListener("resize", handleResize);
-  //   scrollDiv?.addEventListener("scroll", handleScroll);
-
-  //   return () => {
-  //     scrollDiv?.removeEventListener("resize", handleResize);
-  //     scrollDiv?.removeEventListener("scroll", handleScroll);
-  //   };
-  // }, [scrollDiv, currentPageNumber, isPdfRendered]);
-
   const setCurrentViewParagraphs = useSetAtom(getCurrentViewParagraphsAtom);
   const setIsTextGot = useSetAtom(isTextGotAtom);
   const setNextViewParagraphs = useSetAtom(getNextViewParagraphsAtom);
@@ -203,12 +167,26 @@ export function useCurrentPageNumber(
   // Persist the latest page to the backend after the user settles on a location.
   // ------------------------------------------------------------------------------------
   useEffect(() => {
-    debounce(1000, () => {
-      updateBookLocationMutation.mutate({
-        bookId: bookId,
-        location: currentPageNumber.toString(),
-      });
-    })();
+    const pageNumber = parseInt(book.location, 10)
+    // virtualizer?.scrollToIndex(pageNumber - 1, { align: "start", behavior: "auto" })
+
+    setPageNumber(pageNumber);
+  }, []);
+
+
+
+  useEffect(() => {
+    // Debounce the backend update to avoid excessive writes during scrolling, 
+    // but allow a delay so that the current page number is innitialized properly.
+    // using the saved book bumber
+    setTimeout(() => {
+      debounce(1000, () => {
+        updateBookLocationMutation.mutate({
+          bookId: bookId,
+          location: currentPageNumber.toString(),
+        });
+      })();
+    }, 1000)
   }, [currentPageNumber]);
   //
   return currentPageNumber;
