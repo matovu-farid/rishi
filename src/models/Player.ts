@@ -94,10 +94,6 @@ class Player extends EventEmitter<PlayerEventMap> {
     eventBus.subscribe(EventBusEvent.PAGE_CHANGED, async () => {
       await this.handleLocationChanged();
     });
-    // eventBus.publish(
-    //   EventBusEvent.PLAYING_AUDIO,
-    //   await this.getCurrentParagraph()
-    // );
     this.audioElement.onplay = async () => {
       eventBus.publish(
         EventBusEvent.PLAYING_AUDIO,
@@ -105,11 +101,6 @@ class Player extends EventEmitter<PlayerEventMap> {
       );
     };
   }
-  // private async clearHighlights() {
-  //   for (const paragraph of this.currentViewParagraphs) {
-  //     await this.unhighlightParagraph(paragraph);
-  //   }
-  // }
   private async resetParagraphs() {
     if (this.direction === Direction.Backward)
       await this.setParagraphIndex(this.currentViewParagraphs.length - 1);
@@ -122,13 +113,12 @@ class Player extends EventEmitter<PlayerEventMap> {
       // Don't call stop() or play() - let NEW_PARAGRAPHS_AVAILABLE handle resuming
       return;
     }
-    // await this.clearHighlights();
     if (this.playingState === PlayingState.Playing) {
-      await this.pause();
+      this.pause();
       await this.resetParagraphs();
       await this.play();
     } else {
-      await this.pause();
+      this.pause();
       await this.resetParagraphs();
     }
   };
