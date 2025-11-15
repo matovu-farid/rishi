@@ -713,18 +713,6 @@ class Player extends EventEmitter<PlayerEventMap> {
     return this.priority - 1;
   }
 
-  // private highlightParagraph(paragraph: ParagraphWithIndex) {
-  //   this.playerControl.emit(
-  //     PlayerControlEvent.HIGHLIGHT_PARAGRAPH,
-  //     paragraph.index
-  //   );
-  // }
-  // private async unhighlightParagraph(paragraph: ParagraphWithIndex) {
-  //   this.playerControl.emit(
-  //     PlayerControlEvent.REMOVE_HIGHLIGHT,
-  //     paragraph.index
-  //   );
-  // }
   public async requestAudio(
     paragraph: ParagraphWithIndex,
     priority: number,
