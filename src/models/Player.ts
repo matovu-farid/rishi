@@ -160,17 +160,17 @@ class Player extends EventEmitter<PlayerEventMap> {
       networkState: audioElement.networkState,
       mediaError: mediaError
         ? {
-            code: mediaError.code,
-            message: mediaError.message,
-            errorName: this.getMediaErrorName(mediaError.code),
-          }
+          code: mediaError.code,
+          message: mediaError.message,
+          errorName: this.getMediaErrorName(mediaError.code),
+        }
         : null,
       currentParagraph: currentParagraph
         ? {
-            index: this.currentParagraphIndex,
-            text: currentParagraph?.text.substring(0, 100) + "...",
-            cfiRange: currentParagraph?.index,
-          }
+          index: this.currentParagraphIndex,
+          text: currentParagraph?.text.substring(0, 100) + "...",
+          cfiRange: currentParagraph?.index,
+        }
         : null,
     };
 
@@ -348,10 +348,10 @@ class Player extends EventEmitter<PlayerEventMap> {
           readyStateName: this.getReadyStateName(audioElement.readyState),
           mediaError: mediaError
             ? {
-                code: mediaError.code,
-                message: mediaError.message,
-                errorName: this.getMediaErrorName(mediaError.code),
-              }
+              code: mediaError.code,
+              message: mediaError.message,
+              errorName: this.getMediaErrorName(mediaError.code),
+            }
             : null,
           currentParagraph: {
             index: this.currentParagraphIndex,
@@ -577,10 +577,10 @@ class Player extends EventEmitter<PlayerEventMap> {
         ended: this.audioElement.ended,
         error: this.audioElement.error
           ? {
-              code: this.audioElement.error.code,
-              message: this.audioElement.error.message,
-              errorName: this.getMediaErrorName(this.audioElement.error.code),
-            }
+            code: this.audioElement.error.code,
+            message: this.audioElement.error.message,
+            errorName: this.getMediaErrorName(this.audioElement.error.code),
+          }
           : null,
       },
       currentState: {
@@ -589,9 +589,9 @@ class Player extends EventEmitter<PlayerEventMap> {
         totalParagraphs: this.currentViewParagraphs.length,
         currentParagraph: currentParagraph
           ? {
-              text: currentParagraph?.text.substring(0, 100) + "...",
-              cfiRange: currentParagraph?.index,
-            }
+            text: currentParagraph?.text.substring(0, 100) + "...",
+            cfiRange: currentParagraph?.index,
+          }
           : null,
       },
       cacheInfo: {
@@ -642,10 +642,10 @@ class Player extends EventEmitter<PlayerEventMap> {
           error:
             error instanceof Error
               ? {
-                  name: error.name,
-                  message: error.message,
-                  stack: error.stack,
-                }
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+              }
               : String(error),
           paragraph: {
             cfiRange: paragraph.index,
@@ -673,10 +673,10 @@ class Player extends EventEmitter<PlayerEventMap> {
         error:
           error instanceof Error
             ? {
-                name: error.name,
-                message: error.message,
-                stack: error.stack,
-              }
+              name: error.name,
+              message: error.message,
+              stack: error.stack,
+            }
             : String(error),
         paragraph: {
           cfiRange: paragraph.index,
