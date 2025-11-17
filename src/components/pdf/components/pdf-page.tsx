@@ -77,7 +77,7 @@ export function PageComponent({
           // isHighlighedPage() &&
           isInsideParagraph(transform as Transform)
         ) {
-          return `<mark>${str}</mark>`;
+          return `<mark style="background-color: rgb(255,255,204);">${str}</mark>`;
         }
 
         return str;

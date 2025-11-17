@@ -339,8 +339,8 @@ export function highlightRange(
     // Apply default yellow highlight styles if no custom styles provided
     const defaultStyles = {
       fill: "yellow",
-      "fill-opacity": "0.3",
-      "mix-blend-mode": "multiply",
+      // "fill-opacity": "0.5",
+      // "mix-blend-mode": "screen",
     };
     const mergedStyles = Object.assign(defaultStyles, styles);
     const hash = encodeURI(cfiRange + "highlight");
@@ -353,7 +353,7 @@ export function highlightRange(
     const annotation = rendition.annotations.highlight(
       rangeCfi,
       data,
-      cb || (() => {}),
+      cb || (() => { }),
       className,
       mergedStyles
     );
@@ -364,7 +364,7 @@ export function highlightRange(
     return Promise.reject(
       new Error(
         "Error highlighting range: " +
-          (error instanceof Error ? error.message : String(error))
+        (error instanceof Error ? error.message : String(error))
       )
     );
   }
@@ -403,7 +403,7 @@ export function removeHighlight(rendition: Rendition, cfiRange: string) {
       // but not be visible, so we can still try to remove it
       console.warn(
         "No visible view found for CFI range, attempting to remove from store: " +
-          cfiRange
+        cfiRange
       );
     }
 
@@ -420,7 +420,7 @@ export function removeHighlight(rendition: Rendition, cfiRange: string) {
     return Promise.reject(
       new Error(
         "Error removing highlight: " +
-          (error instanceof Error ? error.message : String(error))
+        (error instanceof Error ? error.message : String(error))
       )
     );
   }
