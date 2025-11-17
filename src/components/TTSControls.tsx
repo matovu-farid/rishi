@@ -10,10 +10,12 @@ import {
   Bug,
   Info,
   Loader2,
+  Mic,
+  MicOff,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useEffect, useState, useRef, useCallback } from "react";
-import  player  from "@/models/Player";
+import player from "@/models/Player";
 import { useDebug } from "@/hooks/useDebug";
 import { load } from "@tauri-apps/plugin-store";
 import { atom, useAtom, useAtomValue } from "jotai";
@@ -57,6 +59,7 @@ export default function TTSControls({ bookId, disabled = false }: TTSControlsPro
   const player = useAtomValue(playerAtom);
 
   const error = errors.join("\n");
+  const [isChatting, setIsChatting] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -67,7 +70,7 @@ export default function TTSControls({ bookId, disabled = false }: TTSControlsPro
   const [playingState, setPlayingState] = useState<PlayingState>(
     PlayingState.Stopped
   );
-  const { setIsDebugging, shouldDebug } = useDebug(player);
+  const { setIsDebugging, shouldDebug } = useDebug();
 
   // Constrain position within viewport bounds
   const constrainPosition = useCallback((x: number, y: number) => {
@@ -174,6 +177,17 @@ export default function TTSControls({ bookId, disabled = false }: TTSControlsPro
 
   const handleStop = async () => {
     await player.stop();
+  };
+  const toggleChat = async () => {
+    setIsChatting((isChatting) => !isChatting);
+
+  }
+
+  const handleChat = async () => {
+    toggleChat();
+  };
+  const stopChat = async () => {
+    toggleChat();
   };
 
   const handlePrev = async () => {
@@ -397,7 +411,26 @@ export default function TTSControls({ bookId, disabled = false }: TTSControlsPro
           >
             <Square size={24} />
           </IconButton>
+          {/* Chat Button */}
+          {!isChatting && <IconButton
+            size="large"
+            onClick={handleChat}
+            disabled={false}
+            className="text-white hover:bg-white/10 disabled:text-white/30"
+          >
+            <Mic size={24} />
+          </IconButton>
 
+          }
+          {isChatting && <IconButton
+            size="large"
+            onClick={stopChat}
+            disabled={false}
+            className="text-white hover:bg-white/10 disabled:text-white/30"
+          >
+            <MicOff size={24} />
+          </IconButton>
+          }
           {/* Debug Button */}
           {shouldDebug && (
             <IconButton
