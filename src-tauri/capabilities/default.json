@@ -47,7 +47,7 @@
           "url": "https://*.tauri.app"
         },
         {
-          "url": "http://proxy.matovu-farid.com/api/openai/**"
+          "url": "https://rishi-worker.faridmato90.workers.dev/**"
         }
       ],
       "deny": [
@@ -56,6 +56,7 @@
         }
       ]
     },
-    "store:default"
+    "store:default",
+    "deep-link:default"
   ]
 }
