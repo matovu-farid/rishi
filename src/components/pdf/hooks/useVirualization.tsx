@@ -12,6 +12,7 @@ import { BookData } from "@/generated";
 import {
   hasNavigatedToPageAtom,
   pageCountAtom,
+  virtualizerAtom,
 } from "../atoms/paragraph-atoms";
 import { useAtomValue, useSetAtom } from "jotai";
 import { usePdfNavigation } from "./usePdfNavigation";
@@ -33,7 +34,7 @@ export function useVirualization(
     initialPageIndexRef.current * estimatedPageHeight
   );
   const { isDualPage, pdfWidth, pdfHeight, dualPageWidth } = usePdfNavigation();
-
+  const setVirtualizer = useSetAtom(virtualizerAtom);
   const pageWidth = isDualPage ? dualPageWidth : pdfWidth;
   const pageRefs = useRef(new Map<number, HTMLElement>());
   const measurementTimeouts = useRef(new Map<number, number>());
@@ -74,6 +75,7 @@ export function useVirualization(
     gap: 32,
 
   });
+  setVirtualizer(virtualizer);
   useEffect(() => {
     pageRefs.current.forEach((element) => {
       virtualizer.measureElement(element);

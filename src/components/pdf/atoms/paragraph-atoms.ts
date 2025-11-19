@@ -9,6 +9,9 @@ import { freezeAtom } from "jotai/utils";
 import { customStore } from "@/stores/jotai";
 import { observe } from "jotai-effect";
 
+export const virtualizerAtom = atom<any | null>(null);
+
+
 export const pageNumberToPageDataAtom = atomWithImmer<{
   [pageNumber: number]: TextContent;
 }>({});

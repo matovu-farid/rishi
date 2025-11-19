@@ -6,6 +6,7 @@ import { ThemeType } from "@/themes/common";
 import { Loader2, Menu as MenuIcon } from "lucide-react";
 import { Document, Outline, pdfjs } from "react-pdf";
 import type { DocumentInitParameters } from "pdfjs-dist/types/src/display/api";
+import "../subscriptions/bus.ts"
 
 import { cn } from "@components/lib/utils";
 
@@ -164,85 +165,11 @@ export function PdfView({ book, filepath }: { book: BookData, filepath: String }
   const setIsLookingForNextParagraph = useSetAtom(
     isLookingForNextParagraphAtom
   );
-
-  function nextPage() {
-    setIsLookingForNextParagraph(true);
-    const pageIndex = customStore.get(pageNumberAtom) - 1;
-    virtualizer.scrollToIndex(pageIndex + 1, {
-      align: "start",
-      behavior: "auto",
-    });
-    setIsLookingForNextParagraph(false);
-
-  }
-  function previousPage() {
-    // virtualizer.scrollBy(-500, { behavior: "smooth", align: "auto" });
-    setIsLookingForNextParagraph(true);
-    const pageIndex = customStore.get(pageNumberAtom) - 1;
-    virtualizer.scrollToIndex(pageIndex - 1, {
-      align: "end",
-      behavior: "auto",
-    });
-    setIsLookingForNextParagraph(false);
-
-  }
-
   function clearAllHighlights() {
     setIsHighlighting(false);
     setHighlightedParagraphIndex("");
   }
 
-  useEffect(() => {
-    eventBus.subscribe(EventBusEvent.NEXT_PAGE_PARAGRAPHS_EMPTIED, async () => {
-      // clearAllHighlights();
-      // Update page number IMMEDIATELY before scrolling
-      nextPage();
-      // eventBus.publish(EventBusEvent.PAGE_CHANGED);
-    });
-
-    eventBus.subscribe(
-      EventBusEvent.PREVIOUS_PAGE_PARAGRAPHS_EMPTIED,
-      async () => {
-        // clearAllHighlights();
-        // Update page number IMMEDIATELY before scrolling
-        previousPage();
-        // eventBus.publish(EventBusEvent.PAGE_CHANGED);
-      }
-    );
-    eventBus.subscribe(EventBusEvent.PLAYING_AUDIO, async (paragraph) => {
-      setIsHighlighting(true);
-      setHighlightedParagraphIndex(paragraph.index);
-    });
-    eventBus.subscribe(EventBusEvent.AUDIO_ENDED, async (paragraph) => {
-      // clearAllHighlights();
-    });
-    eventBus.subscribe(
-      EventBusEvent.MOVED_TO_NEXT_PARAGRAPH,
-      async ({ to: paragraph }) => {
-        // clearAllHighlights();
-        // setHighlightedParagraphIndex(paragraph.index);
-      }
-    );
-    eventBus.subscribe(
-      EventBusEvent.MOVED_TO_PREV_PARAGRAPH,
-      async ({ to: paragraph }) => {
-        // clearAllHighlights();
-        // setHighlightedParagraphIndex(paragraph.index);
-      }
-    );
-    eventBus.subscribe(
-      EventBusEvent.PLAYING_STATE_CHANGED,
-      async (playingState) => {
-        if (playingState !== PlayingState.Playing) {
-          // clearAllHighlights();
-          // const paragraphs = customStore.get(getCurrentViewParagraphsAtom);
-          // for (const paragraph of paragraphs) {
-          //   await removeHighlight(rendition, paragraph.index);
-          // }
-        }
-      }
-    );
-  }, [currentPageNumber, setPageNumber]);
   // useCurrentPageNumberNavigation(scrollContainerRef, book.id, virtualizer);
   function onItemClick({ pageNumber: itemPageNumber }: { pageNumber: number }) {
     // Determine direction based on page number comparison
