@@ -1,11 +1,11 @@
+
 import { EventEmitter } from "events";
 import PriorityQueue from "priorityqueuejs";
 import type { TTSRequest } from "@/types";
 import { ttsCache } from "./ttsCache";
 import { TTSQueueEvents } from "./ipc_handles";
-import config from "@/config.json";
-import { isDev } from "@/utils/is_dev";
 import { fetch } from "@tauri-apps/plugin-http";
+import config from "@/config.json"
 
 export interface QueueItem extends TTSRequest {
   priority: number;
@@ -23,7 +23,6 @@ export class TTSQueue extends EventEmitter {
   private queue: PriorityQueue<QueueItem>;
   private isProcessing = false;
 
-  private openaiProxyUrl: string = "";
   // private apiKey: string | null = null
   private readonly activeRequests = new Map<string, QueueItem>();
   private readonly pendingRequests = new Map<string, QueueItem>();
@@ -36,7 +35,6 @@ export class TTSQueue extends EventEmitter {
   constructor() {
     super();
 
-    this.initialize();
 
     // Priority queue comparator: higher priority first
     /**
@@ -46,13 +44,6 @@ export class TTSQueue extends EventEmitter {
       (a: QueueItem, b: QueueItem) => b.priority - a.priority
     );
     this.on(TTSQueueEvents.REQUEST_AUDIO, this.maintainQueueSize);
-  }
-  async initialize() {
-    if (await isDev()) {
-      this.openaiProxyUrl = config.development.player.openaiProxyUrl;
-    } else {
-      this.openaiProxyUrl = config.production.player.openaiProxyUrl;
-    }
   }
 
   private maintainQueueSize(): void {
@@ -201,10 +192,10 @@ export class TTSQueue extends EventEmitter {
           error:
             error instanceof Error
               ? {
-                  name: error.name,
-                  message: error.message,
-                  stack: error.stack,
-                }
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+              }
               : String(error),
         });
         // Clean up tracking
@@ -260,7 +251,7 @@ export class TTSQueue extends EventEmitter {
    * Generate audio using OpenAI TTS API
    */
   private async generateAudio(item: QueueItem): Promise<Uint8Array> {
-    const url = `http://${this.openaiProxyUrl}/v1/audio/speech`;
+    const url = config.production.audio_worker_url
 
     try {
       const requestBody = {
@@ -312,10 +303,10 @@ export class TTSQueue extends EventEmitter {
         error:
           error instanceof Error
             ? {
-                name: error.name,
-                message: error.message,
-                stack: error.stack,
-              }
+              name: error.name,
+              message: error.message,
+              stack: error.stack,
+            }
             : String(error),
       };
 

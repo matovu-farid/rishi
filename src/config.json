@@ -1,14 +1,15 @@
 {
     "development": {
         "player": {
-        "recordPlayingState": true,
-        "openaiProxyUrl": "proxy.matovu-farid.com/api/openai"
-        }
+        "recordPlayingState": true
+        },
+        "audio_worker_url": "https://rishi-worker.faridmato90.workers.dev/api/audio/speech"
     },
     "production": {
         "player": {
-        "recordPlayingState": false,
-        "openaiProxyUrl": "proxy.matovu-farid.com/api/openai"
-        }
+        "recordPlayingState": false
+        },
+        "audio_worker_url": "https://rishi-worker.faridmato90.workers.dev/api/audio/speech"
+
     }
 }
