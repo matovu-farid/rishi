@@ -253,8 +253,6 @@ export function PdfView({ book, filepath }: { book: BookData, filepath: String }
                 ref={(node) => {
                   if (node) {
                     pageRefs.current.set(virtualItem.index, node);
-                    // virtualizer.measureElement(element);
-                    virtualizer.measureElement(node)
 
 
                   } else {

@@ -16,6 +16,7 @@ import {
 } from "../atoms/paragraph-atoms";
 import { useAtomValue, useSetAtom } from "jotai";
 import { usePdfNavigation } from "./usePdfNavigation";
+import { PAGE_HEIGHT } from "../utils/constants";
 function easeInOutQuint(t: number) {
   return t < 0.5 ? 16 * t * t * t * t * t : 1 + 16 * --t * t * t * t * t;
 }
@@ -28,18 +29,14 @@ export function useVirualization(
   );
   const numPages = useAtomValue(pageCountAtom);
   const setHasNavigatedToPage = useSetAtom(hasNavigatedToPageAtom);
-  const estimatedPageHeight = 1550;
+  const estimatedPageHeight = PAGE_HEIGHT;
   const scrollingRef = useRef<number | null>(null);
   const initialOffsetRef = useRef(
     initialPageIndexRef.current * estimatedPageHeight
   );
-  const { isDualPage, pdfWidth, pdfHeight, dualPageWidth } = usePdfNavigation();
   const setVirtualizer = useSetAtom(virtualizerAtom);
-  const pageWidth = isDualPage ? dualPageWidth : pdfWidth;
   const pageRefs = useRef(new Map<number, HTMLElement>());
-  const measurementTimeouts = useRef(new Map<number, number>());
   const hasRequestedInitialScroll = useRef(false);
-  const hasFinalizedInitialScroll = useRef(false);
   const scrollToFn: VirtualizerOptions<any, any>["scrollToFn"] =
     React.useCallback((offset, canSmooth, instance) => {
       const duration = 1000;
@@ -68,7 +65,7 @@ export function useVirualization(
     count: numPages,
     getScrollElement: () => scrollContainerRef.current,
     estimateSize: () => estimatedPageHeight,
-    overscan: 5,
+    overscan: 8,
     enabled: numPages > 0,
     initialOffset: initialOffsetRef.current,
     scrollToFn,
@@ -76,50 +73,16 @@ export function useVirualization(
 
   });
   setVirtualizer(virtualizer);
-  useEffect(() => {
-    pageRefs.current.forEach((element) => {
-      virtualizer.measureElement(element);
-    });
-  }, [virtualizer, pageWidth, pdfHeight]);
   const handlePageRendered = useCallback(
     (index: number) => {
       setHasNavigatedToPage(true);
 
-      const existingTimeout = measurementTimeouts.current.get(index);
-      if (existingTimeout !== undefined) {
-        window.clearTimeout(existingTimeout);
-      }
-
-      const timeoutId = window.setTimeout(() => {
-        const element = pageRefs.current.get(index);
-        if (element) {
-          virtualizer.measureElement(element);
-          if (
-            index === initialPageIndexRef.current &&
-            hasRequestedInitialScroll.current &&
-            !hasFinalizedInitialScroll.current
-          ) {
-            hasFinalizedInitialScroll.current = true;
 
 
-          }
-        }
-        measurementTimeouts.current.delete(index);
-      }, 120);
-
-      measurementTimeouts.current.set(index, timeoutId);
     },
     [virtualizer]
   );
 
-  useEffect(() => {
-    return () => {
-      measurementTimeouts.current.forEach((timeoutId) => {
-        window.clearTimeout(timeoutId);
-      });
-      measurementTimeouts.current.clear();
-    };
-  }, []);
 
   useEffect(() => {
     if (hasRequestedInitialScroll.current) return;

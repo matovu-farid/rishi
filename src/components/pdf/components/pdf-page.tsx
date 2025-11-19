@@ -14,6 +14,7 @@ import {
 import { useAtomValue, useSetAtom } from "jotai";
 import { Loader2 } from "lucide-react";
 import { pageDataToParagraphs } from "../utils/getPageParagraphs";
+import { PAGE_HEIGHT } from "../utils/constants";
 
 type Transform = [number, number, number, number, number, number];
 
@@ -65,6 +66,7 @@ export function PageComponent({
 
   return (
     <Page
+
       pageNumber={pageNumber}
       key={pageNumber.toString()}
       customTextRenderer={({
@@ -84,7 +86,7 @@ export function PageComponent({
       }}
       height={isDualPage ? pdfHeight : undefined}
       width={isDualPage ? undefined : pdfWidth}
-      className={" rounded shadow-lg  "}
+      className={` rounded shadow-lg  h-[1540px]`}
       renderTextLayer={true}
       renderAnnotationLayer={true}
       canvasBackground="white"
