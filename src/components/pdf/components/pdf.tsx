@@ -17,19 +17,12 @@ import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 
 import {
-  getCurrentViewParagraphsAtom,
-  getNextViewParagraphsAtom,
-  getPreviousViewParagraphsAtom,
   hasNavigatedToPageAtom,
-  highlightedParagraphIndexAtom,
-  isHighlightingAtom,
-  isLookingForNextParagraphAtom,
   pageCountAtom,
-  pageNumberAtom,
   resetParaphStateAtom,
   setPageNumberAtom,
 } from "@components/pdf/atoms/paragraph-atoms";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import TTSControls from "@/components/TTSControls";
 import {
   Sheet,
@@ -50,13 +43,10 @@ import { useCurrentPageNumber } from "../hooks/useCurrentPageNumber";
 import { PDFDocumentProxy } from "pdfjs-dist";
 import { useVirualization } from "../hooks/useVirualization";
 import {
-  eventBus,
-  EventBusEvent,
+
   eventBusLogsAtom,
-  PlayingState,
 } from "@/utils/bus";
-import { animate } from "framer-motion";
-import { customStore } from "@/stores/jotai";
+
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -67,12 +57,9 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 export function PdfView({ book, filepath }: { book: BookData, filepath: String }): React.JSX.Element {
   const [theme] = useState<ThemeType>(ThemeType.White);
   const [tocOpen, setTocOpen] = useState(false);
-  const currentPageNumber = useAtomValue(pageNumberAtom);
   useAtomValue(eventBusLogsAtom);
 
-  const currentViewParagraphs = useAtomValue(getCurrentViewParagraphsAtom);
-  const nextViewParagraphs = useAtomValue(getNextViewParagraphsAtom);
-  const previousViewParagraphs = useAtomValue(getPreviousViewParagraphsAtom);
+
 
 
 
@@ -91,7 +78,7 @@ export function PdfView({ book, filepath }: { book: BookData, filepath: String }
     return () => {
       resetParaphState();
     };
-  }, [resetParaphState]);
+  }, []);
 
   // Configure PDF.js options with CDN fallback for better font and image support
   const pdfOptions = useMemo<DocumentInitParameters>(
@@ -153,22 +140,11 @@ export function PdfView({ book, filepath }: { book: BookData, filepath: String }
 
   const pageWidth = isDualPage ? dualPageWidth : pdfWidth;
 
-  const [hasNavigatedToPage, setHasNavigatedToPage] = useAtom(hasNavigatedToPageAtom);
+  const hasNavigatedToPage = useAtomValue(hasNavigatedToPageAtom);
   const { virtualizer, virtualItems, pageRefs, handlePageRendered } =
     useVirualization(scrollContainerRef, book);
 
   useCurrentPageNumber(scrollContainerRef, book, virtualizer);
-  const setIsHighlighting = useSetAtom(isHighlightingAtom);
-  const setHighlightedParagraphIndex = useSetAtom(
-    highlightedParagraphIndexAtom
-  );
-  const setIsLookingForNextParagraph = useSetAtom(
-    isLookingForNextParagraphAtom
-  );
-  function clearAllHighlights() {
-    setIsHighlighting(false);
-    setHighlightedParagraphIndex("");
-  }
 
   // useCurrentPageNumberNavigation(scrollContainerRef, book.id, virtualizer);
   function onItemClick({ pageNumber: itemPageNumber }: { pageNumber: number }) {
@@ -239,7 +215,7 @@ export function PdfView({ book, filepath }: { book: BookData, filepath: String }
       <div className="flex items-center justify-center  px-2 py-1">
         <Document
           className="flex items-center justify-center flex-col"
-          file={filepath}
+          file={filepath.toString()}
           options={pdfOptions}
           onLoadSuccess={onDocumentLoadSuccess}
           onItemClick={onItemClick}
@@ -354,7 +330,7 @@ export function PdfView({ book, filepath }: { book: BookData, filepath: String }
             )}
           >
             <Document
-              file={filepath}
+              file={filepath.toString()}
               options={pdfOptions}
               onLoadSuccess={onDocumentLoadSuccess}
             >
