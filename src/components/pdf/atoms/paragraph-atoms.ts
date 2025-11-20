@@ -1,7 +1,6 @@
 import { ParagraphWithIndex } from "@/models/player_control";
 
-import { atomWithStorage } from 'jotai/utils'
-import { withImmer } from "jotai-immer";
+import { atomWithImmer, withImmer } from "jotai-immer";
 import { atom } from "jotai";
 
 import type { TextContent } from "react-pdf";
@@ -12,10 +11,9 @@ import { observe } from "jotai-effect";
 
 export const virtualizerAtom = atom<any | null>(null);
 
-export const pageNumberToPageDataStoredAtom = atomWithStorage<{
+export const pageNumberToPageDataAtom = atomWithImmer<{
   [pageNumber: number]: TextContent;
-}>('pageNumberToPageData', {});
-export const pageNumberToPageDataAtom = withImmer(pageNumberToPageDataStoredAtom)
+}>({});
 pageNumberToPageDataAtom.debugLabel = "pageNumberToPageDataAtom";
 export const setPageNumberToPageDataAtom = atom(
   null,

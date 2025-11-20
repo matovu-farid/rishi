@@ -247,7 +247,7 @@ export function PdfView({ book, filepath }: { book: BookData, filepath: String }
             }}
           >
             {virtualItems.map((virtualItem) => (
-              <>
+              <div key={"collection-" + virtualItem.key}>
                 <div
                   key={virtualItem.key}
                   data-index={virtualItem.index}
@@ -302,7 +302,7 @@ export function PdfView({ book, filepath }: { book: BookData, filepath: String }
                     isDualPage={isDualPage}
                     bookId={book.id} />
                 </div>
-              </>
+              </div>
             ))}
           </div>
         </Document>
