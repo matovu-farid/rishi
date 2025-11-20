@@ -11,7 +11,6 @@ import { BookData } from "@/generated";
 // Import required CSS for text and annotation layers
 
 export async function updateStoredCoverImage(book: BookData) {
-  console.log(`>>> Updating cover image for book ID: ${book.id}`);
   if (book.version && book.version > 0) return;
   const canvas = document.querySelector<HTMLCanvasElement>(
     '[data-isactive="true"] canvas'

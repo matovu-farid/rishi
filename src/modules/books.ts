@@ -39,10 +39,8 @@ export async function storeBook(book: BookData, storeParam?: Store) {
 
     books.push(book);
   } else {
-    console.log(">>> Update saved book");
     books = books.map((currBook) => {
       if (currBook.id != book.id) return currBook;
-      // Object.create(currBook,)
       return {
         ...currBook,
         ...book,
