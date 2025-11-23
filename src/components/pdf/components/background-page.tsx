@@ -1,11 +1,12 @@
 import { Page } from "react-pdf";
 
 import {
+  isTextItem,
   setPageNumberToPageDataAtom,
 } from "@components/pdf/atoms/paragraph-atoms";
 import { useSetAtom } from "jotai";
 import { Loader2 } from "lucide-react";
-
+import { savePageData } from "@/modules/sql";
 
 export function BackgroundPageComponent({
   thispageNumber: pageNumber,
@@ -13,6 +14,7 @@ export function BackgroundPageComponent({
   pdfWidth,
   isDualPage = false,
   onRenderComplete,
+  bookId,
 }: {
   thispageNumber: number;
   pdfHeight?: number;
@@ -21,14 +23,10 @@ export function BackgroundPageComponent({
   bookId: string;
   onRenderComplete?: () => void;
 }) {
-  const setPageNumberToPageData = useSetAtom(setPageNumberToPageDataAtom);
-
   return (
     <Page
-
       pageNumber={pageNumber}
-      key={'background-' + pageNumber.toString()}
-
+      key={"background-" + pageNumber.toString()}
       height={isDualPage ? pdfHeight : undefined}
       width={isDualPage ? undefined : pdfWidth}
       className={` rounded shadow-lg  h-[1540px]`}
@@ -36,10 +34,17 @@ export function BackgroundPageComponent({
       renderAnnotationLayer={true}
       canvasBackground="white"
       onGetTextSuccess={(data) => {
-        setPageNumberToPageData({
-          pageNumber,
-          pageData: data,
-        });
+        try {
+          data.items
+            .filter(isTextItem)
+            .filter((item) => item.str.length > 0)
+            .forEach((item, index) => {
+              const id = `${bookId}-${pageNumber}-${index}`;
+              void savePageData({ id, bookId, data: item.str, pageNumber });
+            });
+        } catch (error) {
+          console.error(error);
+        }
       }}
       loading={
         <div className="w-screen bg-white  h-screen grid place-items-center">
@@ -47,7 +52,6 @@ export function BackgroundPageComponent({
         </div>
       }
       onRenderSuccess={() => {
-
         onRenderComplete?.();
       }}
     />

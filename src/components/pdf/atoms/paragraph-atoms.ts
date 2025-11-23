@@ -19,41 +19,43 @@ export const pageNumberToPageDataAtom = atomWithImmer<{
 //   [pageNumber: number]: Embed[];
 // }>({});
 
-function isTextItem(item: TextItem | TextMarkedContent): item is TextItem {
+export function isTextItem(
+  item: TextItem | TextMarkedContent
+): item is TextItem {
   return "str" in item;
 }
 export const pageCountAtom = atom(0);
 
 export const bookAtom = atom<BookData | null>(null);
 bookAtom.debugLabel = "bookAtom";
-observe((get, set) => {
-  const pageNumberToPageData = get(pageNumberToPageDataAtom);
-  const pageCount = get(pageCountAtom);
-  const book = get(bookAtom);
-  if (Object.keys(pageNumberToPageDataAtom).length !== pageCount || !book) {
-    return;
-  }
-  void Object.entries(pageNumberToPageData)
-    .map(([pageNumber, pageData]) => {
-      const items = pageData.items.filter(isTextItem);
-      return {
-        pageNumber,
-        pageData: {
-          ...pageData,
-          items,
-        },
-      };
-    })
-    .filter(({ pageData }) => pageData.items.length > 0)
-    .map(({ pageNumber, pageData }) => {
-      return embed({
-        chunks: pageData.items.map((item) => item.str ?? ""),
-        metadata: [{ pageNumber: pageNumber.toString(), bookId: book.id }],
-      }).then((results) => {
-        console.log(results);
-      });
-    });
-}, customStore);
+// observe((get, set) => {
+//   const pageNumberToPageData = get(pageNumberToPageDataAtom);
+//   const pageCount = get(pageCountAtom);
+//   const book = get(bookAtom);
+//   if (Object.keys(pageNumberToPageDataAtom).length !== pageCount || !book) {
+//     return;
+//   }
+//   void Object.entries(pageNumberToPageData)
+//     .map(([pageNumber, pageData]) => {
+//       const items = pageData.items.filter(isTextItem);
+//       return {
+//         pageNumber,
+//         pageData: {
+//           ...pageData,
+//           items,
+//         },
+//       };
+//     })
+//     .filter(({ pageData }) => pageData.items.length > 0)
+//     .map(({ pageNumber, pageData }) => {
+//       return embed({
+//         chunks: pageData.items.map((item) => item.str ?? ""),
+//         metadata: [{ pageNumber: pageNumber.toString(), bookId: book.id }],
+//       }).then((results) => {
+//         console.log(results);
+//       });
+//     });
+// }, customStore);
 pageNumberToPageDataAtom.debugLabel = "pageNumberToPageDataAtom";
 export const setPageNumberToPageDataAtom = atom(
   null,
