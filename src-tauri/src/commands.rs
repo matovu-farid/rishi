@@ -1,9 +1,13 @@
+use embed_anything::embeddings::embed::EmbedData;
+use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use zip::ZipArchive;
 
+use crate::embed::{embed_text, EmbedResult};
 use crate::epub::Epub;
 use crate::pdf::Pdf;
 use crate::shared::books::store_book_data;
@@ -22,6 +26,15 @@ pub fn get_pdf_data(app: tauri::AppHandle, path: &Path) -> Result<BookData, Stri
     let data = Pdf::new(path);
     store_book_data(app, &data).map_err(|e| e.to_string())?;
     data.extract().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn embed(
+    chunks: Vec<String>,
+    metadata: Vec<HashMap<String, String>>,
+) -> Result<Vec<EmbedResult>, String> {
+    let res = embed_text(chunks, metadata).await?;
+    Ok(res)
 }
 
 #[tauri::command]

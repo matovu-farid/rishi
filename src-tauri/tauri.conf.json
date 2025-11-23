@@ -29,12 +29,19 @@
     }
   },
   "plugins": {
-        "deep-link": {
-            "desktop": {
-                "schemes": ["rishi"]
-            }
-        }
+    "deep-link": {
+      "desktop": {
+        "schemes": [
+          "rishi"
+        ]
+      }
     },
+    "sql": {
+      "preload": [
+        "sqlite:rishi.db"
+      ]
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",

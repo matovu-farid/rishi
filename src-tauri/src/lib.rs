@@ -1,4 +1,5 @@
 mod commands;
+mod embed;
 mod epub;
 mod pdf;
 mod shared;
@@ -8,6 +9,7 @@ mod shared;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_http::init())
@@ -20,6 +22,7 @@ pub fn run() {
             commands::unzip,
             commands::get_book_data,
             commands::get_pdf_data,
+            commands::embed,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

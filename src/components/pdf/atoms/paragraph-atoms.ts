@@ -24,16 +24,15 @@ function isTextItem(item: TextItem | TextMarkedContent): item is TextItem {
 }
 export const pageCountAtom = atom(0);
 
-export const bookAtom = atom<BookData | null>(null)
-bookAtom.debugLabel = "bookAtom"
+export const bookAtom = atom<BookData | null>(null);
+bookAtom.debugLabel = "bookAtom";
 observe((get, set) => {
   const pageNumberToPageData = get(pageNumberToPageDataAtom);
   const pageCount = get(pageCountAtom);
-  const book = get(bookAtom)
+  const book = get(bookAtom);
   if (Object.keys(pageNumberToPageDataAtom).length !== pageCount || !book) {
-    return
+    return;
   }
-  console.log(`>>> pagesGot`)
   void Object.entries(pageNumberToPageData)
     .map(([pageNumber, pageData]) => {
       const items = pageData.items.filter(isTextItem);

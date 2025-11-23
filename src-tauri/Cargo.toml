@@ -42,3 +42,5 @@ image = "0.24"
 pdfium-render = "0.8.26"
 tauri-plugin-deep-link = "2"
 tauri-plugin-os = "2.0.0"
+embed_anything = "0.6.5"
+tauri-plugin-sql = { version = "2", features = ["sqlite"] }
