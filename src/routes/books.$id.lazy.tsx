@@ -14,13 +14,14 @@ import {
 } from "@components/pdf/atoms/paragraph-atoms";
 import { synchronizedGetBooks } from "@/modules/sync_books";
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { saveBook } from "@/modules/sql";
 export const Route = createLazyFileRoute("/books/$id")({
   component: () => <BookView />,
 });
 
 function BookView(): React.JSX.Element {
   const { id } = Route.useParams() as { id: string };
-  const setBook = useSetAtom(bookAtom)
+  const setBook = useSetAtom(bookAtom);
 
   const {
     isPending,
@@ -36,9 +37,8 @@ function BookView(): React.JSX.Element {
       if (!book) {
         throw new Error("Book not found");
       }
-      setBook(book)
-
-
+      setBook(book);
+      void saveBook(book);
       return book;
     },
   });
@@ -48,7 +48,7 @@ function BookView(): React.JSX.Element {
     setBookNavigationState(BookNavigationState.Navigated);
     return () => {
       setBookNavigationState(BookNavigationState.Idle);
-      setBook(null)
+      setBook(null);
     };
   }, []);
 
@@ -70,7 +70,13 @@ function BookView(): React.JSX.Element {
 
   return (
     <motion.div layout className="">
-      {book?.kind === "pdf" && <PdfView filepath={convertFileSrc(book.filepath)} key={book.id} book={book} />}
+      {book?.kind === "pdf" && (
+        <PdfView
+          filepath={convertFileSrc(book.filepath)}
+          key={book.id}
+          book={book}
+        />
+      )}
       {book?.kind === "epub" && <EpubView key={book.id} book={book} />}
     </motion.div>
   );
