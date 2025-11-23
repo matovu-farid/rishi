@@ -8,6 +8,7 @@ import { PdfView } from "@components/pdf/components/pdf";
 import { motion } from "framer-motion";
 import { useSetAtom } from "jotai";
 import {
+  bookAtom,
   BookNavigationState,
   bookNavigationStateAtom,
 } from "@components/pdf/atoms/paragraph-atoms";
@@ -19,6 +20,7 @@ export const Route = createLazyFileRoute("/books/$id")({
 
 function BookView(): React.JSX.Element {
   const { id } = Route.useParams() as { id: string };
+  const setBook = useSetAtom(bookAtom)
 
   const {
     isPending,
@@ -34,6 +36,8 @@ function BookView(): React.JSX.Element {
       if (!book) {
         throw new Error("Book not found");
       }
+      setBook(book)
+
 
       return book;
     },
@@ -44,6 +48,7 @@ function BookView(): React.JSX.Element {
     setBookNavigationState(BookNavigationState.Navigated);
     return () => {
       setBookNavigationState(BookNavigationState.Idle);
+      setBook(null)
     };
   }, []);
 

@@ -18,6 +18,11 @@ export async function getPdfData(params: types.GetPdfDataParams): Promise<types.
   return invoke('get_pdf_data', validatedParams);
 }
 
+export async function embed(params: types.EmbedParams): Promise<types.EmbedResult[]> {
+  const validatedParams = types.EmbedParamsSchema.parse(params);
+  return invoke('embed', validatedParams);
+}
+
 export async function isDev(): Promise<boolean> {
   return invoke('is_dev');
 }

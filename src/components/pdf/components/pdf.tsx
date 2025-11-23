@@ -55,7 +55,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
-export function PdfView({ book, filepath }: { book: BookData, filepath: String }): React.JSX.Element {
+export function PdfView({ book, filepath }: { filepath: String, book: BookData }): React.JSX.Element {
   const [theme] = useState<ThemeType>(ThemeType.White);
   const [tocOpen, setTocOpen] = useState(false);
   useAtomValue(eventBusLogsAtom);

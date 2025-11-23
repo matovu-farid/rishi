@@ -3,17 +3,58 @@ import { ParagraphWithIndex } from "@/models/player_control";
 import { atomWithImmer, withImmer } from "jotai-immer";
 import { atom } from "jotai";
 
-import type { TextContent } from "react-pdf";
+import { TextItem, TextMarkedContent, type TextContent } from "react-pdf";
 
 import { freezeAtom } from "jotai/utils";
 import { customStore } from "@/stores/jotai";
 import { observe } from "jotai-effect";
+import { BookData, embed } from "@/generated";
 
 export const virtualizerAtom = atom<any | null>(null);
 
 export const pageNumberToPageDataAtom = atomWithImmer<{
   [pageNumber: number]: TextContent;
 }>({});
+// export const pageNumberToEmbeddings = atomWithImmer<{
+//   [pageNumber: number]: Embed[];
+// }>({});
+
+function isTextItem(item: TextItem | TextMarkedContent): item is TextItem {
+  return "str" in item;
+}
+export const pageCountAtom = atom(0);
+
+export const bookAtom = atom<BookData | null>(null)
+bookAtom.debugLabel = "bookAtom"
+observe((get, set) => {
+  const pageNumberToPageData = get(pageNumberToPageDataAtom);
+  const pageCount = get(pageCountAtom);
+  const book = get(bookAtom)
+  if (Object.keys(pageNumberToPageDataAtom).length !== pageCount || !book) {
+    return
+  }
+  console.log(`>>> pagesGot`)
+  void Object.entries(pageNumberToPageData)
+    .map(([pageNumber, pageData]) => {
+      const items = pageData.items.filter(isTextItem);
+      return {
+        pageNumber,
+        pageData: {
+          ...pageData,
+          items,
+        },
+      };
+    })
+    .filter(({ pageData }) => pageData.items.length > 0)
+    .map(({ pageNumber, pageData }) => {
+      return embed({
+        chunks: pageData.items.map((item) => item.str ?? ""),
+        metadata: [{ pageNumber: pageNumber.toString(), bookId: book.id }],
+      }).then((results) => {
+        console.log(results);
+      });
+    });
+}, customStore);
 pageNumberToPageDataAtom.debugLabel = "pageNumberToPageDataAtom";
 export const setPageNumberToPageDataAtom = atom(
   null,
@@ -76,14 +117,6 @@ export const setPageNumberAtom = freezeAtom(
   })
 );
 export const isDualPageAtom = atom(false);
-// export const currentViewPagesAtom = atom<number[]>((get) => {
-//   const pageNumber = get(pageNumberAtom);
-//   const isDualPage = get(isDualPageAtom);
-//   if (isDualPage) {
-//     return [pageNumber, pageNumber + 1];
-//   }
-//   return [pageNumber];
-// });
 
 export const previousViewPagesAtom = atom<number[]>((get) => {
   const pageNumber = get(pageNumberAtom);
@@ -101,31 +134,6 @@ export const nextViewPagesAtom = atom<number[]>((get) => {
   }
   return [pageNumber + 1];
 });
-export const pageCountAtom = atom(0);
-// export const pageNumberToPageDataAtom = atomWithImmer<{
-//   [pageNumber: number]: TextContent;
-// }>({});
-// export const setPageNumberToPageData = atom(
-//   null,
-//   (
-//     _,
-//     set,
-//     { pageNumber, pageData }: { pageNumber: number; pageData: TextContent }
-//   ) => {
-//     set(pageNumberToPageDataAtom, (draft) => {
-//       draft[pageNumber] = pageData;
-//     });
-//   }
-// );
-// export const paragraphsAtom = atom((get) => {
-//   return (pageNumber: number) => {
-//     const pageData = get(pageNumberToPageDataAtom)[pageNumber];
-//     if (!pageData) {
-//       return [];
-//     }
-//     return pageDataToParagraphs(pageNumber, pageData);
-//   };
-// });
 
 export const resetParaphStateAtom = atom(null, (_get, set) => {
   set(isDualPageAtom, false);
@@ -149,25 +157,6 @@ export const highlightedParagraphAtom = atom((get) => {
 
   return currentParagraph;
 });
-
-// export const highlightedPageAtom = atom((get) => {
-//   const highlightedParagraph = get(highlightedParagraphAtom);
-//   const paragraphs = get(paragraphsAtom);
-//   const hasParagraph = (paragraphs: ParagraphWithIndex[]) =>
-//     paragraphs.some(
-//       (paragraph) => paragraph.index === highlightedParagraph?.index
-//     );
-//   const pageNumber = Object.entries(paragraphs)
-//     .filter(([_, paragraphs]) => hasParagraph(paragraphs))
-//     .map(([pageNumber, _]) => parseInt(pageNumber));
-//   if (pageNumber.length === 0) {
-//     if (get(currentViewPagesAtom).length > 0) {
-//       return get(currentViewPagesAtom)[0];
-//     }
-//     return 1;
-//   }
-//   return pageNumber[0];
-// });
 
 export const getNextViewParagraphsAtom = atom<Paragraph[]>([]);
 
@@ -258,7 +247,6 @@ export const pdfsControllerAtom = atom(
 );
 
 export const isRenderedAtom = atom<Record<string, boolean>>({});
-
 
 export const hasNavigatedToPageAtom = atom(false);
 export const isLookingForNextParagraphAtom = atom(false);
