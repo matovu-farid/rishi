@@ -13,6 +13,16 @@ export async function getBookData(params: types.GetBookDataParams): Promise<type
   return invoke('get_book_data', validatedParams);
 }
 
+export async function saveVectors(params: types.SaveVectorsParams): Promise<void> {
+  const validatedParams = types.SaveVectorsParamsSchema.parse(params);
+  return invoke('save_vectors', validatedParams);
+}
+
+export async function searchVectors(params: types.SearchVectorsParams): Promise<types.SearchResult[]> {
+  const validatedParams = types.SearchVectorsParamsSchema.parse(params);
+  return invoke('search_vectors', validatedParams);
+}
+
 export async function getPdfData(params: types.GetPdfDataParams): Promise<types.BookData> {
   const validatedParams = types.GetPdfDataParamsSchema.parse(params);
   return invoke('get_pdf_data', validatedParams);

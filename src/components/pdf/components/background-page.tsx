@@ -6,7 +6,8 @@ import {
 } from "@components/pdf/atoms/paragraph-atoms";
 import { useSetAtom } from "jotai";
 import { Loader2 } from "lucide-react";
-import { savePageData } from "@/modules/sql";
+import { createPage, savePageDataMany } from "@/modules/sql";
+import { embed, saveVectors } from "@/generated";
 
 export function BackgroundPageComponent({
   thispageNumber: pageNumber,
@@ -33,15 +34,16 @@ export function BackgroundPageComponent({
       renderTextLayer={true}
       renderAnnotationLayer={true}
       canvasBackground="white"
-      onGetTextSuccess={(data) => {
+      onGetTextSuccess={async (data) => {
         try {
-          data.items
+          const pageData = data.items
             .filter(isTextItem)
             .filter((item) => item.str.length > 0)
-            .forEach((item, index) => {
+            .map((item, index) => {
               const id = `${bookId}-${pageNumber}-${index}`;
-              void savePageData({ id, bookId, data: item.str, pageNumber });
+              return { id, bookId, data: item.str, pageNumber };
             });
+          await createPage(pageNumber, bookId, pageData);
         } catch (error) {
           console.error(error);
         }

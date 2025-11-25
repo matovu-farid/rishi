@@ -1,18 +1,17 @@
-use embed_anything::embeddings::embed::EmbedData;
 use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use zip::ZipArchive;
 
-use crate::embed::{embed_text, EmbedResult};
+use crate::embed::{embed_text, EmbedParam, EmbedResult};
 use crate::epub::Epub;
 use crate::pdf::Pdf;
 use crate::shared::books::store_book_data;
 use crate::shared::books::Extractable;
 use crate::shared::types::BookData;
+use crate::vectordb::{SearchResult, Vector, VectorStore};
 
 #[tauri::command]
 pub fn get_book_data(app: tauri::AppHandle, path: &Path) -> Result<BookData, String> {
@@ -22,6 +21,31 @@ pub fn get_book_data(app: tauri::AppHandle, path: &Path) -> Result<BookData, Str
 }
 
 #[tauri::command]
+pub fn save_vectors(
+    app: tauri::AppHandle,
+    name: &str,
+    dim: usize,
+    vectors: Vec<Vector>,
+) -> Result<(), String> {
+    if vectors.is_empty() {
+        return Err("Vectors cannot be empty".to_string());
+    }
+    let mut vector_store = VectorStore::new(&app, dim, name).map_err(|e| e.to_string())?;
+    vector_store.add_vectors(vectors).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn search_vectors(
+    app: tauri::AppHandle,
+    name: &str,
+    query: Vec<f32>,
+    dim: usize,
+    k: usize,
+) -> Result<Vec<SearchResult>, String> {
+    let vector_store = VectorStore::new(&app, dim, name).map_err(|e| e.to_string())?;
+    vector_store.search(query, k).map_err(|e| e.to_string())
+}
+#[tauri::command]
 pub fn get_pdf_data(app: tauri::AppHandle, path: &Path) -> Result<BookData, String> {
     let data = Pdf::new(path);
     store_book_data(app, &data).map_err(|e| e.to_string())?;
@@ -29,11 +53,8 @@ pub fn get_pdf_data(app: tauri::AppHandle, path: &Path) -> Result<BookData, Stri
 }
 
 #[tauri::command]
-pub async fn embed(
-    chunks: Vec<String>,
-    metadata: Vec<HashMap<String, String>>,
-) -> Result<Vec<EmbedResult>, String> {
-    let res = embed_text(chunks, metadata).await?;
+pub async fn embed(embed_params: Vec<EmbedParam>) -> Result<Vec<EmbedResult>, String> {
+    let res = embed_text(embed_params).await?;
     Ok(res)
 }
 

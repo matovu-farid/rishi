@@ -19,8 +19,31 @@ export const BookDataSchema = z.object({
   version: z.number(),
 });
 
+export const EmbedParamSchema = z.object({
+  text: z.string(),
+  metadata: z.record(z.string()),
+});
+
+export const VectorSchema = z.object({
+  id: z.number(),
+  vector: z.array(z.number()),
+});
+
 export const GetBookDataParamsSchema = z.object({
   path: z.string(),
+});
+
+export const SaveVectorsParamsSchema = z.object({
+  name: z.string(),
+  dim: z.number(),
+  vectors: z.array(VectorSchema),
+});
+
+export const SearchVectorsParamsSchema = z.object({
+  name: z.string(),
+  query: z.array(z.number()),
+  dim: z.number(),
+  k: z.number(),
 });
 
 export const GetPdfDataParamsSchema = z.object({
@@ -28,8 +51,7 @@ export const GetPdfDataParamsSchema = z.object({
 });
 
 export const EmbedParamsSchema = z.object({
-  chunks: z.array(z.string()),
-  metadata: z.array(z.record(z.string())),
+  embed_params: z.array(EmbedParamSchema),
 });
 
 export const UnzipParamsSchema = z.object({
@@ -39,6 +61,10 @@ export const UnzipParamsSchema = z.object({
 
 export type GetBookDataParams = z.infer<typeof GetBookDataParamsSchema>;
 
+export type SaveVectorsParams = z.infer<typeof SaveVectorsParamsSchema>;
+
+export type SearchVectorsParams = z.infer<typeof SearchVectorsParamsSchema>;
+
 export type GetPdfDataParams = z.infer<typeof GetPdfDataParamsSchema>;
 
 export type EmbedParams = z.infer<typeof EmbedParamsSchema>;
@@ -46,4 +72,8 @@ export type EmbedParams = z.infer<typeof EmbedParamsSchema>;
 export type UnzipParams = z.infer<typeof UnzipParamsSchema>;
 
 export type BookData = z.infer<typeof BookDataSchema>;
+
+export type EmbedParam = z.infer<typeof EmbedParamSchema>;
+
+export type Vector = z.infer<typeof VectorSchema>;
 
