@@ -1,7 +1,6 @@
 import { embed, EmbedParam, Metadata, saveVectors, Vector } from "@/generated";
 import { Book, BookInsertable, db, PageDataInsertable } from "./kynsley";
 import { sql } from "kysely";
-import { retry } from "ts-retry-promise";
 
 await db.schema
   .createTable("page_data")
@@ -238,9 +237,10 @@ export async function createPage(
       dim: vectorObjects[0].vector.length,
       vectors,
     });
-
+    const pageExists = await doesPageExist(pageNumber, bookId);
+    console.log(`>>> pageExists`, pageExists);
     // Only mark as saved after everything succeeds
-    if (await doesPageExist(pageNumber, bookId)) {
+    if (pageExists) {
       await setSavedData(pageNumber, bookId);
     } else {
       await savePage(pageNumber, bookId);

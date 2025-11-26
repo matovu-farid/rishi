@@ -24,6 +24,8 @@ pub fn run() {
             commands::get_book_data,
             commands::get_pdf_data,
             commands::embed,
+            commands::save_vectors,
+            commands::search_vectors,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

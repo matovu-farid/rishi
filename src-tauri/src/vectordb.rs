@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex, OnceLock};
 
 // Import PathResolver trait for Tauri v2
 use tauri::Manager;
@@ -37,35 +38,44 @@ pub struct VectorStore {
     pub directory: PathBuf,
     pub basename: String,
     pub ef_search: usize,
+    pub is_initialized: bool,
+    pub add_vector_queue: Vec<Vec<Vector>>,
 }
 
 impl VectorStore {
-    pub fn new(app: &tauri::AppHandle, dim: usize, basename: &str) -> anyhow::Result<Self> {
+    pub fn new() -> anyhow::Result<Self> {
+        Ok(Self {
+            dim: 0,
+            directory: PathBuf::from(""),
+            is_initialized: false,
+            basename: "".to_string(),
+            ef_search: 50, // Default ef_search parameter
+            add_vector_queue: Vec::new(),
+        })
+    }
+    pub fn init(
+        &mut self,
+        app: &tauri::AppHandle,
+        dim: usize,
+        basename: &str,
+    ) -> anyhow::Result<()> {
         let app_data_dir = app
             .path()
             .app_data_dir()
             .map_err(|e| anyhow::anyhow!("Failed to get app data directory: {:?}", e))?;
-
-        // Ensure directory exists
         fs::create_dir_all(&app_data_dir)?;
-        // print the full vectordb path
-        println!(
-            ">>> vectordb path: {:?}",
-            app_data_dir.join(basename).to_string_lossy()
-        );
+        self.directory = app_data_dir;
 
-        Ok(Self {
-            dim,
-            directory: app_data_dir,
-            basename: basename.to_string(),
-            ef_search: 50, // Default ef_search parameter
-        })
+        self.dim = dim;
+        self.basename = basename.to_string();
+        self.is_initialized = true;
+        Ok(())
     }
 
     /// Get the full path to the data file (for checking existence)
-    fn data_file_path(&self) -> PathBuf {
-        self.directory.join(format!("{}.hnsw.data", self.basename))
-    }
+    // fn data_file_path(&self) -> PathBuf {
+    //     self.directory.join(format!("{}.hnsw.data", self.basename))
+    // }
 
     /// Helper function to create a new empty HNSW index
     fn create_new_index<'a>() -> Hnsw<'a, f32, DistL2> {
@@ -82,6 +92,13 @@ impl VectorStore {
         )
     }
 
+    pub fn check_is_initialized(&self) -> anyhow::Result<()> {
+        if !self.is_initialized {
+            anyhow::bail!("Vector store is not initialized");
+        }
+        Ok(())
+    }
+
     /// Execute a closure with a loaded (or freshly created) HNSW index, keeping the reloader alive.
     fn with_hnsw_mut<F, R>(
         directory: &Path,
@@ -92,8 +109,6 @@ impl VectorStore {
     where
         F: FnMut(&mut Hnsw<f32, DistL2>) -> anyhow::Result<R>,
     {
-        println!(">>> Path  {:?}", directory.join(basename).to_string_lossy());
-        // Ensure directory exists
         fs::create_dir_all(&directory)?;
         if Self::data_file_exists(directory, basename) {
             let mut reloader = HnswIo::new(directory, basename);
@@ -108,32 +123,60 @@ impl VectorStore {
             f(&mut hnsw)
         }
     }
+    pub fn add_vectors(&mut self, vectors: Vec<Vector>) -> anyhow::Result<()> {
+        self.add_vector_queue.push(vectors);
+        self.process_vectors()?;
+        Ok(())
+    }
     /// Add a new vector to the store.  
     /// id must be unique — you manage this externally.
-    pub fn add_vectors(&mut self, vectors: Vec<Vector>) -> anyhow::Result<()> {
+    pub fn process_vectors(&mut self) -> anyhow::Result<()> {
+        // remove the first 5 vectors from the queue and process them
+        if self.add_vector_queue.is_empty() {
+            return Ok(());
+        }
+        // clear old dumps
+        let mut vector_batch: Vec<Vec<Vector>> = Vec::new();
+        for _ in 0..std::cmp::max(5, self.add_vector_queue.len()) {
+            vector_batch.push(self.add_vector_queue.remove(0));
+        }
+
+        let vectors = vector_batch.into_iter().flatten().collect::<Vec<_>>();
+
         if vectors.iter().any(|v| v.vector.len() != self.dim) {
             anyhow::bail!("Vector has wrong dimension: expected {}", self.dim,);
         }
-
+        self.check_is_initialized()?;
         // Extract directory and basename to avoid borrow checker issues
         let directory = self.directory.clone();
         let basename = self.basename.clone();
-        println!(
-            ">>> Path  {:?}",
-            &directory.join(&basename).to_string_lossy()
-        );
 
-        Self::with_hnsw_mut(&directory, &basename, true, |hnsw| {
+        let dump_name = Self::with_hnsw_mut(&directory, &basename, true, |hnsw| {
             // Insert the vectors
             for vector in &vectors {
                 hnsw.insert((&vector.vector, vector.id as usize));
             }
 
-            // Save the index (this should work even if Hnsw borrows from reloader)
-            // Dump always writes a new serialized copy, so mmapped data is safely refreshed.
             hnsw.file_dump(&directory, &basename)
                 .map_err(|e| anyhow::anyhow!("Failed to save HNSW index: {}", e))
         })?;
+        let mut old_basename = self.basename.clone();
+
+        self.overwrite_old_dump(&mut old_basename, &dump_name)?;
+
+        self.process_vectors()?;
+
+        Ok(())
+    }
+    pub fn overwrite_old_dump(
+        &mut self,
+        old_basename: &str,
+        new_dump_name: &str,
+    ) -> anyhow::Result<()> {
+        let directory = self.directory.clone();
+        let old_dump_path = directory.join(format!("{}.hnsw.data", old_basename));
+        let new_dump_path = directory.join(format!("{}.hnsw.data", new_dump_name));
+        fs::rename(new_dump_path, old_dump_path)?;
 
         Ok(())
     }
@@ -152,7 +195,7 @@ impl VectorStore {
                 query.len()
             );
         }
-
+        self.check_is_initialized()?;
         // Extract directory and basename to avoid borrow checker issues
         let directory = self.directory.clone();
         let basename = self.basename.clone();
@@ -176,4 +219,16 @@ impl VectorStore {
     pub fn set_ef_search(&mut self, ef_search: usize) {
         self.ef_search = ef_search;
     }
+}
+
+// let mut vector_store = Arc::new(Mutex::new(VectorStore::new()));
+
+static VECTOR_STORE: OnceLock<Arc<Mutex<VectorStore>>> = OnceLock::new();
+
+pub fn vector_store() -> &'static Arc<Mutex<VectorStore>> {
+    VECTOR_STORE.get_or_init(|| {
+        Arc::new(Mutex::new(
+            VectorStore::new().expect("Failed to create VectorStore"),
+        ))
+    })
 }

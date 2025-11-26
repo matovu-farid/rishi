@@ -11,7 +11,7 @@ use crate::pdf::Pdf;
 use crate::shared::books::store_book_data;
 use crate::shared::books::Extractable;
 use crate::shared::types::BookData;
-use crate::vectordb::{SearchResult, Vector, VectorStore};
+use crate::vectordb::{vector_store, SearchResult, Vector};
 
 #[tauri::command]
 pub fn get_book_data(app: tauri::AppHandle, path: &Path) -> Result<BookData, String> {
@@ -30,8 +30,15 @@ pub fn save_vectors(
     if vectors.is_empty() {
         return Err("Vectors cannot be empty".to_string());
     }
-    let mut vector_store = VectorStore::new(&app, dim, name).map_err(|e| e.to_string())?;
-    vector_store.add_vectors(vectors).map_err(|e| e.to_string())
+    let mut vectorstore = vector_store().lock().map_err(|e| e.to_string())?;
+    vectorstore
+        .init(&app, dim, name)
+        .map_err(|e| e.to_string())?;
+    //let mut vector_store = VectorStore::new(&app, dim, name).map_err(|e| e.to_string())?;
+    // println!(">>> Adding {} vectors to vector store", vectors.len());
+
+    // vector_store.add_vectors(vectors).map_err(|e| e.to_string())
+    vectorstore.add_vectors(vectors).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -42,8 +49,14 @@ pub fn search_vectors(
     dim: usize,
     k: usize,
 ) -> Result<Vec<SearchResult>, String> {
-    let vector_store = VectorStore::new(&app, dim, name).map_err(|e| e.to_string())?;
-    vector_store.search(query, k).map_err(|e| e.to_string())
+    let mut vectorstore = vector_store().lock().map_err(|e| e.to_string())?;
+
+    vectorstore
+        .init(&app, dim, name)
+        .map_err(|e| e.to_string())?;
+
+    let res = vectorstore.search(query, k).map_err(|e| e.to_string());
+    res
 }
 #[tauri::command]
 pub fn get_pdf_data(app: tauri::AppHandle, path: &Path) -> Result<BookData, String> {
