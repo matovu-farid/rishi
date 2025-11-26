@@ -5,10 +5,9 @@ import {
   isTextItem,
 } from "@components/pdf/atoms/paragraph-atoms";
 import { Loader2 } from "lucide-react";
-import { createPage } from "@/modules/sql";
 import { wordsToFinalParagraphs } from "../utils/wordsToParaagraphs";
 import { useSetAtom } from "jotai";
-import { retry } from "ts-retry-promise";
+import { processJob } from "@/modules/sql";
 
 export function BackgroundPageComponent({
   thispageNumber: pageNumber,
@@ -52,9 +51,8 @@ export function BackgroundPageComponent({
 
             return { id, bookId, data: item, pageNumber };
           });
-          await retry(() => createPage(pageNumber, bookId, page), {
-            retries: 3,
-          });
+          //void createJob({ pageNumber, bookId, pageData: page });
+          void processJob(pageNumber, bookId, page);
 
           setBackgroundPage((pageNumber) => pageNumber + 1);
         } catch (error) {

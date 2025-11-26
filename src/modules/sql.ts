@@ -18,23 +18,6 @@ await db.schema
   .execute();
 
 await db.schema
-  .createTable("page_data")
-  .ifNotExists()
-  .addColumn("id", "integer", (col) => col.primaryKey())
-  .addColumn("bookId", "integer")
-  .addColumn("pageNumber", "integer")
-  .addColumn("saved_data", "boolean")
-  .addColumn("created_at", "timestamp", (col) =>
-    col.defaultTo(sql`CURRENT_TIMESTAMP`)
-  )
-  .addColumn("updated_at", "timestamp", (col) =>
-    col.defaultTo(sql`CURRENT_TIMESTAMP`)
-  )
-  // .addUniqueConstraint("pageNumber_bookId", ["pageNumber", "bookId"])
-  // .addForeignKeyConstraint("page_bookId_fkey", ["bookId"], "books", ["id"])
-  .execute();
-
-await db.schema
   .createTable("books")
   .ifNotExists()
   .addColumn("id", "integer", (col) => col.primaryKey())
@@ -58,45 +41,16 @@ await db.schema
   .execute();
 
 async function hasSavedData(pageNumber: number, bookId: number) {
+  // if we have atleast one chink
   const result = await db
-    .selectFrom("page_data")
-    .select("saved_data")
+    .selectFrom("chunk_data")
     .where("pageNumber", "=", pageNumber)
     .where("bookId", "=", bookId)
+    .select("id")
     .executeTakeFirst();
 
   if (!result) return false;
-  return result?.saved_data ?? false;
-}
-
-export async function addPage(
-  pageNumber: number,
-  bookId: number,
-  pageId: number
-) {
-  try {
-    const pageExists = await doesPageExist(pageId);
-    if (pageExists) {
-      return;
-    }
-    await db
-      .insertInto("page_data")
-      .values({ pageNumber, bookId, saved_data: true, id: pageId })
-      // .onConflict((oc) => oc.constraint("pageNumber_bookId").doNothing())
-      .execute();
-  } catch (error) {
-    console.error(`>>> Error in addPage for page ${pageNumber}:`, error);
-    throw error;
-  }
-}
-
-export async function doesPageExist(pageId: number) {
-  const result = await db
-    .selectFrom("page_data")
-    .where("id", "=", pageId)
-    .selectAll()
-    .executeTakeFirst();
-  return result ? true : false;
+  return true;
 }
 
 export async function savePageDataMany(pageData: PageDataInsertable[]) {
@@ -177,13 +131,12 @@ export async function updateBookCover(id: number, cover: number[]) {
   await db.updateTable("books").set({ cover }).where("id", "=", id).execute();
 }
 
-export async function createPage(
+export async function processJob(
   pageNumber: number,
   bookId: number,
   pageData: PageDataInsertable[]
 ) {
   try {
-    const pageId = pageNumber * 1000000 + bookId * 10000;
     if (await hasSavedData(pageNumber, bookId)) {
       console.log(`>>> Page ${pageNumber} already has saved data, skipping`);
       return;
@@ -229,8 +182,6 @@ export async function createPage(
       dim: vectorObjects[0].vector.length,
       vectors,
     });
-
-    await addPage(pageNumber, bookId, pageId);
   } catch (error) {
     console.error(`>>> Error in createPage for page ${pageNumber}:`, error);
     throw error;
