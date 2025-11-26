@@ -1,9 +1,9 @@
-import { embed, EmbedParam, Metadata, saveVectors, Vector } from "@/generated";
+import { embed, EmbedParam, Metadata, saveVectors } from "@/generated";
 import { Book, BookInsertable, db, PageDataInsertable } from "./kynsley";
 import { sql } from "kysely";
 
 await db.schema
-  .createTable("page_data")
+  .createTable("chunk_data")
   .ifNotExists()
   .addColumn("id", "integer", (cb) => cb.primaryKey())
   .addColumn("bookId", "integer")
@@ -18,9 +18,9 @@ await db.schema
   .execute();
 
 await db.schema
-  .createTable("page")
+  .createTable("page_data")
   .ifNotExists()
-  .addColumn("id", "serial", (col) => col.primaryKey())
+  .addColumn("id", "integer", (col) => col.primaryKey().autoIncrement())
   .addColumn("bookId", "integer")
   .addColumn("pageNumber", "integer")
   .addColumn("saved_data", "boolean", (col) => col.defaultTo(false))
@@ -30,8 +30,8 @@ await db.schema
   .addColumn("updated_at", "timestamp", (col) =>
     col.defaultTo(sql`CURRENT_TIMESTAMP`)
   )
-  .addUniqueConstraint("pageNumber_bookId", ["pageNumber", "bookId"])
-  .addForeignKeyConstraint("page_bookId_fkey", ["bookId"], "books", ["id"])
+  // .addUniqueConstraint("pageNumber_bookId", ["pageNumber", "bookId"])
+  // .addForeignKeyConstraint("page_bookId_fkey", ["bookId"], "books", ["id"])
   .execute();
 
 await db.schema
@@ -58,8 +58,11 @@ await db.schema
   .execute();
 
 async function hasSavedData(pageNumber: number, bookId: number) {
+  // first check is page exists
+  const pageExists = await doesPageExist(pageNumber, bookId);
+  if (!pageExists) return false;
   const result = await db
-    .selectFrom("page")
+    .selectFrom("page_data")
     .select("saved_data")
     .where("pageNumber", "=", pageNumber)
     .where("bookId", "=", bookId)
@@ -68,16 +71,30 @@ async function hasSavedData(pageNumber: number, bookId: number) {
   if (!result) return false;
   return result?.saved_data ?? false;
 }
-export async function savePage(pageNumber: number, bookId: number) {
-  await db
-    .insertInto("page")
-    .values({ pageNumber, bookId, saved_data: true })
-    .execute();
+
+export async function addPage(pageNumber: number, bookId: number) {
+  try {
+    console.log(`>>> Adding page`);
+    const pageExists = await doesPageExist(pageNumber, bookId);
+    if (pageExists) {
+      return;
+    }
+    console.log(`>>> Inserting page data`);
+    await db
+      .insertInto("page_data")
+      .values({ pageNumber, bookId, saved_data: false })
+      // .onConflict((oc) => oc.constraint("pageNumber_bookId").doNothing())
+      .execute();
+  } catch (error) {
+    console.log(`>>> Errror inserting page data`);
+    console.error(`>>> Error in addPage for page ${pageNumber}:`, error);
+    throw error;
+  }
 }
 
 export async function doesPageExist(pageNumber: number, bookId: number) {
   const result = await db
-    .selectFrom("page")
+    .selectFrom("page_data")
     .where("pageNumber", "=", pageNumber)
     .where("bookId", "=", bookId)
     .selectAll()
@@ -86,30 +103,19 @@ export async function doesPageExist(pageNumber: number, bookId: number) {
 }
 
 export async function setSavedData(pageNumber: number, bookId: number) {
-  // await db.execute(
-  //   "UPDATE page_data SET saved_data = TRUE WHERE pageNumber = $1 AND bookId = $2",
-  //   [pageNumber, bookId]
-  // );
   await db
-    .updateTable("page")
+    .updateTable("page_data")
     .set({ saved_data: true })
     .where("pageNumber", "=", pageNumber)
     .where("bookId", "=", bookId)
     .execute();
 }
 
-// export type PageData = {
-//   id: string;
-//   bookId: number;
-//   pageNumber: number;
-//   data: string;
-// };
-
 export async function savePageDataMany(pageData: PageDataInsertable[]) {
   if (pageData.length === 0) return;
 
   await db
-    .insertInto("page_data")
+    .insertInto("chunk_data")
     .values(pageData)
     .onConflict((oc) =>
       oc.column("id").doUpdateSet({
@@ -120,12 +126,8 @@ export async function savePageDataMany(pageData: PageDataInsertable[]) {
 }
 
 export async function getAllPageDataByBookId(bookId: number) {
-  // const result = await db.select(
-  //   "SELECT * FROM page_data WHERE bookId = $1 ORDER BY pageNumber ASC",
-  //   [bookId]
-  // );
   const result = await db
-    .selectFrom("page_data")
+    .selectFrom("chunk_data")
     .selectAll()
     .where("bookId", "=", bookId)
     .orderBy("pageNumber", "asc")
@@ -216,40 +218,42 @@ export async function createPage(
 
     // Save page data first, then embed
     // This ensures data is in the database even if embedding fails
-    await savePageDataMany(pageData);
 
-    const embedResults = await embed({ embedparams: embedParams });
+    await Promise.all([
+      saveVectorData(embedParams, bookId),
+      savePageDataMany(pageData),
+      addPage(pageNumber, bookId),
+    ]);
 
-    const vectorObjects = embedResults.map((result) => {
-      return {
-        id: result.metadata.id,
-        vector: result.embedding,
-        text: result.text,
-        metadata: result.metadata,
-      };
-    });
-    const vectors: Vector[] = vectorObjects.map((vector) => ({
-      id: vector.id,
-      vector: vector.vector,
-    }));
-    await saveVectors({
-      name: `${bookId}-vectordb`,
-      dim: vectorObjects[0].vector.length,
-      vectors,
-    });
-    const pageExists = await doesPageExist(pageNumber, bookId);
-    console.log(`>>> pageExists`, pageExists);
-    // Only mark as saved after everything succeeds
-    if (pageExists) {
-      await setSavedData(pageNumber, bookId);
-    } else {
-      await savePage(pageNumber, bookId);
-    }
+    await setSavedData(pageNumber, bookId);
+
     console.log(`>>> Successfully saved page ${pageNumber}`);
   } catch (error) {
     console.error(`>>> Error in createPage for page ${pageNumber}:`, error);
     throw error;
   }
+}
+export async function saveVectorData(
+  embedParams: EmbedParam[],
+  bookId: number
+) {
+  const embedResults = await embed({ embedparams: embedParams });
+  const vectors = embedResults
+    .map((result) => ({
+      id: result.metadata.id,
+      vector: result.embedding,
+      text: result.text,
+      metadata: result.metadata,
+    }))
+    .map((vector) => ({
+      id: vector.id,
+      vector: vector.vector,
+    }));
+  await saveVectors({
+    name: `${bookId}-vectordb`,
+    dim: vectors[0].vector.length,
+    vectors,
+  });
 }
 export async function updateBookLocation(bookId: number, location: string) {
   // await updateBook({ id: bookId, location: location }, store);

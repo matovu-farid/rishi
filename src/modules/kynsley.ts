@@ -4,15 +4,15 @@ import { ColumnType, Generated, Insertable, Kysely, Selectable } from "kysely";
 import { TauriSqliteDialect } from "kysely-dialect-tauri";
 
 interface DB {
-  page: {
+  page_data: {
     id: Generated<number>;
     pageNumber: number;
     bookId: number;
-    saved_data: boolean; // default false
+    saved_data: boolean; // default 0
     created_at: ColumnType<Date, string | undefined, never>;
     updated_at: ColumnType<Date, string | undefined, never>;
   };
-  page_data: {
+  chunk_data: {
     id: number;
     pageNumber: number;
     bookId: number;
@@ -38,6 +38,7 @@ interface DB {
 }
 
 export const db = new Kysely<DB>({
+  log: [ "error"],
   dialect: new TauriSqliteDialect({
     database: async (prefix) => {
       const path = `${prefix}${await appDataDir()}/rishi.db`;
@@ -47,8 +48,8 @@ export const db = new Kysely<DB>({
   }),
 });
 
-export type PageData = DB["page_data"];
+export type PageData = DB["chunk_data"];
 export type PageDataInsertable = Insertable<PageData>;
-export type Page = DB["page"];
+export type Page = DB["page_data"];
 export type Book = Selectable<DB["books"]>;
 export type BookInsertable = Insertable<DB["books"]>;

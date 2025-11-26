@@ -52,7 +52,7 @@ export function BackgroundPageComponent({
 
             return { id, bookId, data: item, pageNumber };
           });
-          void retry(() => createPage(pageNumber, bookId, page), {
+          await retry(() => createPage(pageNumber, bookId, page), {
             retries: 3,
           });
 
