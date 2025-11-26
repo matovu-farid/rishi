@@ -1,12 +1,15 @@
-import { defineConfig } from 'vitest/config'
-import { playwright } from '@vitest/browser-playwright'
-import { nodePolyfills } from 'vite-plugin-node-polyfills'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from "vitest/config";
+// import { playwright } from "@vitest/browser-playwright";
+import { nodePolyfills } from "vite-plugin-node-polyfills";
+import react from "@vitejs/plugin-react";
 
 export default defineConfig({
-  plugins: [react(), nodePolyfills({
-    include: ['fs', 'url', 'path']
-  })],
+  plugins: [
+    react(),
+    nodePolyfills({
+      include: ["fs", "url", "path"],
+    }),
+  ],
   resolve: {
     alias: {
       "@components": "/src/components",
@@ -16,13 +19,13 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    browser: {
-      enabled: true,
-      provider: playwright(),
-      // https://vitest.dev/guide/browser/playwright
-      instances: [
-        { browser: 'chromium' },
-      ],
-    },
+    // browser: {
+    //   enabled: true,
+    //   provider: playwright(),
+    //   // https://vitest.dev/guide/browser/playwright
+    //   instances: [
+    //     { browser: 'chromium' },
+    //   ],
+    // },
   },
-})
+});
