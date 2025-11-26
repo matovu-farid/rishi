@@ -135,13 +135,11 @@ impl VectorStore {
         if self.add_vector_queue.is_empty() {
             return Ok(());
         }
-        // clear old dumps
-        let mut vector_batch: Vec<Vec<Vector>> = Vec::new();
-        for _ in 0..std::cmp::max(5, self.add_vector_queue.len()) {
-            vector_batch.push(self.add_vector_queue.remove(0));
-        }
-
-        let vectors = vector_batch.into_iter().flatten().collect::<Vec<_>>();
+        let vectors = self
+            .add_vector_queue
+            .drain(..std::cmp::min(5, self.add_vector_queue.len()))
+            .flatten()
+            .collect::<Vec<_>>();
 
         if vectors.iter().any(|v| v.vector.len() != self.dim) {
             anyhow::bail!("Vector has wrong dimension: expected {}", self.dim,);
@@ -173,10 +171,24 @@ impl VectorStore {
         old_basename: &str,
         new_dump_name: &str,
     ) -> anyhow::Result<()> {
+        if old_basename == new_dump_name {
+            return Ok(());
+        }
         let directory = self.directory.clone();
         let old_dump_path = directory.join(format!("{}.hnsw.data", old_basename));
+        let old_graph_path = directory.join(format!("{}.hnsw.graph", old_basename));
+
         let new_dump_path = directory.join(format!("{}.hnsw.data", new_dump_name));
+        let new_graph_path = directory.join(format!("{}.hnsw.graph", new_dump_name));
+        if !old_dump_path.exists() {
+            return Ok(());
+        }
+
         fs::rename(new_dump_path, old_dump_path)?;
+        if !old_graph_path.exists() {
+            return Ok(());
+        }
+        fs::rename(new_graph_path, old_graph_path)?;
 
         Ok(())
     }
