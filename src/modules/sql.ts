@@ -1,4 +1,4 @@
-import { embed, EmbedParam, Metadata, saveVectors } from "@/generated";
+import { embed, EmbedParam, Metadata, saveVectors, Vector } from "@/generated";
 import { Book, BookInsertable, db, PageDataInsertable } from "./kynsley";
 import { sql } from "kysely";
 
@@ -20,10 +20,10 @@ await db.schema
 await db.schema
   .createTable("page_data")
   .ifNotExists()
-  .addColumn("id", "integer", (col) => col.primaryKey().autoIncrement())
+  .addColumn("id", "integer", (col) => col.primaryKey())
   .addColumn("bookId", "integer")
   .addColumn("pageNumber", "integer")
-  .addColumn("saved_data", "boolean", (col) => col.defaultTo(false))
+  .addColumn("saved_data", "boolean")
   .addColumn("created_at", "timestamp", (col) =>
     col.defaultTo(sql`CURRENT_TIMESTAMP`)
   )
@@ -58,9 +58,6 @@ await db.schema
   .execute();
 
 async function hasSavedData(pageNumber: number, bookId: number) {
-  // first check is page exists
-  const pageExists = await doesPageExist(pageNumber, bookId);
-  if (!pageExists) return false;
   const result = await db
     .selectFrom("page_data")
     .select("saved_data")
@@ -72,43 +69,34 @@ async function hasSavedData(pageNumber: number, bookId: number) {
   return result?.saved_data ?? false;
 }
 
-export async function addPage(pageNumber: number, bookId: number) {
+export async function addPage(
+  pageNumber: number,
+  bookId: number,
+  pageId: number
+) {
   try {
-    console.log(`>>> Adding page`);
-    const pageExists = await doesPageExist(pageNumber, bookId);
+    const pageExists = await doesPageExist(pageId);
     if (pageExists) {
       return;
     }
-    console.log(`>>> Inserting page data`);
     await db
       .insertInto("page_data")
-      .values({ pageNumber, bookId, saved_data: false })
+      .values({ pageNumber, bookId, saved_data: true, id: pageId })
       // .onConflict((oc) => oc.constraint("pageNumber_bookId").doNothing())
       .execute();
   } catch (error) {
-    console.log(`>>> Errror inserting page data`);
     console.error(`>>> Error in addPage for page ${pageNumber}:`, error);
     throw error;
   }
 }
 
-export async function doesPageExist(pageNumber: number, bookId: number) {
+export async function doesPageExist(pageId: number) {
   const result = await db
     .selectFrom("page_data")
-    .where("pageNumber", "=", pageNumber)
-    .where("bookId", "=", bookId)
+    .where("id", "=", pageId)
     .selectAll()
     .executeTakeFirst();
   return result ? true : false;
-}
-
-export async function setSavedData(pageNumber: number, bookId: number) {
-  await db
-    .updateTable("page_data")
-    .set({ saved_data: true })
-    .where("pageNumber", "=", pageNumber)
-    .where("bookId", "=", bookId)
-    .execute();
 }
 
 export async function savePageDataMany(pageData: PageDataInsertable[]) {
@@ -195,6 +183,7 @@ export async function createPage(
   pageData: PageDataInsertable[]
 ) {
   try {
+    const pageId = pageNumber * 1000000 + bookId * 10000;
     if (await hasSavedData(pageNumber, bookId)) {
       console.log(`>>> Page ${pageNumber} already has saved data, skipping`);
       return;
@@ -218,42 +207,34 @@ export async function createPage(
 
     // Save page data first, then embed
     // This ensures data is in the database even if embedding fails
+    await savePageDataMany(pageData);
 
-    await Promise.all([
-      saveVectorData(embedParams, bookId),
-      savePageDataMany(pageData),
-      addPage(pageNumber, bookId),
-    ]);
+    const embedResults = await embed({ embedparams: embedParams });
 
-    await setSavedData(pageNumber, bookId);
+    const vectorObjects = embedResults.map((result) => {
+      return {
+        id: result.metadata.id,
+        vector: result.embedding,
+        text: result.text,
+        metadata: result.metadata,
+      };
+    });
+    const vectors: Vector[] = vectorObjects.map((vector) => ({
+      id: vector.id,
+      vector: vector.vector,
+    }));
 
-    console.log(`>>> Successfully saved page ${pageNumber}`);
+    await saveVectors({
+      name: `${bookId}-vectordb`,
+      dim: vectorObjects[0].vector.length,
+      vectors,
+    });
+
+    await addPage(pageNumber, bookId, pageId);
   } catch (error) {
     console.error(`>>> Error in createPage for page ${pageNumber}:`, error);
     throw error;
   }
-}
-export async function saveVectorData(
-  embedParams: EmbedParam[],
-  bookId: number
-) {
-  const embedResults = await embed({ embedparams: embedParams });
-  const vectors = embedResults
-    .map((result) => ({
-      id: result.metadata.id,
-      vector: result.embedding,
-      text: result.text,
-      metadata: result.metadata,
-    }))
-    .map((vector) => ({
-      id: vector.id,
-      vector: vector.vector,
-    }));
-  await saveVectors({
-    name: `${bookId}-vectordb`,
-    dim: vectors[0].vector.length,
-    vectors,
-  });
 }
 export async function updateBookLocation(bookId: number, location: string) {
   // await updateBook({ id: bookId, location: location }, store);

@@ -3,9 +3,9 @@ import Database from "@tauri-apps/plugin-sql";
 import { ColumnType, Generated, Insertable, Kysely, Selectable } from "kysely";
 import { TauriSqliteDialect } from "kysely-dialect-tauri";
 
-interface DB {
+export interface DB {
   page_data: {
-    id: Generated<number>;
+    id: number;
     pageNumber: number;
     bookId: number;
     saved_data: boolean; // default 0
