@@ -1,7 +1,7 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { ttsService } from "./ttsService";
 
-export const getTTSAudioPath = async (bookId: string, cfiRange: string) => {
+export const getTTSAudioPath = async (bookId: number, cfiRange: string) => {
   try {
     return await ttsService.getAudioPath(bookId, cfiRange);
   } catch (error) {
@@ -19,7 +19,7 @@ export const getTtsQueueStatus = () => {
   }
 };
 
-export const ttsClearBookCache = async (bookId: string) => {
+export const ttsClearBookCache = async (bookId: number) => {
   try {
     await ttsService.clearBookCache(bookId);
   } catch (error) {
@@ -27,7 +27,7 @@ export const ttsClearBookCache = async (bookId: string) => {
     throw error;
   }
 };
-export const ttsGetBookCacheSize = async (bookId: string) => {
+export const ttsGetBookCacheSize = async (bookId: number) => {
   try {
     return await ttsService.getBookCacheSize(bookId);
   } catch (error) {
@@ -37,13 +37,18 @@ export const ttsGetBookCacheSize = async (bookId: string) => {
 };
 
 export const requestTTSAudio = async (
-  bookId: string,
+  bookId: number,
   cfiRange: string,
   text: string,
   priority = 0
 ) => {
   try {
-    const audioFile = await ttsService.requestAudio(bookId, cfiRange, text, priority);
+    const audioFile = await ttsService.requestAudio(
+      bookId,
+      cfiRange,
+      text,
+      priority
+    );
     return convertFileSrc(audioFile);
   } catch (error) {
     console.error("TTS request failed:", error);

@@ -6,26 +6,25 @@ import { IconButton } from "./ui/IconButton";
 import { Button } from "./ui/Button";
 import { Trash2, Plus } from "lucide-react";
 import { chooseFiles } from "@/modules/chooseFiles";
-import { BookData, getBookData, getPdfData } from "@/generated";
+import { getBookData, getPdfData } from "@/generated";
 import { copyBookToAppData } from "@/modules/books";
 import { useTauriDragDrop } from "./hooks/use-tauri-drag-drop";
 import { motion, AnimatePresence } from "framer-motion";
 import { atom, useSetAtom } from "jotai";
 import { customStore } from "@/stores/jotai";
-import {
-  synchronizedGetBooks,
-  synchronizedDeleteBook,
-} from "@/modules/sync_books";
+
 import {
   pdfsControllerAtom,
   setPageNumberAtom,
 } from "@components/pdf/atoms/paragraph-atoms";
+import { deleteBook, getBooks, saveBook } from "@/modules/sql";
+import { Book, BookInsertable } from "@/modules/kynsley";
 
-const newBook = atom<string | null>(null);
+const newBook = atom<number | null>(null);
 
 const useNavigateToNewBook = () => {
   const navigate = useNavigate();
-  function navigateToNewBook(bookId: string) {
+  function navigateToNewBook(bookId: number) {
     void navigate({
       to: "/books/$id",
       params: { id: bookId },
@@ -98,7 +97,7 @@ function FileDrop(): React.JSX.Element {
   } = useQuery({
     queryKey: ["books"],
     queryFn: async () => {
-      const books = await synchronizedGetBooks();
+      const books = await getBooks();
       const pdfIds = books
         .filter((book) => book.kind === "pdf")
         .map((book) => book.id);
@@ -106,7 +105,7 @@ function FileDrop(): React.JSX.Element {
       // prefetch the book data based on ids
       books.forEach((book) => {
         void queryClient.prefetchQuery({
-          queryKey: ["book", book.id],
+          queryKey: ["book", book.id.toString()],
           queryFn: () => book,
         });
       });
@@ -116,8 +115,8 @@ function FileDrop(): React.JSX.Element {
   useNavigateToNewBook();
   const deleteBookMutation = useMutation({
     mutationKey: ["deleteBook"],
-    mutationFn: async ({ book }: { book: BookData }) => {
-      await synchronizedDeleteBook(book);
+    mutationFn: async ({ book }: { book: Book }) => {
+      await deleteBook(book.id);
       setPfsController({ type: "remove", id: book.id });
     },
 
@@ -137,7 +136,18 @@ function FileDrop(): React.JSX.Element {
     mutationFn: async ({ filePath }: { filePath: string }) => {
       const epubPath = await copyBookToAppData(filePath);
       const bookData = await getBookData({ path: epubPath });
-      return bookData;
+      const book = await saveBook({
+        cover_kind: bookData.coverKind || "",
+        title: bookData.title || "",
+        author: bookData.author || "",
+        publisher: bookData.publisher || "",
+        filepath: epubPath,
+        location: "1",
+        version: 0,
+        kind: bookData.kind,
+        cover: bookData.cover,
+      });
+      return book;
     },
 
     onError(error) {
@@ -163,8 +173,18 @@ function FileDrop(): React.JSX.Element {
       const pdfPath = await copyBookToAppData(filePath);
 
       const bookData = await getPdfData({ path: pdfPath });
-
-      return bookData;
+      const book = await saveBook({
+        cover_kind: bookData.coverKind || "",
+        title: bookData.title || "",
+        author: bookData.author || "",
+        publisher: bookData.publisher || "",
+        filepath: pdfPath,
+        location: "1",
+        version: 0,
+        kind: bookData.kind,
+        cover: bookData.cover,
+      });
+      return book;
     },
 
     onError(error) {
@@ -183,7 +203,6 @@ function FileDrop(): React.JSX.Element {
     },
   });
   const setCurrentPageNumber = useSetAtom(setPageNumberAtom);
-  const naviagate = useNavigate();
 
   // Extract file processing logic to be reusable
   const processFilePaths = (filePaths: string[]) => {
@@ -295,10 +314,11 @@ function FileDrop(): React.JSX.Element {
 
                   <Link
                     to="/books/$id"
-                    params={{ id: book.id }}
+                    params={{ id: book.id.toString() }}
                     className="rounded-3xl z-5  bg-transparent shadow-none overflow-visible hover:bg-transparent hover:shadow-none"
                   >
                     <img
+                      id={book.id.toString() + "cover"}
                       className="object-fill shadow-3xl drop-shadow-lg"
                       src={bytesToBlobUrl(book.cover)}
                       width={200}

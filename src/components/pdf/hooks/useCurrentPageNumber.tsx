@@ -8,26 +8,25 @@ import {
   getCurrentViewParagraphsAtom,
   getNextViewParagraphsAtom,
   getPreviousViewParagraphsAtom,
-  isPdfRenderedAtom,
   isTextGotAtom,
   pageNumberAtom,
   pageNumberToPageDataAtom,
   scrollPageNumberAtom,
   setPageNumberAtom,
 } from "../atoms/paragraph-atoms";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import { getCurrrentPageNumber } from "../utils/getCurrentPageNumbers";
-import { debounce, throttle } from "throttle-debounce";
+import { debounce } from "throttle-debounce";
 // import { playerControl } from "@/models/pdf_player_control";
 import type { Virtualizer } from "@tanstack/react-virtual";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { synchronizedUpdateBookLocation } from "@/modules/sync_books";
 import { toast } from "react-toastify";
-import { BookData } from "@/generated";
 import { pageDataToParagraphs } from "../utils/getPageParagraphs";
 import { customStore } from "@/stores/jotai";
 import isEqual from "fast-deep-equal";
 import { eventBus, EventBusEvent } from "@/utils/bus";
+import { Book } from "@/modules/kynsley";
+import { updateBookLocation } from "@/modules/sql";
 
 // --------------------------------------------------------------------------------------
 // Returns and maintains the current page number for the active PDF view. The hook:
@@ -37,7 +36,7 @@ import { eventBus, EventBusEvent } from "@/utils/bus";
 // --------------------------------------------------------------------------------------
 export function useCurrentPageNumber(
   scrollRef: React.RefObject<HTMLDivElement | null>,
-  book: BookData,
+  book: Book,
   virtualizer?: Virtualizer<HTMLDivElement, Element>
 ) {
   const currentPageNumber = useAtomValue(pageNumberAtom);
@@ -138,10 +137,10 @@ export function useCurrentPageNumber(
       bookId,
       location,
     }: {
-      bookId: string;
+      bookId: number;
       location: string;
     }) => {
-      await synchronizedUpdateBookLocation(bookId, location);
+      await updateBookLocation(bookId, location);
     },
 
     onError(_error) {
@@ -161,22 +160,19 @@ export function useCurrentPageNumber(
     if (currentPageNumber === 0) return;
     const viewedPageNumber = getCurrrentPageNumber(window);
     if (viewedPageNumber === currentPageNumber) return;
-
   }, [currentPageNumber, virtualizer]);
   // ------------------------------------------------------------------------------------
   // Persist the latest page to the backend after the user settles on a location.
   // ------------------------------------------------------------------------------------
   useEffect(() => {
-    const pageNumber = parseInt(book.location, 10)
+    const pageNumber = parseInt(book.location, 10);
     // virtualizer?.scrollToIndex(pageNumber - 1, { align: "start", behavior: "auto" })
 
     setPageNumber(pageNumber);
   }, []);
 
-
-
   useEffect(() => {
-    // Debounce the backend update to avoid excessive writes during scrolling, 
+    // Debounce the backend update to avoid excessive writes during scrolling,
     // but allow a delay so that the current page number is innitialized properly.
     // using the saved book bumber
     setTimeout(() => {
@@ -186,7 +182,7 @@ export function useCurrentPageNumber(
           location: currentPageNumber.toString(),
         });
       })();
-    }, 1000)
+    }, 1000);
   }, [currentPageNumber]);
   //
   return currentPageNumber;
@@ -202,4 +198,3 @@ export function findElementWithPageNumber(
     `[data-page-number="${pageNumber}"]`
   );
 }
-

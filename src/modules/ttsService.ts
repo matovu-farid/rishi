@@ -4,13 +4,13 @@ import { ttsQueue } from "./ttsQueue";
 import { TTS_EVENTS, TTSQueueEvents } from "./ipc_handles";
 
 export interface AudioReadyEvent {
-  bookId: string;
+  bookId: number;
   cfiRange: string;
   audioPath: string;
 }
 
 export interface TTSErrorEvent {
-  bookId: string;
+  bookId: number;
   cfiRange: string;
   error: string;
 }
@@ -56,25 +56,20 @@ export class TTSService extends EventEmitter {
    *
    */
   async requestAudio(
-    bookId: string,
+    bookId: number,
     cfiRange: string,
     text: string,
     priority = 0 // 0 is normal priority, 1 is high priority, 2 is highest priority
   ): Promise<string> {
     const requestId = `${bookId}-${cfiRange}`;
 
-    
-
     try {
       // Check if request is already active
       if (this.activeRequests.has(requestId)) {
-    
-
         // Return a promise that will resolve when the active request completes
         return new Promise((resolve, reject) => {
           const onAudioReady = (event: AudioReadyEvent) => {
             if (event.bookId === bookId && event.cfiRange === cfiRange) {
-             
               this.cleanupPendingListener(requestId);
               resolve(event.audioPath);
             }
@@ -117,11 +112,8 @@ export class TTSService extends EventEmitter {
       const cached = await ttsCache.getCachedAudio(bookId, cfiRange);
 
       if (cached.exists) {
-       
         return cached.path;
       }
-
-     
 
       // Track active request
       this.activeRequests.add(requestId);
@@ -133,8 +125,6 @@ export class TTSService extends EventEmitter {
         text,
         priority
       );
-
-     
 
       return audioPath;
     } catch (error) {
@@ -172,7 +162,7 @@ export class TTSService extends EventEmitter {
   /**
    * Get audio path if cached
    */
-  async getAudioPath(bookId: string, cfiRange: string): Promise<string | null> {
+  async getAudioPath(bookId: number, cfiRange: string): Promise<string | null> {
     const cached = await ttsCache.getCachedAudio(bookId, cfiRange);
     return cached.exists ? cached.path : null;
   }
@@ -187,7 +177,7 @@ export class TTSService extends EventEmitter {
   /**
    * Cancel a specific request
    */
-  cancelRequest(bookId: string, cfiRange: string): boolean {
+  cancelRequest(bookId: number, cfiRange: string): boolean {
     const requestId = `${bookId}-${cfiRange}`;
     this.activeRequests.delete(requestId);
     return ttsQueue.cancelRequest(requestId);
@@ -196,7 +186,7 @@ export class TTSService extends EventEmitter {
   /**
    * Cancel all requests for a book
    */
-  cancelBookRequests(bookId: string): void {
+  cancelBookRequests(bookId: number): void {
     const requestsToCancel = Array.from(this.activeRequests).filter((id) =>
       id.startsWith(`${bookId}-`)
     );
@@ -204,20 +194,19 @@ export class TTSService extends EventEmitter {
       this.activeRequests.delete(requestId);
       ttsQueue.cancelRequest(requestId);
     }
-
   }
 
   /**
    * Clear book cache
    */
-  async clearBookCache(bookId: string): Promise<void> {
+  async clearBookCache(bookId: number): Promise<void> {
     await ttsCache.clearBookCache(bookId);
   }
 
   /**
    * Get book cache size
    */
-  getBookCacheSize(bookId: string): Promise<number> {
+  getBookCacheSize(bookId: number): Promise<number> {
     return ttsCache.getBookCacheSize(bookId);
   }
 

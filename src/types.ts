@@ -1,4 +1,3 @@
-
 export interface ManifestAttr {
   id: string;
   href: string;
@@ -25,7 +24,7 @@ export interface Container {
 
 export type Asset = "css" | "font" | "xml" | "other";
 export interface Book {
-  currentBookId: string | number;
+  currentbookId: number | number;
   cover: string;
   spine: { idref: string; path: string; mediaType: string }[];
   title: string;
@@ -36,7 +35,7 @@ export interface Book {
 }
 
 export interface Store {
-  currentBookId: string | number;
+  currentbookId: number | number;
   epubPath: string;
 }
 export type OPFFileObj = OPF["package"];
@@ -47,7 +46,7 @@ export interface ParagraphWithCFI {
 }
 
 export interface TTSRequest {
-  bookId: string;
+  bookId: number;
   cfiRange: string;
   text: string;
 }

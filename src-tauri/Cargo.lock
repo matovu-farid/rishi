@@ -6295,6 +6295,7 @@ dependencies = [
  "tauri-plugin-os",
  "tauri-plugin-sql",
  "tauri-plugin-store",
+ "tauri-typegen",
  "thiserror 2.0.17",
  "xml-rs 0.8.28",
  "zip 6.0.0",
@@ -7734,6 +7735,25 @@ dependencies = [
  "webview2-com",
  "windows 0.61.3",
  "wry",
+]
+
+[[package]]
+name = "tauri-typegen"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f36f68ff1a480b8edceb614a724081491b0592f8495b04b2753e8c8ee905c316"
+dependencies = [
+ "chrono",
+ "clap",
+ "indicatif",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "serde",
+ "serde_json",
+ "syn 2.0.108",
+ "thiserror 2.0.17",
+ "walkdir",
 ]
 
 [[package]]

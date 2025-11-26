@@ -4,9 +4,7 @@ import {
   getTTSAudioPath,
   requestTTSAudio,
 } from "@/modules/ipc_handel_functions";
-import {
-  ParagraphWithIndex,
-} from "./player_control";
+import { ParagraphWithIndex } from "./player_control";
 import { eventBus, EventBusEvent } from "@/utils/bus";
 import { PlayingState } from "@/utils/bus";
 import isEqual from "fast-deep-equal";
@@ -44,7 +42,7 @@ class Player extends EventEmitter<PlayerEventMap> {
   private previousPageParagraphs: ParagraphWithIndex[] = [];
   private playingState: PlayingState = PlayingState.Stopped;
   private currentParagraphIndex: number = 0;
-  private bookId: string = "";
+  private bookId: number = "";
   private audioCache: Map<string, string> = new Map();
   private priority: number = 3;
   private errors: string[] = [];
@@ -55,7 +53,7 @@ class Player extends EventEmitter<PlayerEventMap> {
     super();
   }
 
-  async initialize(bookId: string): Promise<void> {
+  async initialize(bookId: number): Promise<void> {
     this.setPlayingState(PlayingState.Stopped);
     void this.setParagraphIndex(0);
 
@@ -149,17 +147,17 @@ class Player extends EventEmitter<PlayerEventMap> {
       networkState: audioElement.networkState,
       mediaError: mediaError
         ? {
-          code: mediaError.code,
-          message: mediaError.message,
-          errorName: this.getMediaErrorName(mediaError.code),
-        }
+            code: mediaError.code,
+            message: mediaError.message,
+            errorName: this.getMediaErrorName(mediaError.code),
+          }
         : null,
       currentParagraph: currentParagraph
         ? {
-          index: this.currentParagraphIndex,
-          text: currentParagraph?.text.substring(0, 100) + "...",
-          cfiRange: currentParagraph?.index,
-        }
+            index: this.currentParagraphIndex,
+            text: currentParagraph?.text.substring(0, 100) + "...",
+            cfiRange: currentParagraph?.index,
+          }
         : null,
     };
 
@@ -287,7 +285,6 @@ class Player extends EventEmitter<PlayerEventMap> {
 
     let audioFetched = false;
 
-
     // Set loading state while waiting for audio
     setTimeout(() => {
       if (!audioFetched) {
@@ -337,10 +334,10 @@ class Player extends EventEmitter<PlayerEventMap> {
           readyStateName: this.getReadyStateName(audioElement.readyState),
           mediaError: mediaError
             ? {
-              code: mediaError.code,
-              message: mediaError.message,
-              errorName: this.getMediaErrorName(mediaError.code),
-            }
+                code: mediaError.code,
+                message: mediaError.message,
+                errorName: this.getMediaErrorName(mediaError.code),
+              }
             : null,
           currentParagraph: {
             index: this.currentParagraphIndex,
@@ -417,7 +414,8 @@ class Player extends EventEmitter<PlayerEventMap> {
 
     const currentParagraph = await this.getCurrentParagraph();
     if (!currentParagraph) return;
-    const audioPath = (await this.requestAudio(currentParagraph, this.getNextPriority())) || ""
+    const audioPath =
+      (await this.requestAudio(currentParagraph, this.getNextPriority())) || "";
 
     // set the souce to the first paragraph
     this.audioElement.src = audioPath || "";
@@ -565,10 +563,10 @@ class Player extends EventEmitter<PlayerEventMap> {
         ended: this.audioElement.ended,
         error: this.audioElement.error
           ? {
-            code: this.audioElement.error.code,
-            message: this.audioElement.error.message,
-            errorName: this.getMediaErrorName(this.audioElement.error.code),
-          }
+              code: this.audioElement.error.code,
+              message: this.audioElement.error.message,
+              errorName: this.getMediaErrorName(this.audioElement.error.code),
+            }
           : null,
       },
       currentState: {
@@ -577,9 +575,9 @@ class Player extends EventEmitter<PlayerEventMap> {
         totalParagraphs: this.currentViewParagraphs.length,
         currentParagraph: currentParagraph
           ? {
-            text: currentParagraph?.text.substring(0, 100) + "...",
-            cfiRange: currentParagraph?.index,
-          }
+              text: currentParagraph?.text.substring(0, 100) + "...",
+              cfiRange: currentParagraph?.index,
+            }
           : null,
       },
       cacheInfo: {
@@ -630,10 +628,10 @@ class Player extends EventEmitter<PlayerEventMap> {
           error:
             error instanceof Error
               ? {
-                name: error.name,
-                message: error.message,
-                stack: error.stack,
-              }
+                  name: error.name,
+                  message: error.message,
+                  stack: error.stack,
+                }
               : String(error),
           paragraph: {
             cfiRange: paragraph.index,
@@ -661,10 +659,10 @@ class Player extends EventEmitter<PlayerEventMap> {
         error:
           error instanceof Error
             ? {
-              name: error.name,
-              message: error.message,
-              stack: error.stack,
-            }
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+              }
             : String(error),
         paragraph: {
           cfiRange: paragraph.index,

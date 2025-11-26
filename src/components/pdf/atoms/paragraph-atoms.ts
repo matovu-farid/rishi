@@ -1,6 +1,6 @@
 import { ParagraphWithIndex } from "@/models/player_control";
 
-import { atomWithImmer, withImmer } from "jotai-immer";
+import { atomWithImmer } from "jotai-immer";
 import { atom } from "jotai";
 
 import { TextItem, TextMarkedContent, type TextContent } from "react-pdf";
@@ -8,9 +8,12 @@ import { TextItem, TextMarkedContent, type TextContent } from "react-pdf";
 import { freezeAtom } from "jotai/utils";
 import { customStore } from "@/stores/jotai";
 import { observe } from "jotai-effect";
-import { BookData, embed } from "@/generated";
+import { Book } from "@/modules/kynsley";
 
 export const virtualizerAtom = atom<any | null>(null);
+
+export const backgroundPageAtom = atom<number>(1);
+backgroundPageAtom.debugLabel = "backgroundPageAtom";
 
 export const pageNumberToPageDataAtom = atomWithImmer<{
   [pageNumber: number]: TextContent;
@@ -26,36 +29,9 @@ export function isTextItem(
 }
 export const pageCountAtom = atom(0);
 
-export const bookAtom = atom<BookData | null>(null);
+export const bookAtom = atom<Book | null>(null);
 bookAtom.debugLabel = "bookAtom";
-// observe((get, set) => {
-//   const pageNumberToPageData = get(pageNumberToPageDataAtom);
-//   const pageCount = get(pageCountAtom);
-//   const book = get(bookAtom);
-//   if (Object.keys(pageNumberToPageDataAtom).length !== pageCount || !book) {
-//     return;
-//   }
-//   void Object.entries(pageNumberToPageData)
-//     .map(([pageNumber, pageData]) => {
-//       const items = pageData.items.filter(isTextItem);
-//       return {
-//         pageNumber,
-//         pageData: {
-//           ...pageData,
-//           items,
-//         },
-//       };
-//     })
-//     .filter(({ pageData }) => pageData.items.length > 0)
-//     .map(({ pageNumber, pageData }) => {
-//       return embed({
-//         chunks: pageData.items.map((item) => item.str ?? ""),
-//         metadata: [{ pageNumber: pageNumber.toString(), bookId: book.id }],
-//       }).then((results) => {
-//         console.log(results);
-//       });
-//     });
-// }, customStore);
+
 pageNumberToPageDataAtom.debugLabel = "pageNumberToPageDataAtom";
 export const setPageNumberToPageDataAtom = atom(
   null,
@@ -186,14 +162,14 @@ export const nextPageAtom = atom(null, async (get, set) => {
 const isRenderedPageStateAtom = atom<{ [pageNumber: number]: boolean }>({});
 
 export const isTextGotAtom = atom(false);
-export const booksAtom = atom<string[]>([]);
-export const pdfsRenderedAtom = atom<{ [bookId: string]: boolean }>({});
+export const booksAtom = atom<number[]>([]);
+export const pdfsRenderedAtom = atom<{ [bookId: number]: boolean }>({});
 export const isPdfRenderedAtom = atom(
   (get) => {
     const pdfsRendered = get(pdfsRenderedAtom);
-    return (bookId: string) => pdfsRendered[bookId] ?? false;
+    return (bookId: number) => pdfsRendered[bookId] ?? false;
   },
-  (get, set, bookId: string, isRendered: boolean) => {
+  (get, set, bookId: number, isRendered: boolean) => {
     const pdfsRendered = get(pdfsRenderedAtom);
     set(pdfsRenderedAtom, {
       ...pdfsRendered,
@@ -203,9 +179,9 @@ export const isPdfRenderedAtom = atom(
 );
 
 type ActionOptions =
-  | { type: "add"; id: string }
-  | { type: "remove"; id: string }
-  | { type: "setAll"; ids: string[] };
+  | { type: "add"; id: number }
+  | { type: "remove"; id: number }
+  | { type: "setAll"; ids: number[] };
 
 export const pdfsControllerAtom = atom(
   (get) => get(booksAtom),

@@ -66,7 +66,6 @@ export async function updateCoverImage(
   if (book.kind != "pdf") return;
   const bytes = await blob.bytes();
   const cover = Array.from(bytes);
-  console.log({ cover });
   await updateBook(
     {
       id: book.id,
@@ -107,24 +106,5 @@ export async function updateBook(
   await storeBook({ ...book, ...bookSlice }, storeParam);
 }
 
-export async function updateBookLocation(
-  bookId: string,
-  location: string,
-  storeParam?: Store
-) {
-  let store = storeParam || (await getStore());
-  await updateBook({ id: bookId, location: location }, store);
-}
 
-export async function getBookLocation(bookId: string, storeParam?: Store) {
-  let store = storeParam || (await getStore());
-  const books = await store.get<BookData[]>("books");
-  if (!books) {
-    return;
-  }
-  const book = books.find((b) => b.id === bookId);
-  if (!book) {
-    return;
-  }
-  return book.location;
-}
+

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback, useState } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
 
@@ -8,21 +8,20 @@ import "react-pdf/dist/Page/TextLayer.css";
 
 import { elementScroll } from "@tanstack/react-virtual";
 import type { VirtualizerOptions } from "@tanstack/react-virtual";
-import { BookData } from "@/generated";
 import {
   hasNavigatedToPageAtom,
   pageCountAtom,
   virtualizerAtom,
 } from "../atoms/paragraph-atoms";
 import { useAtomValue, useSetAtom } from "jotai";
-import { usePdfNavigation } from "./usePdfNavigation";
 import { PAGE_HEIGHT } from "../utils/constants";
+import { Book } from "@/modules/kynsley";
 function easeInOutQuint(t: number) {
   return t < 0.5 ? 16 * t * t * t * t * t : 1 + 16 * --t * t * t * t * t;
 }
 export function useVirualization(
   scrollContainerRef: React.RefObject<HTMLDivElement | null>,
-  book: BookData
+  book: Book
 ) {
   const initialPageIndexRef = useRef(
     Math.max(0, Number.parseInt(book.location, 10) - 1)
@@ -70,19 +69,14 @@ export function useVirualization(
     initialOffset: initialOffsetRef.current,
     scrollToFn,
     gap: 32,
-
   });
   setVirtualizer(virtualizer);
   const handlePageRendered = useCallback(
     (index: number) => {
       setHasNavigatedToPage(true);
-
-
-
     },
     [virtualizer]
   );
-
 
   useEffect(() => {
     if (hasRequestedInitialScroll.current) return;
@@ -90,7 +84,6 @@ export function useVirualization(
     if (!scrollContainerRef.current) return;
 
     hasRequestedInitialScroll.current = true;
-
   }, [numPages, virtualizer]);
 
   const virtualItems = virtualizer.getVirtualItems();

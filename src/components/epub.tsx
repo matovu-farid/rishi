@@ -15,17 +15,12 @@ import createIReactReaderTheme from "@/themes/readerThemes";
 import { Palette } from "lucide-react";
 import TTSControls from "@components/TTSControls";
 import { Rendition } from "epubjs/types";
-import { synchronizedUpdateBookLocation } from "@/modules/sync_books";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { BookData } from "@/generated";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   currentEpubLocationAtom,
   getEpubCurrentViewParagraphsAtom,
-  getEpubNextViewParagraphsAtom,
-  getEpubPreviousViewParagraphsAtom,
-  loadableEpubNextViewParagraphsAtom,
   renditionAtom,
 } from "@/stores/epub_atoms";
 import {
@@ -36,7 +31,8 @@ import {
 } from "@/utils/bus";
 import { highlightRange, removeHighlight } from "@/epubwrapper";
 import { customStore } from "@/stores/jotai";
-import { getCurrentViewParagraphsAtom } from "./pdf/atoms/paragraph-atoms";
+import { Book } from "@/modules/kynsley";
+import { updateBookLocation } from "@/modules/sql";
 
 function cn(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
@@ -49,7 +45,7 @@ function updateTheme(rendition: Rendition, theme: ThemeType) {
   reditionThemes.override("font-size", "1.2em");
 }
 
-export function EpubView({ book }: { book: BookData }): React.JSX.Element {
+export function EpubView({ book }: { book: Book }): React.JSX.Element {
   //const rendition = useRef<Rendition | undefined>(undefined);
   const [theme, setTheme] = useState<ThemeType>(ThemeType.White);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -152,22 +148,22 @@ export function EpubView({ book }: { book: BookData }): React.JSX.Element {
     setTheme(newTheme);
     setMenuOpen(false);
   };
+  
   const updateBookLocationMutation = useMutation({
     mutationFn: async ({
       bookId,
       location,
     }: {
-      bookId: string;
+      bookId: number;
       location: string;
     }) => {
-      await synchronizedUpdateBookLocation(bookId, location);
+      await updateBookLocation(bookId, location);
     },
 
     onError(_error) {
       toast.error("Can not change book page");
     },
   });
-
   // Update rendition state when ref becomes available
 
   function getTextColor() {

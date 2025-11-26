@@ -1,9 +1,9 @@
 mod commands;
-mod embed;
+pub mod embed;
 mod epub;
 mod pdf;
 mod shared;
-mod vectordb;
+pub mod vectordb;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 

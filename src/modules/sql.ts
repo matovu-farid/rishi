@@ -1,27 +1,13 @@
-import { BookData, embed, saveVectors } from "@/generated";
-import { db } from "./kynsley";
+import { embed, EmbedParam, Metadata, saveVectors, Vector } from "@/generated";
+import { Book, BookInsertable, db, PageDataInsertable } from "./kynsley";
 import { sql } from "kysely";
-
-// const db = await Database.load("sqlite:rishi.db");
-
-// create table for page data
-
-// await db.execute(
-//   `CREATE TABLE IF NOT EXISTS page_data (
-//         id TEXT PRIMARY KEY,
-//         bookId TEXT,
-//         pageNumber INT,
-//         data TEXT,
-//         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-//         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-//     )`
-// );
+import { retry } from "ts-retry-promise";
 
 await db.schema
   .createTable("page_data")
   .ifNotExists()
-  .addColumn("id", "text", (col) => col.primaryKey())
-  .addColumn("bookId", "text")
+  .addColumn("id", "integer", (cb) => cb.primaryKey())
+  .addColumn("bookId", "integer")
   .addColumn("pageNumber", "integer")
   .addColumn("data", "text")
   .addColumn("created_at", "timestamp", (col) =>
@@ -31,26 +17,12 @@ await db.schema
     col.defaultTo(sql`CURRENT_TIMESTAMP`)
   )
   .execute();
-//.addUniqueConstraint("pageNumber_bookId", ["pageNumber", "bookId"]).execute();
-
-// await db.execute(
-//   `CREATE TABLE IF NOT EXISTS page(
-//         id TEXT PRIMARY KEY,
-//         bookId TEXT,
-//         pageNumber INT,
-//         saved_data BOOLEAN DEFAULT FALSE,
-//         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-//         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-//         UNIQUE(pageNumber, bookId)
-//         FOREIGN KEY (bookId) REFERENCES books(id)
-//     )`
-// );
 
 await db.schema
   .createTable("page")
   .ifNotExists()
-  .addColumn("id", "text", (col) => col.primaryKey())
-  .addColumn("bookId", "text")
+  .addColumn("id", "serial", (col) => col.primaryKey())
+  .addColumn("bookId", "integer")
   .addColumn("pageNumber", "integer")
   .addColumn("saved_data", "boolean", (col) => col.defaultTo(false))
   .addColumn("created_at", "timestamp", (col) =>
@@ -63,51 +35,30 @@ await db.schema
   .addForeignKeyConstraint("page_bookId_fkey", ["bookId"], "books", ["id"])
   .execute();
 
-// create books table
-// await db.execute(
-//   `CREATE TABLE IF NOT EXISTS books (
-//       id TEXT PRIMARY KEY,
-//       name TEXT,
-//       author TEXT,
-//       publisher TEXT,
-//       filepath TEXT,
-//       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-//       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-//       UNIQUE(filepath)
-//   )`
-// );
-
 await db.schema
   .createTable("books")
   .ifNotExists()
-  .addColumn("id", "text", (col) => col.primaryKey())
-  .addColumn("name", "text")
+  .addColumn("id", "integer", (col) => col.primaryKey())
+  .addColumn("kind", "text")
+  .addColumn("cover", "blob")
+  .addColumn("title", "text")
   .addColumn("author", "text")
   .addColumn("publisher", "text")
   .addColumn("filepath", "text")
+  .addColumn("location", "text")
+  .addColumn("cover_kind", "text")
+  .addColumn("version", "integer")
   .addColumn("created_at", "timestamp", (col) =>
     col.defaultTo(sql`CURRENT_TIMESTAMP`)
   )
   .addColumn("updated_at", "timestamp", (col) =>
     col.defaultTo(sql`CURRENT_TIMESTAMP`)
   )
+  // unique filepath
   .addUniqueConstraint("filepath", ["filepath"])
   .execute();
 
-// const pageSchema = z.object({
-//   id: z.string(),
-//   pageNumber: z.number(),
-//   bookId: z.string(),
-//   saved_data: z.boolean(),
-//   created_at: z.string(),
-//   updated_at: z.string(),
-// });
-
-async function hasSavedData(pageNumber: number, bookId: string) {
-  // const result = await db.select(
-  //   "SELECT * FROM page_data WHERE pageNumber = $1 AND bookId = $2",
-  //   [pageNumber, bookId]
-  // );
+async function hasSavedData(pageNumber: number, bookId: number) {
   const result = await db
     .selectFrom("page")
     .select("saved_data")
@@ -118,8 +69,24 @@ async function hasSavedData(pageNumber: number, bookId: string) {
   if (!result) return false;
   return result?.saved_data ?? false;
 }
+export async function savePage(pageNumber: number, bookId: number) {
+  await db
+    .insertInto("page")
+    .values({ pageNumber, bookId, saved_data: true })
+    .execute();
+}
 
-export async function setSavedData(pageNumber: number, bookId: string) {
+export async function doesPageExist(pageNumber: number, bookId: number) {
+  const result = await db
+    .selectFrom("page")
+    .where("pageNumber", "=", pageNumber)
+    .where("bookId", "=", bookId)
+    .selectAll()
+    .executeTakeFirst();
+  return result ? true : false;
+}
+
+export async function setSavedData(pageNumber: number, bookId: number) {
   // await db.execute(
   //   "UPDATE page_data SET saved_data = TRUE WHERE pageNumber = $1 AND bookId = $2",
   //   [pageNumber, bookId]
@@ -132,46 +99,28 @@ export async function setSavedData(pageNumber: number, bookId: string) {
     .execute();
 }
 
-export type PageData = {
-  id: string;
-  bookId: string;
-  pageNumber: number;
-  data: string;
-};
+// export type PageData = {
+//   id: string;
+//   bookId: number;
+//   pageNumber: number;
+//   data: string;
+// };
 
-export async function savePageDataMany(pageData: PageData[]) {
+export async function savePageDataMany(pageData: PageDataInsertable[]) {
   if (pageData.length === 0) return;
 
-  // Build placeholders like:
-  // ($1,$2,$3,$4),($5,$6,$7,$8), ...
-  // const placeholders: string[] = [];
-  // const values: unknown[] = [];
-
-  // pageData.forEach(({ id, bookId, pageNumber, data }, rowIndex) => {
-  //   const base = rowIndex * 4;
-  //   placeholders.push(
-  //     `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4})`
-  //   );
-
-  //   values.push(id, bookId, pageNumber, data);
-  // });
-
-  // const sql = `
-  //   INSERT INTO page_data (
-  //     id,
-  //     bookId,
-  //     pageNumber,
-  //     data
-  //   ) VALUES ${placeholders.join(", ")}
-  //   ON CONFLICT (id) DO NOTHING
-  // `;
-
-  // await db.execute(sql, values);
-
-  await db.insertInto("page_data").values(pageData).execute();
+  await db
+    .insertInto("page_data")
+    .values(pageData)
+    .onConflict((oc) =>
+      oc.column("id").doUpdateSet({
+        data: (eb) => eb.ref("excluded.data"),
+      })
+    )
+    .execute();
 }
 
-export async function getAllPageDataByBookId(bookId: string) {
+export async function getAllPageDataByBookId(bookId: number) {
   // const result = await db.select(
   //   "SELECT * FROM page_data WHERE bookId = $1 ORDER BY pageNumber ASC",
   //   [bookId]
@@ -186,61 +135,127 @@ export async function getAllPageDataByBookId(bookId: string) {
   return result;
 }
 
-export async function saveBook(book: BookData) {
-  // await db.execute(
-  //   `INSERT INTO books (
-  //       id,
-  //       name,
-  //       author,
-  //       publisher,
-  //       filepath)
-  //     VALUES ($1, $2, $3, $4, $5)
-  //     ON CONFLICT (id) DO NOTHING`,
-  //   [book.id, book.title, book.author, book.publisher, book.filepath]
-  // );
-
-  await db
+export async function saveBook(book: BookInsertable): Promise<Book> {
+  const result = await db
     .insertInto("books")
     .values({
-      id: book.id,
-      name: book.title || "",
       author: book.author || "",
       publisher: book.publisher || "",
       filepath: book.filepath,
+      cover: book.cover,
+      version: book.version,
+      location: book.location,
+      kind: book.kind,
+      title: book.title || "",
+      cover_kind: book.cover_kind || "",
     })
+    .onConflict((oc) => oc.column("id").doNothing())
+    .onConflict((oc) => oc.column("filepath").doNothing())
+    .returningAll()
     .execute();
-  return book.id;
+
+  return result[0];
+}
+
+export async function getBook(id: number) {
+  const result = await db
+    .selectFrom("books")
+    .selectAll()
+    .where("id", "=", id)
+    .executeTakeFirst();
+  // Convert cover string back to number array if it's a string
+  if (result?.cover && typeof result.cover === "string") {
+    result.cover = JSON.parse(result.cover);
+  }
+  return result;
+}
+
+export async function getBooks() {
+  const result = await db.selectFrom("books").selectAll().execute();
+  result.forEach((book) => {
+    if (book.cover && typeof book.cover === "string") {
+      book.cover = JSON.parse(book.cover);
+    }
+  });
+  return result;
+}
+
+export async function deleteBook(id: number) {
+  await db.deleteFrom("books").where("id", "=", id).execute();
+}
+
+export async function updateBookCover(id: number, cover: number[]) {
+  await db.updateTable("books").set({ cover }).where("id", "=", id).execute();
 }
 
 export async function createPage(
   pageNumber: number,
-  bookId: string,
-  pageData: PageData[]
+  bookId: number,
+  pageData: PageDataInsertable[]
 ) {
-  if (await hasSavedData(pageNumber, bookId)) {
-    return;
-  }
+  try {
+    if (await hasSavedData(pageNumber, bookId)) {
+      console.log(`>>> Page ${pageNumber} already has saved data, skipping`);
+      return;
+    }
+    if (pageData.length === 0) {
+      console.log(`>>> pageData is empty for page ${pageNumber}`);
+      return;
+    }
 
-  const embedParams = pageData.map((item) => {
-    return {
-      text: item.data,
-      metadata: {
-        pageNumber: pageNumber.toString(),
+    const embedParams: EmbedParam[] = pageData.map((item) => {
+      const metadata: Metadata = {
+        id: item.id,
+        pageNumber: pageNumber,
         bookId,
-      },
-    };
-  });
+      };
+      return {
+        text: item.data,
+        metadata,
+      };
+    });
 
-  const [embedResults, _] = await Promise.all([
-    embed({ embed_params: embedParams }),
-    savePageDataMany(pageData),
-  ]);
+    // Save page data first, then embed
+    // This ensures data is in the database even if embedding fails
+    await savePageDataMany(pageData);
 
-  const vectors = embedResults.map((result) => result.embedding);
-  await saveVectors({
-    name: bookId,
-    dim: vectors[0].length,
-    vectors,
-  });
-  await setSavedData(pageNumber, bookId);
+    const embedResults = await embed({ embedparams: embedParams });
+
+    const vectorObjects = embedResults.map((result) => {
+      return {
+        id: result.metadata.id,
+        vector: result.embedding,
+        text: result.text,
+        metadata: result.metadata,
+      };
+    });
+    const vectors: Vector[] = vectorObjects.map((vector) => ({
+      id: vector.id,
+      vector: vector.vector,
+    }));
+    await saveVectors({
+      name: `${bookId}-vectordb`,
+      dim: vectorObjects[0].vector.length,
+      vectors,
+    });
+
+    // Only mark as saved after everything succeeds
+    if (await doesPageExist(pageNumber, bookId)) {
+      await setSavedData(pageNumber, bookId);
+    } else {
+      await savePage(pageNumber, bookId);
+    }
+    console.log(`>>> Successfully saved page ${pageNumber}`);
+  } catch (error) {
+    console.error(`>>> Error in createPage for page ${pageNumber}:`, error);
+    throw error;
+  }
+}
+export async function updateBookLocation(bookId: number, location: string) {
+  // await updateBook({ id: bookId, location: location }, store);
+  await db
+    .updateTable("books")
+    .set({ location })
+    .where("id", "=", bookId)
+    .execute();
 }

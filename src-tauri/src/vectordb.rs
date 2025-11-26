@@ -34,9 +34,9 @@ impl SearchResult {
 }
 pub struct VectorStore {
     pub dim: usize,
-    directory: PathBuf,
-    basename: String,
-    ef_search: usize,
+    pub directory: PathBuf,
+    pub basename: String,
+    pub ef_search: usize,
 }
 
 impl VectorStore {
@@ -48,6 +48,11 @@ impl VectorStore {
 
         // Ensure directory exists
         fs::create_dir_all(&app_data_dir)?;
+        // print the full vectordb path
+        println!(
+            ">>> vectordb path: {:?}",
+            app_data_dir.join(basename).to_string_lossy()
+        );
 
         Ok(Self {
             dim,
@@ -87,6 +92,7 @@ impl VectorStore {
     where
         F: FnMut(&mut Hnsw<f32, DistL2>) -> anyhow::Result<R>,
     {
+        println!(">>> Path  {:?}", directory.join(basename).to_string_lossy());
         // Ensure directory exists
         fs::create_dir_all(&directory)?;
         if Self::data_file_exists(directory, basename) {
@@ -112,6 +118,10 @@ impl VectorStore {
         // Extract directory and basename to avoid borrow checker issues
         let directory = self.directory.clone();
         let basename = self.basename.clone();
+        println!(
+            ">>> Path  {:?}",
+            &directory.join(&basename).to_string_lossy()
+        );
 
         Self::with_hnsw_mut(&directory, &basename, true, |hnsw| {
             // Insert the vectors

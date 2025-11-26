@@ -23,7 +23,7 @@ import { EventBusEvent, PlayingState } from "@/utils/bus";
 import { eventBus } from "@/utils/bus";
 
 interface TTSControlsProps {
-  bookId: string;
+  bookId: number;
   disabled?: boolean;
 }
 
@@ -45,7 +45,10 @@ const getDefaultPosition = (): { x: number; y: number } => {
 const playerAtom = atom(player);
 playerAtom.debugLabel = "playerAtom";
 
-export default function TTSControls({ bookId, disabled = false }: TTSControlsProps) {
+export default function TTSControls({
+  bookId,
+  disabled = false,
+}: TTSControlsProps) {
   const [showError, setShowError] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [hasShownError, setHasShownError] = useState(false);
@@ -180,14 +183,13 @@ export default function TTSControls({ bookId, disabled = false }: TTSControlsPro
   };
   const toggleChat = async () => {
     setIsChatting((isChatting) => !isChatting);
-
-  }
+  };
 
   const handleChat = async () => {
-    toggleChat();
+    void toggleChat();
   };
   const stopChat = async () => {
-    toggleChat();
+    void toggleChat();
   };
 
   const handlePrev = async () => {
@@ -384,10 +386,11 @@ export default function TTSControls({ bookId, disabled = false }: TTSControlsPro
             size="large"
             onClick={handlePlay}
             disabled={disabled}
-            className={`text-white hover:bg-white/10 disabled:text-white/30 ${playingState === PlayingState.Playing
-              ? "text-white"
-              : "text-white/80"
-              }`}
+            className={`text-white hover:bg-white/10 disabled:text-white/30 ${
+              playingState === PlayingState.Playing
+                ? "text-white"
+                : "text-white/80"
+            }`}
           >
             {getPlayIcon()}
           </IconButton>
@@ -412,25 +415,26 @@ export default function TTSControls({ bookId, disabled = false }: TTSControlsPro
             <Square size={24} />
           </IconButton>
           {/* Chat Button */}
-          {!isChatting && <IconButton
-            size="large"
-            onClick={handleChat}
-            disabled={false}
-            className="text-white hover:bg-white/10 disabled:text-white/30"
-          >
-            <Mic size={24} />
-          </IconButton>
-
-          }
-          {isChatting && <IconButton
-            size="large"
-            onClick={stopChat}
-            disabled={false}
-            className="text-white hover:bg-white/10 disabled:text-white/30"
-          >
-            <MicOff size={24} />
-          </IconButton>
-          }
+          {!isChatting && (
+            <IconButton
+              size="large"
+              onClick={handleChat}
+              disabled={false}
+              className="text-white hover:bg-white/10 disabled:text-white/30"
+            >
+              <Mic size={24} />
+            </IconButton>
+          )}
+          {isChatting && (
+            <IconButton
+              size="large"
+              onClick={stopChat}
+              disabled={false}
+              className="text-white hover:bg-white/10 disabled:text-white/30"
+            >
+              <MicOff size={24} />
+            </IconButton>
+          )}
           {/* Debug Button */}
           {shouldDebug && (
             <IconButton

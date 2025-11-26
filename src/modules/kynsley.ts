@@ -1,31 +1,37 @@
 import { appDataDir } from "@tauri-apps/api/path";
 import Database from "@tauri-apps/plugin-sql";
-import { ColumnType, Kysely } from "kysely";
+import { ColumnType, Generated, Insertable, Kysely, Selectable } from "kysely";
 import { TauriSqliteDialect } from "kysely-dialect-tauri";
 
 interface DB {
   page: {
-    id: string;
+    id: Generated<number>;
     pageNumber: number;
-    bookId: string;
-    saved_data: boolean;
+    bookId: number;
+    saved_data: boolean; // default false
     created_at: ColumnType<Date, string | undefined, never>;
     updated_at: ColumnType<Date, string | undefined, never>;
   };
   page_data: {
-    id: string;
+    id: number;
     pageNumber: number;
-    bookId: string;
+    bookId: number;
     data: string;
     created_at: ColumnType<Date, string | undefined, never>;
     updated_at: ColumnType<Date, string | undefined, never>;
   };
+
   books: {
-    id: string;
-    name: string;
+    id: Generated<number>;
+    kind: string;
+    cover: number[];
+    title: string;
     author: string;
     publisher: string;
     filepath: string;
+    location: string;
+    cover_kind: string;
+    version: number;
     created_at: ColumnType<Date, string | undefined, never>;
     updated_at: ColumnType<Date, string | undefined, never>;
   };
@@ -33,10 +39,16 @@ interface DB {
 
 export const db = new Kysely<DB>({
   dialect: new TauriSqliteDialect({
-    database: async (prefix) =>
-      Database.load(`${prefix}${await appDataDir()}rishi.db`),
+    database: async (prefix) => {
+      const path = `${prefix}${await appDataDir()}/rishi.db`;
+      console.log(`>>> db path`, path);
+      return Database.load(path);
+    },
   }),
 });
 
-
-
+export type PageData = DB["page_data"];
+export type PageDataInsertable = Insertable<PageData>;
+export type Page = DB["page"];
+export type Book = Selectable<DB["books"]>;
+export type BookInsertable = Insertable<DB["books"]>;

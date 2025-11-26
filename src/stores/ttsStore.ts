@@ -1,45 +1,45 @@
-import { create } from 'zustand'
-import { devtools } from 'zustand/middleware'
-import type { ParagraphWithCFI } from '../../../shared/types'
+import { create } from "zustand";
+import { devtools } from "zustand/middleware";
+import type { ParagraphWithCFI } from "../../../shared/types";
 export enum PlayingState {
-  Playing = 'playing',
-  Paused = 'paused',
-  Stopped = 'stopped',
-  Loading = 'loading'
+  Playing = "playing",
+  Paused = "paused",
+  Stopped = "stopped",
+  Loading = "loading",
 }
 interface TTSState {
   // Playback control
-  playingState: PlayingState
-  hasApiKey: boolean
+  playingState: PlayingState;
+  hasApiKey: boolean;
 
   // Navigation state
-  currentParagraphIndex: number
-  paragraphs: ParagraphWithCFI[]
+  currentParagraphIndex: number;
+  paragraphs: ParagraphWithCFI[];
 
   // Book context
-  currentBookId: string
-  currentPage: string // CFI of current page
+  currentbookId: number;
+  currentPage: string; // CFI of current page
 
   // Cache management
-  audioCache: Map<string, string>
+  audioCache: Map<string, string>;
 
   // Error handling
-  error: string | null
+  error: string | null;
 
   // Actions with proper error handling
-  setPlayingState: (playingState: PlayingState) => void
-  setHasApiKey: (hasKey: boolean) => void
-  setError: (error: string | null) => void
-  setCurrentParagraphIndex: (index: number) => void
-  setParagraphs: (paragraphs: ParagraphWithCFI[]) => void
-  setCurrentBookId: (bookId: string) => void
-  setCurrentPage: (page: string) => void
-  addToAudioCache: (cfiRange: string, audioPath: string) => void
-  removeFromAudioCache: (cfiRange: string) => void
-  reset: () => void // Clear all state
-  setToLastParagraphIndex: () => void
-  direction: 'forward' | 'backward'
-  setDirection: (direction: 'forward' | 'backward') => void
+  setPlayingState: (playingState: PlayingState) => void;
+  setHasApiKey: (hasKey: boolean) => void;
+  setError: (error: string | null) => void;
+  setCurrentParagraphIndex: (index: number) => void;
+  setParagraphs: (paragraphs: ParagraphWithCFI[]) => void;
+  setCurrentBookId: (bookId: number) => void;
+  setCurrentPage: (page: string) => void;
+  addToAudioCache: (cfiRange: string, audioPath: string) => void;
+  removeFromAudioCache: (cfiRange: string) => void;
+  reset: () => void; // Clear all state
+  setToLastParagraphIndex: () => void;
+  direction: "forward" | "backward";
+  setDirection: (direction: "forward" | "backward") => void;
 }
 
 export const useTTSStore = create<TTSState>()(
@@ -48,11 +48,11 @@ export const useTTSStore = create<TTSState>()(
       // Initial state
       playingState: PlayingState.Stopped,
       hasApiKey: false,
-      direction: 'forward',
+      direction: "forward",
       currentParagraphIndex: 0,
       paragraphs: [],
-      currentBookId: '',
-      currentPage: '',
+      currentBookId: "",
+      currentPage: "",
       audioCache: new Map(),
       error: null,
       setDirection: (direction) => set({ direction: direction }),
@@ -79,7 +79,7 @@ export const useTTSStore = create<TTSState>()(
       // },
 
       setCurrentBookId: (bookId) => {
-        const state = get()
+        const state = get();
         if (state.currentBookId !== bookId) {
           // Clear cache when switching books
           set({
@@ -88,8 +88,8 @@ export const useTTSStore = create<TTSState>()(
             currentParagraphIndex: 0,
 
             playingState: PlayingState.Stopped,
-            error: null
-          })
+            error: null,
+          });
         }
       },
 
@@ -101,30 +101,30 @@ export const useTTSStore = create<TTSState>()(
       // },
 
       addToAudioCache: (cfiRange, audioPath) => {
-        const newCache = new Map(get().audioCache)
-        newCache.set(cfiRange, audioPath)
+        const newCache = new Map(get().audioCache);
+        newCache.set(cfiRange, audioPath);
 
-        set({ audioCache: newCache })
+        set({ audioCache: newCache });
       },
 
       removeFromAudioCache: (cfiRange) => {
-        const newCache = new Map(get().audioCache)
-        newCache.delete(cfiRange)
-        set({ audioCache: newCache })
+        const newCache = new Map(get().audioCache);
+        newCache.delete(cfiRange);
+        set({ audioCache: newCache });
       },
 
       reset: () =>
         set({
           playingState: PlayingState.Stopped,
           currentParagraphIndex: 0,
-          currentBookId: '',
-          currentPage: '',
+          currentBookId: "",
+          currentPage: "",
           audioCache: new Map(),
-          error: null
-        })
+          error: null,
+        }),
     }),
     {
-      name: 'tts-store' // Name for the store in devtools
+      name: "tts-store", // Name for the store in devtools
     }
   )
-)
+);

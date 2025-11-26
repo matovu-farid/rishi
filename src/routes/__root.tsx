@@ -1,9 +1,9 @@
-import { synchronizedGetBooks } from "@/modules/sync_books";
 import Loader from "../components/Loader";
 import { useQuery } from "@tanstack/react-query";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import type { JSX } from "react";
+import { getBooks } from "@/modules/sql";
 
 export const Route = createRootRoute({
   component: () => <RootComponent />,
@@ -20,7 +20,7 @@ function RootComponent(): JSX.Element {
     queryFn: async () => {
       // Wait for Electron context to be ready
 
-      return await synchronizedGetBooks();
+      return await getBooks();
     },
     retry: 3,
     retryDelay: 1000,

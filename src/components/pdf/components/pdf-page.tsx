@@ -31,7 +31,7 @@ export function PageComponent({
   pdfHeight?: number;
   pdfWidth?: number;
   isDualPage?: boolean;
-  bookId: string;
+  bookId: number;
   onRenderComplete?: () => void;
 }) {
   // const [pageData, setPageData] = useState<TextContent | null>(null);
@@ -66,7 +66,6 @@ export function PageComponent({
 
   return (
     <Page
-
       pageNumber={pageNumber}
       key={pageNumber.toString()}
       customTextRenderer={({

@@ -6,11 +6,9 @@ import { ThemeType } from "@/themes/common";
 import { Loader2, Menu as MenuIcon } from "lucide-react";
 import { Document, Outline, pdfjs } from "react-pdf";
 import type { DocumentInitParameters } from "pdfjs-dist/types/src/display/api";
-import "../subscriptions/bus.ts"
+import "../subscriptions/bus.ts";
 
 import { cn } from "@components/lib/utils";
-
-import { BookData } from "@/generated";
 
 // Import required CSS for text and annotation layers
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -36,18 +34,15 @@ import { usePdfNavigation } from "../hooks/usePdfNavigation";
 import { PageComponent } from "./pdf-page";
 import { useSetupMenu } from "../hooks/useSetupMenu";
 import { useMutation } from "@tanstack/react-query";
-import { synchronizedUpdateBookLocation } from "@/modules/sync_books";
 import { toast } from "react-toastify";
 import { queryClient } from "@components/providers";
 import { useCurrentPageNumber } from "../hooks/useCurrentPageNumber";
 import { PDFDocumentProxy } from "pdfjs-dist";
 import { useVirualization } from "../hooks/useVirualization";
-import {
-
-  eventBusLogsAtom,
-} from "@/utils/bus";
+import { eventBusLogsAtom } from "@/utils/bus";
 import { TextExtractor } from "./text-extractor.tsx";
-
+import { Book } from "@/modules/kynsley.ts";
+import { updateBookLocation } from "@/modules/sql.ts";
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -55,19 +50,20 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
-export function PdfView({ book, filepath }: { filepath: String, book: BookData }): React.JSX.Element {
+export function PdfView({
+  book,
+  filepath,
+}: {
+  filepath: String;
+  book: Book;
+}): React.JSX.Element {
   const [theme] = useState<ThemeType>(ThemeType.White);
   const [tocOpen, setTocOpen] = useState(false);
   useAtomValue(eventBusLogsAtom);
 
-
-
-
-
   const setPageNumber = useSetAtom(setPageNumberAtom);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   useScrolling(scrollContainerRef);
-
 
   useUpdateCoverIMage(book);
   useSetupMenu();
@@ -108,10 +104,10 @@ export function PdfView({ book, filepath }: { filepath: String, book: BookData }
       bookId,
       location,
     }: {
-      bookId: string;
+      bookId: number;
       location: string;
     }) => {
-      await synchronizedUpdateBookLocation(bookId, location);
+      await updateBookLocation(bookId, location);
     },
 
     onError(_error) {
@@ -254,8 +250,6 @@ export function PdfView({ book, filepath }: { filepath: String, book: BookData }
                   ref={(node) => {
                     if (node) {
                       pageRefs.current.set(virtualItem.index, node);
-
-
                     } else {
                       pageRefs.current.delete(virtualItem.index);
                     }
@@ -281,33 +275,28 @@ export function PdfView({ book, filepath }: { filepath: String, book: BookData }
                         // setHasNavigatedToPage(true);
                         // handlePageRendered(virtualItem.index)
                         handlePageRendered(virtualItem.index);
-
-                      }
-                      }
+                      }}
                     />
-
                   </div>
-
-
                 </div>
 
                 <div
                   className=" "
                   data-background-page-number={virtualItem.index + 1}
                   style={{ width: pageWidth ?? "auto" }}
-                >
-                  <TextExtractor
-                    pageWidth={pageWidth}
-                    pdfHeight={pdfHeight}
-                    isDualPage={isDualPage}
-                    bookId={book.id} />
-                </div>
+                ></div>
               </div>
             ))}
+            <TextExtractor
+              pageWidth={pageWidth}
+              pdfHeight={pdfHeight}
+              isDualPage={isDualPage}
+              bookId={book.id}
+            />
           </div>
         </Document>
         {/* TTS Controls - Draggable */}
-        {<TTSControls key={book.id} bookId={book.id} />}
+        {<TTSControls key={book.id.toString()} bookId={book.id} />}
       </div>
       {/* TOC Sidebar */}
       <Sheet open={tocOpen} onOpenChange={setTocOpen}>
@@ -357,4 +346,3 @@ export function PdfView({ book, filepath }: { filepath: String, book: BookData }
     </div>
   );
 }
-

@@ -12,9 +12,8 @@ import {
   BookNavigationState,
   bookNavigationStateAtom,
 } from "@components/pdf/atoms/paragraph-atoms";
-import { synchronizedGetBooks } from "@/modules/sync_books";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { saveBook } from "@/modules/sql";
+import { getBook, saveBook } from "@/modules/sql";
 export const Route = createLazyFileRoute("/books/$id")({
   component: () => <BookView />,
 });
@@ -31,14 +30,12 @@ function BookView(): React.JSX.Element {
   } = useQuery({
     queryKey: ["book", id],
     queryFn: async () => {
-      const book = (await synchronizedGetBooks()).find(
-        (book) => book.id === id
-      );
+      const book = await getBook(Number(id));
       if (!book) {
         throw new Error("Book not found");
       }
+
       setBook(book);
-      void saveBook(book);
       return book;
     },
   });
@@ -73,7 +70,7 @@ function BookView(): React.JSX.Element {
       {book?.kind === "pdf" && (
         <PdfView
           filepath={convertFileSrc(book.filepath)}
-          key={book.id}
+          key={book.id.toString()}
           book={book}
         />
       )}

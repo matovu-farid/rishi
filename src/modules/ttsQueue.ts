@@ -1,11 +1,10 @@
-
 import { EventEmitter } from "events";
 import PriorityQueue from "priorityqueuejs";
 import type { TTSRequest } from "@/types";
 import { ttsCache } from "./ttsCache";
 import { TTSQueueEvents } from "./ipc_handles";
 import { fetch } from "@tauri-apps/plugin-http";
-import config from "@/config.json"
+import config from "@/config.json";
 
 export interface QueueItem extends TTSRequest {
   priority: number;
@@ -35,7 +34,6 @@ export class TTSQueue extends EventEmitter {
   constructor() {
     super();
 
-
     // Priority queue comparator: higher priority first
     /**
      * Initialize priority queue with custom comparator (higher priority first)
@@ -58,7 +56,7 @@ export class TTSQueue extends EventEmitter {
    * Add a TTS request to the queue (cache check should be done by caller)
    */
   requestAudio(
-    bookId: string,
+    bookId: number,
     cfiRange: string,
     text: string,
     priority = 0 // 0 is normal priority, 1 is high priority, 2 is highest priority
@@ -78,7 +76,7 @@ export class TTSQueue extends EventEmitter {
       return new Promise((resolve, reject) => {
         // Listen for audio-ready events and filter by requestId
         const handleAudioReady = (data: {
-          bookId: string;
+          bookId: number;
           cfiRange: string;
           audioPath: string;
           requestId: string;
@@ -91,7 +89,7 @@ export class TTSQueue extends EventEmitter {
         };
 
         const handleAudioError = (data: {
-          bookId: string;
+          bookId: number;
           cfiRange: string;
           error: Error;
           requestId: string;
@@ -192,10 +190,10 @@ export class TTSQueue extends EventEmitter {
           error:
             error instanceof Error
               ? {
-                name: error.name,
-                message: error.message,
-                stack: error.stack,
-              }
+                  name: error.name,
+                  message: error.message,
+                  stack: error.stack,
+                }
               : String(error),
         });
         // Clean up tracking
@@ -251,7 +249,7 @@ export class TTSQueue extends EventEmitter {
    * Generate audio using OpenAI TTS API
    */
   private async generateAudio(item: QueueItem): Promise<Uint8Array> {
-    const url = config.production.audio_worker_url
+    const url = config.production.audio_worker_url;
 
     try {
       const requestBody = {
@@ -303,10 +301,10 @@ export class TTSQueue extends EventEmitter {
         error:
           error instanceof Error
             ? {
-              name: error.name,
-              message: error.message,
-              stack: error.stack,
-            }
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+              }
             : String(error),
       };
 

@@ -1,11 +1,11 @@
-use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
 use std::io;
 use std::path::{Path, PathBuf};
 use zip::ZipArchive;
-
-use crate::embed::{embed_text, EmbedParam, EmbedResult};
+// At the top of commands.rs
+use crate::embed::EmbedResult;
+use crate::embed::{embed_text, EmbedParam};
 use crate::epub::Epub;
 use crate::pdf::Pdf;
 use crate::shared::books::store_book_data;
@@ -53,8 +53,8 @@ pub fn get_pdf_data(app: tauri::AppHandle, path: &Path) -> Result<BookData, Stri
 }
 
 #[tauri::command]
-pub async fn embed(embed_params: Vec<EmbedParam>) -> Result<Vec<EmbedResult>, String> {
-    let res = embed_text(embed_params).await?;
+pub async fn embed(embedparams: Vec<EmbedParam>) -> Result<Vec<EmbedResult>, String> {
+    let res = embed_text(embedparams).await.map_err(|e| e.to_string())?;
     Ok(res)
 }
 

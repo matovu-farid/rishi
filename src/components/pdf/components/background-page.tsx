@@ -1,13 +1,14 @@
 import { Page } from "react-pdf";
 
 import {
+  backgroundPageAtom,
   isTextItem,
-  setPageNumberToPageDataAtom,
 } from "@components/pdf/atoms/paragraph-atoms";
-import { useSetAtom } from "jotai";
 import { Loader2 } from "lucide-react";
-import { createPage, savePageDataMany } from "@/modules/sql";
-import { embed, saveVectors } from "@/generated";
+import { createPage } from "@/modules/sql";
+import { wordsToFinalParagraphs } from "../utils/wordsToParaagraphs";
+import { useSetAtom } from "jotai";
+import { retry } from "ts-retry-promise";
 
 export function BackgroundPageComponent({
   thispageNumber: pageNumber,
@@ -21,9 +22,10 @@ export function BackgroundPageComponent({
   pdfHeight?: number;
   pdfWidth?: number;
   isDualPage?: boolean;
-  bookId: string;
+  bookId: number;
   onRenderComplete?: () => void;
 }) {
+  const setBackgroundPage = useSetAtom(backgroundPageAtom);
   return (
     <Page
       pageNumber={pageNumber}
@@ -36,14 +38,25 @@ export function BackgroundPageComponent({
       canvasBackground="white"
       onGetTextSuccess={async (data) => {
         try {
-          const pageData = data.items
+          let pageData = data.items
             .filter(isTextItem)
             .filter((item) => item.str.length > 0)
-            .map((item, index) => {
-              const id = `${bookId}-${pageNumber}-${index}`;
-              return { id, bookId, data: item.str, pageNumber };
-            });
-          await createPage(pageNumber, bookId, pageData);
+            .map((item) => item.str);
+          // const tokenizedData = await tokenize({ text: pageData });
+          const paragraphs = wordsToFinalParagraphs(pageData);
+          const page = paragraphs.map((item, index) => {
+            // Generate unique ID: pageNumber * 1000000 + bookId * 10000 + index
+            // This allows up to 9999 paragraphs per page and 9999 books
+            // Format ensures no collisions between pages/books
+            const id = pageNumber * 1000000 + bookId * 10000 + index;
+
+            return { id, bookId, data: item, pageNumber };
+          });
+          void retry(() => createPage(pageNumber, bookId, page), {
+            retries: 3,
+          });
+
+          setBackgroundPage((pageNumber) => pageNumber + 1);
         } catch (error) {
           console.error(error);
         }

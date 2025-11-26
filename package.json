@@ -73,9 +73,10 @@
     "serve-static": "^1.16.2",
     "tailwind-merge": "^3.3.1",
     "throttle-debounce": "^5.0.2",
+    "ts-retry-promise": "^0.8.1",
     "update-electron-app": "^3.1.1",
+    "uuid": "^13.0.0",
     "xml-js": "^1.6.11",
-    "zod": "^4.1.13",
     "zustand": "^5.0.8"
   },
   "devDependencies": {

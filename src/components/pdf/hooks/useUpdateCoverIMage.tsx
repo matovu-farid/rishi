@@ -6,15 +6,14 @@ import { useEffect } from "react";
 //   SheetTitle,
 // } from "@/components/ui/sheet";
 
-import { BookData } from "@/generated";
-
 // Import required CSS for text and annotation layers
 
 import { isPdfRenderedAtom } from "@components/pdf/atoms/paragraph-atoms";
 import { useAtomValue } from "jotai";
 import { updateStoredCoverImage } from "../utils/updateStoredCoverImage";
+import { Book } from "@/modules/kynsley";
 
-export function useUpdateCoverIMage(book: BookData) {
+export function useUpdateCoverIMage(book: Book) {
   const isRendered = useAtomValue(isPdfRenderedAtom);
   useEffect(() => {
     if (isRendered(book.id)) {
