@@ -11,7 +11,7 @@
     "generate-types": "cargo tauri-typegen generate",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
-    "test": "vitest",
+    "test": "npx vitest",
     "test:browser": "vitest --config=vitest.browser.config.ts"
   },
   "dependencies": {

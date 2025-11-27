@@ -1,4 +1,4 @@
-import { fileTypeFromBuffer, fileTypeFromFile } from "file-type";
+import { fileTypeFromBuffer } from "file-type";
 import { TTSQueue } from "./ttsQueue";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 export const ttsQueue = new TTSQueue();

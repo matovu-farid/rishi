@@ -6,7 +6,6 @@ import { paragraphs } from "./fixtures";
 import eventEmitter from "eventemitter3";
 import { Player } from "./PlayerClass";
 import { fileTypeFromFile } from "file-type";
-type EventEmitter = typeof eventEmitter;
 const emitter = new eventEmitter();
 // vi.mock("./audio", async () => {
 //   const { default: Emitter }: { default: EventEmitter } =
@@ -104,7 +103,6 @@ describe("Player", () => {
     expect(await player.getCurrentParagraphs()).toEqual(paragraphs);
     expect(await player.getNextPageParagraphs()).toEqual([]);
     expect(await player.getPreviousPageParagraphs()).toEqual([]);
-    expect(await player.getCurrentParagraph()).toEqual(paragraphs[0]);
     await player.play();
 
     expect(player.getPlayingState()).toBe(PlayingState.Playing);
@@ -122,5 +120,6 @@ describe("Player", () => {
     //const buffer = await readChunk(audioPath, {length: 4100});
     const fileType = await fileTypeFromFile(audioPath);
     expect(fileType?.mime).toBe("audio/mpeg");
+    expect(await player.getCurrentParagraph()).toEqual(paragraphs[0]);
   });
 });

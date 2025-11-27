@@ -1,9 +1,9 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { ttsService, TTSService } from "./ttsService";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+import { ttsService } from "./ttsService";
 import fs from "fs/promises";
 import path from "path";
 
-import { fileTypeFromBuffer, fileTypeFromFile } from "file-type";
+import { fileTypeFromFile } from "file-type";
 
 describe("TTS Service", () => {
   beforeAll(async () => {
