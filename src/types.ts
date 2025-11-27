@@ -24,7 +24,7 @@ export interface Container {
 
 export type Asset = "css" | "font" | "xml" | "other";
 export interface Book {
-  currentbookId: number | number;
+  currentbookId: string | number;
   cover: string;
   spine: { idref: string; path: string; mediaType: string }[];
   title: string;
@@ -35,7 +35,7 @@ export interface Book {
 }
 
 export interface Store {
-  currentbookId: number | number;
+  currentbookId: string | number;
   epubPath: string;
 }
 export type OPFFileObj = OPF["package"];
@@ -46,7 +46,7 @@ export interface ParagraphWithCFI {
 }
 
 export interface TTSRequest {
-  bookId: number;
+  bookId: string;
   cfiRange: string;
   text: string;
 }

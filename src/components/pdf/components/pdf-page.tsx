@@ -31,7 +31,7 @@ export function PageComponent({
   pdfHeight?: number;
   pdfWidth?: number;
   isDualPage?: boolean;
-  bookId: number;
+  bookId: string;
   onRenderComplete?: () => void;
 }) {
   // const [pageData, setPageData] = useState<TextContent | null>(null);

@@ -41,7 +41,7 @@ import { PDFDocumentProxy } from "pdfjs-dist";
 import { useVirualization } from "../hooks/useVirualization";
 import { eventBusLogsAtom } from "@/utils/bus";
 import { TextExtractor } from "./text-extractor.tsx";
-import { Book } from "@/modules/kynsley.ts";
+import { Book } from "@/modules/kysley.ts";
 import { updateBookLocation } from "@/modules/sql.ts";
 
 // Configure PDF.js worker
@@ -104,7 +104,7 @@ export function PdfView({
       bookId,
       location,
     }: {
-      bookId: number;
+      bookId: string;
       location: string;
     }) => {
       await updateBookLocation(bookId, location);
@@ -154,7 +154,7 @@ export function PdfView({
     setTocOpen(false);
     // Update book location when navigating via TOC
     updateBookLocationMutation.mutate({
-      bookId: book.id,
+      bookId: book.id.toString(),
       location: itemPageNumber.toString(),
     });
   }
@@ -270,7 +270,7 @@ export function PdfView({
                       pdfWidth={pageWidth}
                       pdfHeight={pdfHeight}
                       isDualPage={isDualPage}
-                      bookId={book.id}
+                      bookId={book.id.toString()}
                       onRenderComplete={() => {
                         // setHasNavigatedToPage(true);
                         // handlePageRendered(virtualItem.index)
@@ -291,12 +291,12 @@ export function PdfView({
               pageWidth={pageWidth}
               pdfHeight={pdfHeight}
               isDualPage={isDualPage}
-              bookId={book.id}
+              bookId={book.id.toString()}
             />
           </div>
         </Document>
         {/* TTS Controls - Draggable */}
-        {<TTSControls key={book.id.toString()} bookId={book.id} />}
+        {<TTSControls key={book.id.toString()} bookId={book.id.toString()} />}
       </div>
       {/* TOC Sidebar */}
       <Sheet open={tocOpen} onOpenChange={setTocOpen}>

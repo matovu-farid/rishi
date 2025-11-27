@@ -1,13 +1,15 @@
-import { expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { ttsService, TTSService } from "./ttsService";
 import fs from "fs/promises";
 import path from "path";
-import { TTS_EVENTS } from "./ipc_handles";
 
-it(
-  "should request audio and return audio path with audio data",
-  { timeout: 10000 },
-  async () => {
+import { fileTypeFromBuffer, fileTypeFromFile } from "file-type";
+
+describe("TTS Service", () => {
+  beforeAll(async () => {
+    vi.clearAllMocks();
+    const appDataDir = "testAudioData";
+    await fs.rmdir(appDataDir, { recursive: true });
     vi.mock("@tauri-apps/plugin-http", () => ({
       fetch: fetch,
     }));
@@ -41,17 +43,27 @@ it(
         },
       };
     });
-    const text = "The quick brown fox jumps over the lazy dog.";
+  });
 
-    const audioPath = await ttsService.requestAudio("1", "1", text);
-    console.log(">>> Audio path", audioPath);
-    expect(audioPath).toBeDefined();
+  it(
+    "should request audio and return audio path with audio data",
+    { timeout: 10000 },
+    async () => {
+      const text = "The quick brown fox jumps over the lazy dog.";
 
-    await expect
-      .poll(() => fs.readFile(audioPath), { timeout: 4000 })
-      .toBeDefined();
-    const audioData = await fs.readFile(audioPath);
+      const audioPath = await ttsService.requestAudio("1", "1", text);
+      expect(audioPath).toBeDefined();
 
-    expect(audioData.length).toBeGreaterThan(0);
-  }
-);
+      await expect
+        .poll(() => fs.readFile(audioPath), { timeout: 4000 })
+        .toBeDefined();
+      const audioData = await fs.readFile(audioPath);
+
+      expect(audioData.length).toBeGreaterThan(0);
+
+      //const buffer = await readChunk(audioPath, {length: 4100});
+      const fileType = await fileTypeFromFile(audioPath);
+      expect(fileType?.mime).toBe("audio/mpeg");
+    }
+  );
+});

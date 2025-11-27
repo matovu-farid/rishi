@@ -47,15 +47,15 @@ export class TTSCache {
   /**
    * Get the cache directory path for a specific book
    */
-  private getBookCacheDir(bookId: number): Promise<string> {
-    return path.join(this.cacheDir, bookId);
+  private getBookCacheDir(bookId: string): Promise<string> {
+    return path.join(this.cacheDir, bookId.toString());
   }
 
   /**
    * Get the file path for a cached audio file
    */
   private async getAudioFilePath(
-    bookId: number,
+    bookId: string,
     cfiRange: string
   ): Promise<string> {
     try {
@@ -91,7 +91,7 @@ export class TTSCache {
    * Check if audio is cached for a given CFI range
    */
   async getCachedAudio(
-    bookId: number,
+    bookId: string,
     cfiRange: string
   ): Promise<CachedAudioInfo> {
     try {
@@ -137,7 +137,7 @@ export class TTSCache {
    * Save generated audio to cache
    */
   async saveCachedAudio(
-    bookId: number,
+    bookId: string,
     cfiRange: string,
     audioData: Uint8Array
   ): Promise<string> {
@@ -191,7 +191,7 @@ export class TTSCache {
   /**
    * Remove cached audio for a specific CFI range
    */
-  async removeCachedAudio(bookId: number, cfiRange: string): Promise<void> {
+  async removeCachedAudio(bookId: string, cfiRange: string): Promise<void> {
     const filePath = await this.getAudioFilePath(bookId, cfiRange);
 
     try {
@@ -205,7 +205,7 @@ export class TTSCache {
   /**
    * Clear all cached audio for a book
    */
-  async clearBookCache(bookId: number): Promise<void> {
+  async clearBookCache(bookId: string): Promise<void> {
     const bookCacheDir = await this.getBookCacheDir(bookId);
 
     try {
@@ -218,7 +218,7 @@ export class TTSCache {
   /**
    * Get cache size for a book (in bytes)
    */
-  async getBookCacheSize(bookId: number): Promise<number> {
+  async getBookCacheSize(bookId: string): Promise<number> {
     const bookCacheDir = await this.getBookCacheDir(bookId);
 
     try {

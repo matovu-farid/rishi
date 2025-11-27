@@ -56,7 +56,7 @@ export class TTSQueue extends EventEmitter {
    * Add a TTS request to the queue (cache check should be done by caller)
    */
   requestAudio(
-    bookId: number,
+    bookId: string,
     cfiRange: string,
     text: string,
     priority = 0 // 0 is normal priority, 1 is high priority, 2 is highest priority
@@ -76,7 +76,7 @@ export class TTSQueue extends EventEmitter {
       return new Promise((resolve, reject) => {
         // Listen for audio-ready events and filter by requestId
         const handleAudioReady = (data: {
-          bookId: number;
+          bookId: string;
           cfiRange: string;
           audioPath: string;
           requestId: string;
@@ -89,7 +89,7 @@ export class TTSQueue extends EventEmitter {
         };
 
         const handleAudioError = (data: {
-          bookId: number;
+          bookId: string;
           cfiRange: string;
           error: Error;
           requestId: string;
@@ -248,7 +248,7 @@ export class TTSQueue extends EventEmitter {
   /**
    * Generate audio using OpenAI TTS API
    */
-  private async generateAudio(item: QueueItem): Promise<Uint8Array> {
+  async generateAudio(item: QueueItem): Promise<Uint8Array> {
     const url = config.production.audio_worker_url;
 
     try {

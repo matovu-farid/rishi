@@ -21,7 +21,7 @@ export function BackgroundPageComponent({
   pdfHeight?: number;
   pdfWidth?: number;
   isDualPage?: boolean;
-  bookId: number;
+  bookId: string;
   onRenderComplete?: () => void;
 }) {
   const setBackgroundPage = useSetAtom(backgroundPageAtom);
@@ -47,7 +47,7 @@ export function BackgroundPageComponent({
             // Generate unique ID: pageNumber * 1000000 + bookId * 10000 + index
             // This allows up to 9999 paragraphs per page and 9999 books
             // Format ensures no collisions between pages/books
-            const id = pageNumber * 1000000 + bookId * 10000 + index;
+            const id = pageNumber * 1000000 + parseInt(bookId) * 10000 + index;
 
             return { id, bookId, data: item, pageNumber };
           });

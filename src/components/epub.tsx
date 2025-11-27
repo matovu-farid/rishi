@@ -31,7 +31,7 @@ import {
 } from "@/utils/bus";
 import { highlightRange, removeHighlight } from "@/epubwrapper";
 import { customStore } from "@/stores/jotai";
-import { Book } from "@/modules/kynsley";
+import { Book } from "@/modules/kysley";
 import { updateBookLocation } from "@/modules/sql";
 
 function cn(...classes: string[]) {
@@ -148,13 +148,13 @@ export function EpubView({ book }: { book: Book }): React.JSX.Element {
     setTheme(newTheme);
     setMenuOpen(false);
   };
-  
+
   const updateBookLocationMutation = useMutation({
     mutationFn: async ({
       bookId,
       location,
     }: {
-      bookId: number;
+      bookId: string;
       location: string;
     }) => {
       await updateBookLocation(bookId, location);
@@ -244,7 +244,7 @@ export function EpubView({ book }: { book: Book }): React.JSX.Element {
 
             // Use debounced update to prevent race condition and excessive DB writes
             updateBookLocationMutation.mutate({
-              bookId: book.id,
+              bookId: book.id.toString(),
               location: epubcfi,
             });
 
@@ -293,7 +293,7 @@ export function EpubView({ book }: { book: Book }): React.JSX.Element {
         </AnimatePresence>
       </div>
       {/* TTS Controls - Draggable */}
-      {<TTSControls bookId={book.id} />}
+      {<TTSControls bookId={book.id.toString()} />}
     </div>
   );
 }

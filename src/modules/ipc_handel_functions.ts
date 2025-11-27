@@ -1,7 +1,7 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { ttsService } from "./ttsService";
 
-export const getTTSAudioPath = async (bookId: number, cfiRange: string) => {
+export const getTTSAudioPath = async (bookId: string, cfiRange: string) => {
   try {
     return await ttsService.getAudioPath(bookId, cfiRange);
   } catch (error) {
@@ -19,7 +19,7 @@ export const getTtsQueueStatus = () => {
   }
 };
 
-export const ttsClearBookCache = async (bookId: number) => {
+export const ttsClearBookCache = async (bookId: string) => {
   try {
     await ttsService.clearBookCache(bookId);
   } catch (error) {
@@ -27,7 +27,7 @@ export const ttsClearBookCache = async (bookId: number) => {
     throw error;
   }
 };
-export const ttsGetBookCacheSize = async (bookId: number) => {
+export const ttsGetBookCacheSize = async (bookId: string) => {
   try {
     return await ttsService.getBookCacheSize(bookId);
   } catch (error) {
@@ -37,7 +37,7 @@ export const ttsGetBookCacheSize = async (bookId: number) => {
 };
 
 export const requestTTSAudio = async (
-  bookId: number,
+  bookId: string,
   cfiRange: string,
   text: string,
   priority = 0

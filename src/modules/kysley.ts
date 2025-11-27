@@ -7,7 +7,7 @@ export interface DB {
   chunk_data: {
     id: number;
     pageNumber: number;
-    bookId: number;
+    bookId: string;
     data: string;
     created_at: ColumnType<Date, string | undefined, never>;
     updated_at: ColumnType<Date, string | undefined, never>;
@@ -44,3 +44,4 @@ export type PageData = DB["chunk_data"];
 export type PageDataInsertable = Insertable<PageData>;
 export type Book = Selectable<DB["books"]>;
 export type BookInsertable = Insertable<DB["books"]>;
+export type BookData = Book & { id: string };

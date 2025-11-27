@@ -17,7 +17,7 @@ export function TextExtractor({
   pageWidth: number;
   pdfHeight: number;
   isDualPage: boolean;
-  bookId: number;
+  bookId: string;
 }) {
   const pageNumber = useAtomValue(backgroundPageAtom);
 

@@ -1,5 +1,5 @@
 import { embed, EmbedParam, Metadata, saveVectors, Vector } from "@/generated";
-import { Book, BookInsertable, db, PageDataInsertable } from "./kynsley";
+import { Book, BookInsertable, db, PageDataInsertable } from "./kysley";
 import { sql } from "kysely";
 
 await db.schema
@@ -40,7 +40,7 @@ await db.schema
   .addUniqueConstraint("filepath", ["filepath"])
   .execute();
 
-async function hasSavedData(pageNumber: number, bookId: number) {
+async function hasSavedData(pageNumber: number, bookId: string) {
   // if we have atleast one chink
   const result = await db
     .selectFrom("chunk_data")
@@ -67,7 +67,7 @@ export async function savePageDataMany(pageData: PageDataInsertable[]) {
     .execute();
 }
 
-export async function getAllPageDataByBookId(bookId: number) {
+export async function getAllPageDataByBookId(bookId: string) {
   const result = await db
     .selectFrom("chunk_data")
     .selectAll()
@@ -133,16 +133,14 @@ export async function updateBookCover(id: number, cover: number[]) {
 
 export async function processJob(
   pageNumber: number,
-  bookId: number,
+  bookId: string,
   pageData: PageDataInsertable[]
 ) {
   try {
     if (await hasSavedData(pageNumber, bookId)) {
-      console.log(`>>> Page ${pageNumber} already has saved data, skipping`);
       return;
     }
     if (pageData.length === 0) {
-      console.log(`>>> pageData is empty for page ${pageNumber}`);
       return;
     }
 
@@ -150,7 +148,7 @@ export async function processJob(
       const metadata: Metadata = {
         id: item.id,
         pageNumber: pageNumber,
-        bookId,
+        bookId: parseInt(bookId),
       };
       return {
         text: item.data,
@@ -187,11 +185,11 @@ export async function processJob(
     throw error;
   }
 }
-export async function updateBookLocation(bookId: number, location: string) {
+export async function updateBookLocation(bookId: string, location: string) {
   // await updateBook({ id: bookId, location: location }, store);
   await db
     .updateTable("books")
     .set({ location })
-    .where("id", "=", bookId)
+    .where("id", "=", parseInt(bookId))
     .execute();
 }

@@ -18,13 +18,13 @@ import {
   setPageNumberAtom,
 } from "@components/pdf/atoms/paragraph-atoms";
 import { deleteBook, getBooks, saveBook } from "@/modules/sql";
-import { Book, BookInsertable } from "@/modules/kynsley";
+import { Book, BookInsertable } from "@/modules/kysley";
 
-const newBook = atom<number | null>(null);
+const newBook = atom<string | null>(null);
 
 const useNavigateToNewBook = () => {
   const navigate = useNavigate();
-  function navigateToNewBook(bookId: number) {
+  function navigateToNewBook(bookId: string) {
     void navigate({
       to: "/books/$id",
       params: { id: bookId },
@@ -162,7 +162,7 @@ function FileDrop(): React.JSX.Element {
       setNewBookId(null);
       // Use setTimeout to ensure the reset happens before setting the new value
       setTimeout(() => {
-        setNewBookId(bookData.id);
+        setNewBookId(bookData.id.toString());
       }, 0);
     },
   });
@@ -198,7 +198,7 @@ function FileDrop(): React.JSX.Element {
       setNewBookId(null);
       // Use setTimeout to ensure the reset happens before setting the new value
       setTimeout(() => {
-        setNewBookId(bookData.id);
+        setNewBookId(bookData.id.toString());
       }, 0);
     },
   });

@@ -5,7 +5,7 @@
 //   SheetTitle,
 // } from "@/components/ui/sheet";
 
-import { Book } from "@/modules/kynsley";
+import { Book } from "@/modules/kysley";
 import { getBook, updateBookCover } from "@/modules/sql";
 
 // Import required CSS for text and annotation layers

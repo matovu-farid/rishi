@@ -23,7 +23,7 @@ import { EventBusEvent, PlayingState } from "@/utils/bus";
 import { eventBus } from "@/utils/bus";
 
 interface TTSControlsProps {
-  bookId: number;
+  bookId: string;
   disabled?: boolean;
 }
 

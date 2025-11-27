@@ -8,7 +8,7 @@ import { TextItem, TextMarkedContent, type TextContent } from "react-pdf";
 import { freezeAtom } from "jotai/utils";
 import { customStore } from "@/stores/jotai";
 import { observe } from "jotai-effect";
-import { Book } from "@/modules/kynsley";
+import { Book } from "@/modules/kysley";
 
 export const virtualizerAtom = atom<any | null>(null);
 
@@ -163,13 +163,13 @@ const isRenderedPageStateAtom = atom<{ [pageNumber: number]: boolean }>({});
 
 export const isTextGotAtom = atom(false);
 export const booksAtom = atom<number[]>([]);
-export const pdfsRenderedAtom = atom<{ [bookId: number]: boolean }>({});
+export const pdfsRenderedAtom = atom<{ [bookId: string]: boolean }>({});
 export const isPdfRenderedAtom = atom(
   (get) => {
     const pdfsRendered = get(pdfsRenderedAtom);
-    return (bookId: number) => pdfsRendered[bookId] ?? false;
+    return (bookId: string) => pdfsRendered[bookId] ?? false;
   },
-  (get, set, bookId: number, isRendered: boolean) => {
+  (get, set, bookId: string, isRendered: boolean) => {
     const pdfsRendered = get(pdfsRenderedAtom);
     set(pdfsRenderedAtom, {
       ...pdfsRendered,

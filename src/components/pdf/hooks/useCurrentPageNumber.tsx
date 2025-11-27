@@ -25,7 +25,7 @@ import { pageDataToParagraphs } from "../utils/getPageParagraphs";
 import { customStore } from "@/stores/jotai";
 import isEqual from "fast-deep-equal";
 import { eventBus, EventBusEvent } from "@/utils/bus";
-import { Book } from "@/modules/kynsley";
+import { Book } from "@/modules/kysley";
 import { updateBookLocation } from "@/modules/sql";
 
 // --------------------------------------------------------------------------------------
@@ -137,7 +137,7 @@ export function useCurrentPageNumber(
       bookId,
       location,
     }: {
-      bookId: number;
+      bookId: string;
       location: string;
     }) => {
       await updateBookLocation(bookId, location);
