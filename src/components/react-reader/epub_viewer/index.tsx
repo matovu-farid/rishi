@@ -351,28 +351,24 @@ export class EpubView extends Component<IEpubViewProps, IEpubViewState> {
 
       // Extract and log next page paragraphs on every new page
       if (onNextPageParagraphs) {
-        this.getNextViewParagraphs().then((nextPageParagraphsData) => {
+        void this.getNextViewParagraphs().then((nextPageParagraphsData) => {
           onNextPageParagraphs(nextPageParagraphsData);
         });
       } else {
         // Always log next page paragraphs even if no callback is provided
-        this.getNextViewParagraphs().then((nextPageParagraphsData) => {
-          console.log(
-            "Next page paragraphs:",
-            nextPageParagraphsData.paragraphs
-          );
-        });
+        void this.getNextViewParagraphs();
       }
 
       // Extract and log previous page paragraphs on every new page
       if (onPreviousPageParagraphs) {
-        this.getPreviousViewParagraphs().then((previousPageParagraphsData) => {
-          onPreviousPageParagraphs(previousPageParagraphsData);
-        });
+        void this.getPreviousViewParagraphs().then(
+          (previousPageParagraphsData) => {
+            onPreviousPageParagraphs(previousPageParagraphsData);
+          }
+        );
       } else {
         // Always log previous page paragraphs even if no callback is provided
-        this.getPreviousViewParagraphs().then((previousPageParagraphsData) => {
-        });
+        void this.getPreviousViewParagraphs();
       }
     }
   };
