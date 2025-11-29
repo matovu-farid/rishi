@@ -1,5 +1,5 @@
 import Loader from "@components/Loader";
-import { ReactReader } from "@components/react-reader";
+import { ReactReader } from "@/components/react-reader";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 
@@ -18,6 +18,7 @@ import { Rendition } from "epubjs/types";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { z } from "zod";
 import {
   currentEpubLocationAtom,
   getEpubCurrentViewParagraphsAtom,
@@ -29,7 +30,11 @@ import {
   eventBusLogsAtom,
   PlayingState,
 } from "@/utils/bus";
-import { highlightRange, removeHighlight } from "@/epubwrapper";
+import {
+  getCurrentViewParagraphs,
+  highlightRange,
+  removeHighlight,
+} from "@/epubwrapper";
 import { customStore } from "@/stores/jotai";
 import { Book } from "@/modules/kysley";
 import { updateBookLocation } from "@/modules/sql";
@@ -44,6 +49,22 @@ function updateTheme(rendition: Rendition, theme: ThemeType) {
   reditionThemes.override("background", themes[theme].background);
   reditionThemes.override("font-size", "1.2em");
 }
+const locationSchema = z.object({
+  end: z.object({
+    cfi: z.string(),
+    displayed: z.object({
+      page: z.number(),
+      total: z.number(),
+    }),
+  }),
+  start: z.object({
+    cfi: z.string(),
+    displayed: z.object({
+      page: z.number(),
+      total: z.number(),
+    }),
+  }),
+});
 
 export function EpubView({ book }: { book: Book }): React.JSX.Element {
   //const rendition = useRef<Rendition | undefined>(undefined);
@@ -66,6 +87,11 @@ export function EpubView({ book }: { book: Book }): React.JSX.Element {
       paragraphs.map((paragraph) => removeHighlight(rendition, paragraph.index))
     );
   }
+
+  const [previousLocation, setPreviousLocation] = useState<string>("");
+  const [previousRendition, setPreviousRendition] = useState<Rendition | null>(
+    null
+  );
 
   useAtomValue(eventBusLogsAtom);
 
@@ -225,15 +251,44 @@ export function EpubView({ book }: { book: Book }): React.JSX.Element {
       <div
         style={{ height: "100vh", position: "relative", overflow: "hidden" }}
       >
-        <ReactReader
+        {/* Display off screen */}
+        {/* <div
+          style={{
+            height: "100vh",
+            // overflow: "hidden",
+            width: "100%",
+            opacity: 1,
+            position: "absolute",
+            backgroundColor: "red",
+
+            // transform: "translate(-1000px, -1000px)",
+            zIndex: 20,
+            pointerEvents: "none",
+          }}
+        >
+          <EpubDisplay
+            key={`reader-${book.id}`}
+            book={book}
+            location={currentLocation || book.location || 0}
+            readerStyles={createIReactReaderTheme(themes[theme].readerTheme)}
+            locationChanged={(location: string) => {
+              setPreviousLocation(location);
+            }}
+            getRendition={(_rendition) => {
+              setPreviousRendition(_rendition);
+
+              _rendition.on("locationChanged", () => {
+                console.log(">>>PREV LOCATION CHANGED");
+                const paragraphs = getCurrentViewParagraphs(_rendition);
+                console.log(">>> PARAGRAPHS", paragraphs);
+              });
+            }}
+          />
+        </div> */}
+
+        <EpubDisplay
           key={`reader-${book.id}`}
-          loadingView={
-            <div className="w-full h-screen grid items-center">
-              <Loader />
-            </div>
-          }
-          url={convertFileSrc(book.filepath)}
-          title={book.title}
+          book={book}
           location={currentLocation || book.location || 0}
           locationChanged={(epubcfi: string) => {
             // Use tracked navigation direction from intercepted prev/next calls
@@ -249,13 +304,40 @@ export function EpubView({ book }: { book: Book }): React.JSX.Element {
             });
 
             setCurrentEpubLocation(epubcfi);
+            // void previousRendition?.display(epubcfi);
+            if (!previousRendition) {
+              console.log(">>> NO PREVIOUS RENDITION");
+              return;
+            }
+            console.log(">>> PREVIOUS RENDITION", previousRendition);
+
+            setTimeout(() => {
+              void previousRendition?.prev();
+            }, 2000);
           }}
-          swipeable={true}
           readerStyles={createIReactReaderTheme(themes[theme].readerTheme)}
           getRendition={(_rendition) => {
             updateTheme(_rendition, theme);
             _rendition.on("rendered", () => {
               setRendition(_rendition);
+              const currentLocation = _rendition?.currentLocation();
+
+              const validatedLocation =
+                locationSchema.safeParse(currentLocation);
+              if (!validatedLocation.success) {
+                return;
+              }
+              const page = validatedLocation.data!.start.displayed.page;
+            });
+            _rendition.on("locationChanged", async () => {
+              const currentLocation = _rendition?.currentLocation();
+
+              const validatedLocation =
+                locationSchema.safeParse(currentLocation);
+              if (!validatedLocation.success) {
+                return;
+              }
+              const page = validatedLocation.data!.start.displayed.page;
             });
           }}
         />
@@ -295,5 +377,38 @@ export function EpubView({ book }: { book: Book }): React.JSX.Element {
       {/* TTS Controls - Draggable */}
       {<TTSControls bookId={book.id.toString()} />}
     </div>
+  );
+}
+type props = {
+  location: number | string;
+  book: Book;
+  locationChanged?: (location: string) => void;
+  getRendition?: (rendition: Rendition) => void;
+  readerStyles: IReactReaderStyle;
+};
+
+export function EpubDisplay({
+  location,
+  book,
+  locationChanged,
+  getRendition,
+  readerStyles,
+}: props) {
+  return (
+    <ReactReader
+      key={`reader-${book.id}`}
+      loadingView={
+        <div className="w-full h-screen grid items-center">
+          <Loader />
+        </div>
+      }
+      url={convertFileSrc(book.filepath)}
+      title={book.title}
+      location={location}
+      locationChanged={locationChanged || (() => {})}
+      swipeable={true}
+      readerStyles={readerStyles}
+      getRendition={getRendition}
+    />
   );
 }

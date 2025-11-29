@@ -45,12 +45,10 @@ export const getEpubNextViewParagraphsAtom = atom(async (get) => {
   const rendition = get(renditionAtom);
   get(currentEpubLocationAtom);
   if (rendition) {
-    return await getNextViewParagraphs(rendition).then((paragraphs) =>
-      paragraphs.map((paragraph) => ({
-        text: paragraph.text,
-        index: paragraph.cfiRange,
-      }))
-    );
+    return getNextViewParagraphs(rendition).map((paragraph) => ({
+      text: paragraph.text,
+      index: paragraph.cfiRange,
+    }));
   }
   return [] as ParagraphWithIndex[];
 });
@@ -66,12 +64,10 @@ export const getEpubPreviousViewParagraphsAtom = atom(async (get) => {
   const rendition = get(renditionAtom);
   get(currentEpubLocationAtom);
   if (rendition) {
-    return await getPreviousViewParagraphs(rendition).then((paragraphs) =>
-      paragraphs.map((paragraph) => ({
-        text: paragraph.text,
-        index: paragraph.cfiRange,
-      }))
-    );
+    return getPreviousViewParagraphs(rendition).map((paragraph) => ({
+      text: paragraph.text,
+      index: paragraph.cfiRange,
+    }));
   }
   return [] as ParagraphWithIndex[];
 });
@@ -93,7 +89,6 @@ observe((get) => {
     );
   }
 }, customStore);
-
 
 const loadableEpubPreviousViewParagraphsAtom = loadable(
   getEpubPreviousViewParagraphsAtom

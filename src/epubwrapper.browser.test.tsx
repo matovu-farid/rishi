@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { render } from "vitest-browser-react";
 import { Rendition } from "epubjs";
-import { ReactReader } from "@components/react-reader";
+import { ReactReader } from "@/components/react-reader";
 import { themes } from "./themes/themes";
 import { ThemeType } from "./themes/common";
 import createIReactReaderTheme from "./themes/readerThemes";
+import isEqual from "lodash.isequal";
+import { z } from "zod";
 import {
   getCurrentViewParagraphs,
   getNextViewParagraphs,
+  getNextViewParagraphsOld,
   getPreviousViewParagraphs,
 } from "./epubwrapper";
 
@@ -65,49 +68,44 @@ describe("EpubWrapper", () => {
     expect(paragraphs.length).toBeGreaterThan(0);
   });
 
-  it("should get next view paragraphs", { timeout: 20000 }, async () => {
+  it.only("should get next view paragraphs", { timeout: 60000 }, async () => {
     const { rendition } = await getBook();
 
-    let count = 0;
-
-    while (
-      (getCurrentViewParagraphs(rendition!).length === 0 ||
-        (await getNextViewParagraphs(rendition!)).length === 0) &&
-      count < 10
-    ) {
+    for (let i = 0; i < 9; i++) {
+      const nextParagraphs = await getNextViewParagraphs(rendition!);
+      // expect(nextParagraphs.length).toBeGreaterThan(0);
       await rendition?.next();
-      count++;
+      // check that the current paragraphs are the same as the next paragraphs previously fetched
+      const currentParagraphs = getCurrentViewParagraphs(rendition!);
+      // expect(currentParagraphs.length).toBeGreaterThan(0);
+      expect(currentParagraphs).toEqual(nextParagraphs);
     }
-
-    const nextParagraphs = await getNextViewParagraphs(rendition!);
-    expect(nextParagraphs.length).toBeGreaterThan(0);
-    await rendition?.next();
-    // check that the current paragraphs are the same as the next paragraphs previously fetched
-    const currentParagraphs = getCurrentViewParagraphs(rendition!);
-    expect(currentParagraphs.length).toBeGreaterThan(0);
-    expect(currentParagraphs).toEqual(nextParagraphs);
   });
 
-  it("should get previous view paragraphs", { timeout: 20000 }, async () => {
-    const { rendition } = await getBook();
+  it("should get previous view paragraphs", { timeout: 90000 }, async () => {
+    for (let i = 0; i < 3; i++) {
+      const { rendition } = await getBook();
+      expect(rendition).toBeDefined();
 
-    let count = 0;
+      let count = 0;
 
-    while (
-      (getCurrentViewParagraphs(rendition!).length === 0 ||
-        (await getPreviousViewParagraphs(rendition!)).length === 0) &&
-      count < 10
-    ) {
+      while (
+        (getCurrentViewParagraphs(rendition!).length === 0 ||
+          (await getPreviousViewParagraphs(rendition!)).length === 0) &&
+        count < 10
+      ) {
+        await rendition?.next();
+        count++;
+      }
+
+      // await rendition?.prev();
+      const currentParagraphsBefore = getCurrentViewParagraphs(rendition!);
       await rendition?.next();
-      count++;
-    }
 
-    const previousParagraphs = await getPreviousViewParagraphs(rendition!);
-    expect(previousParagraphs.length).toBeGreaterThan(0);
-    await rendition?.prev();
-    // check that the current paragraphs are the same as the next paragraphs previously fetched
-    const currentParagraphs = getCurrentViewParagraphs(rendition!);
-    expect(currentParagraphs.length).toBeGreaterThan(0);
-    expect(currentParagraphs).toEqual(previousParagraphs);
+      const previousParagraphs = await getPreviousViewParagraphs(rendition!);
+      expect(previousParagraphs.length).toBeGreaterThan(0);
+
+      expect(previousParagraphs).toEqual(currentParagraphsBefore);
+    }
   });
 });

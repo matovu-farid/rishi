@@ -1,9 +1,10 @@
-import type { Book, Rendition } from "epubjs";
+import type { Book, Layout, Rendition } from "epubjs";
 import type { BookOptions } from "epubjs/types/book";
 import type View from "epubjs/types/managers/view";
 import type Section from "epubjs/types/section";
 import type { SpineItem } from "epubjs/types/section";
 import Epub, { EpubCFI, Contents } from "epubjs";
+import Mapping from "epubjs/types/mapping";
 
 export type ParagraphWithCFI = {
   text: string;
@@ -38,68 +39,72 @@ export function initialize(
   return epub;
 }
 
-export function getCurrentViewParagraphs(
-  rendition: Rendition
-): ParagraphWithCFI[] {
-  if (!rendition.manager) {
-    return [];
-  }
-
-  // Get the current location which includes the visible range
-  const location = rendition.manager.currentLocation();
-
-  if (!location || !location.length || !location[0]) {
-    return [];
-  }
-
-  const visibleSection = location[0];
-
-  if (
-    !visibleSection.mapping ||
-    !visibleSection.mapping.start ||
-    !visibleSection.mapping.end
-  ) {
-    return [];
-  }
-
-  // Find the view for this section
-  const view = rendition.manager.views.find({ index: visibleSection.index });
-
-  if (!view || !view.contents || !view.contents.document) {
-    return [];
-  }
-
-  try {
-    // Create CFI ranges for the visible page
-    const startCfi = new EpubCFI(visibleSection.mapping.start);
-    const endCfi = new EpubCFI(visibleSection.mapping.end);
-
-    // Convert CFIs to DOM ranges
-    const startRange = startCfi.toRange(view.contents.document);
-    const endRange = endCfi.toRange(view.contents.document);
-
-    if (!startRange || !endRange) {
-      return [];
-    }
-
-    // Create a range that encompasses the visible content
-    const range = view.contents.document.createRange();
-    range.setStart(startRange.startContainer, startRange.startOffset);
-    range.setEnd(endRange.endContainer, endRange.endOffset);
-
-    // Extract paragraphs from the range
-    const paragraphs = _getParagraphsFromRange(rendition, range, view.contents);
-    return paragraphs;
-  } catch (e) {
-    console.error("Error extracting paragraphs:", e);
-    return [];
-  }
-}
-export async function getNextViewParagraphs(
+export async function getNextViewParagraphsOld(
   rendition: Rendition,
   options = { minLength: 50 }
 ): Promise<ParagraphWithCFI[]> {
   const { minLength = 50 } = options;
+  if (!rendition.manager) {
+    return [];
+  }
+
+  const location = rendition.manager.currentLocation();
+
+  if (
+    !location ||
+    !Array.isArray(location) ||
+    !location.length ||
+    !location[0]
+  ) {
+    return [];
+  }
+
+  const currentSection = location[0];
+
+  const currentView = rendition.manager.views.find({
+    index: currentSection.index,
+  });
+
+  if (!currentView || !currentView.section || !currentView.contents) {
+    return [];
+  }
+
+  const hasNextPageInSection = _hasNextPageInCurrentSection(currentSection);
+
+  /**
+   * Paragraphs array
+   * @type {Paragraph[]}
+   */
+  let paragraphs: any[];
+
+  if (hasNextPageInSection) {
+    paragraphs = await _getNextPageParagraphsInSectionAsync(
+      rendition,
+      currentView,
+      currentSection
+    );
+  } else {
+    const nextSectionParagraphs = await _getFirstPageParagraphsInNextSection(
+      rendition,
+      currentView
+    );
+
+    paragraphs = nextSectionParagraphs;
+  }
+
+  // if (minLength > 0) {
+  //   paragraphs = paragraphs.filter(
+  //     (p: { text: string | any[] }) => p.text.length >= minLength
+  //   );
+  // }
+
+  return paragraphs;
+}
+export async function getPreviousViewParagraphsOld(
+  rendition: Rendition,
+  options = { minLength: 50 }
+): Promise<ParagraphWithCFI[]> {
+  // const { minLength = 50 } = options;
   if (!rendition.manager) {
     return [];
   }
@@ -123,70 +128,6 @@ export async function getNextViewParagraphs(
   // ) {
   //   return [];
   // }
-
-  const currentView = rendition.manager.views.find({
-    index: currentSection.index,
-  });
-
-  if (!currentView || !currentView.section || !currentView.contents) {
-    return [];
-  }
-  const hasNextPageInSection = _hasNextPageInCurrentSection(currentSection);
-  /**
-   * Paragraphs array
-   * @type {Paragraph[]}
-   */
-  let paragraphs: any[];
-  if (hasNextPageInSection) {
-    paragraphs = await _getNextPageParagraphsInSectionAsync(
-      rendition,
-      currentView,
-      currentSection
-    );
-  } else {
-    const nextSectionParagraphs = await _getFirstPageParagraphsInNextSection(
-      rendition,
-      currentView
-    );
-    paragraphs = nextSectionParagraphs;
-  }
-
-  // if (minLength > 0) {
-  //   paragraphs = paragraphs.filter(
-  //     (p: { text: string | any[] }) => p.text.length >= minLength
-  //   );
-  // }
-
-  return paragraphs;
-}
-export async function getPreviousViewParagraphs(
-  rendition: Rendition,
-  options = { minLength: 50 }
-): Promise<ParagraphWithCFI[]> {
-  // const { minLength = 50 } = options;
-  if (!rendition.manager) {
-    return [];
-  }
-
-  const location = rendition.manager.currentLocation();
-
-  if (
-    !location ||
-    !Array.isArray(location) ||
-    !location.length ||
-    !location[0]
-  ) {
-    return [];
-  }
-
-  const currentSection = location[0];
-  if (
-    !currentSection.mapping ||
-    !currentSection.mapping.start ||
-    !currentSection.mapping.end
-  ) {
-    return [];
-  }
 
   const currentView = rendition.manager.views.find({
     index: currentSection.index,
@@ -353,7 +294,7 @@ export function highlightRange(
     const annotation = rendition.annotations.highlight(
       rangeCfi,
       data,
-      cb || (() => { }),
+      cb || (() => {}),
       className,
       mergedStyles
     );
@@ -364,7 +305,7 @@ export function highlightRange(
     return Promise.reject(
       new Error(
         "Error highlighting range: " +
-        (error instanceof Error ? error.message : String(error))
+          (error instanceof Error ? error.message : String(error))
       )
     );
   }
@@ -403,7 +344,7 @@ export function removeHighlight(rendition: Rendition, cfiRange: string) {
       // but not be visible, so we can still try to remove it
       console.warn(
         "No visible view found for CFI range, attempting to remove from store: " +
-        cfiRange
+          cfiRange
       );
     }
 
@@ -420,7 +361,7 @@ export function removeHighlight(rendition: Rendition, cfiRange: string) {
     return Promise.reject(
       new Error(
         "Error removing highlight: " +
-        (error instanceof Error ? error.message : String(error))
+          (error instanceof Error ? error.message : String(error))
       )
     );
   }
@@ -739,19 +680,42 @@ async function _getNextPageParagraphsInSectionAsync(
 
     const nextPageEnd = _getEndFomStart(nextPageStart, layout.pageWidth);
 
-    const nextPageMapping = rendition.manager.mapping.page(
+    return await _getParagraphs({
+      rendition,
+      currentView,
+      startPageNumberPx: nextPageStart,
+      endPageNumberPx: nextPageEnd,
+    });
+  } catch (e) {
+    console.error("Error extracting next page paragraphs:", e);
+    return [];
+  }
+}
+async function _getParagraphs({
+  rendition,
+  currentView,
+  startPageNumberPx,
+  endPageNumberPx,
+}: {
+  rendition: Rendition;
+  currentView: View;
+  startPageNumberPx: number;
+  endPageNumberPx: number;
+}) {
+  try {
+    const pageMappings = rendition.manager.mapping.page(
       currentView.contents,
       currentView.section.cfiBase,
-      nextPageStart,
-      nextPageEnd
+      startPageNumberPx,
+      endPageNumberPx
     );
 
-    if (!nextPageMapping || !nextPageMapping.start || !nextPageMapping.end) {
+    if (!pageMappings || !pageMappings.start || !pageMappings.end) {
       return [];
     }
 
-    const startCfi = new EpubCFI(nextPageMapping.start);
-    const endCfi = new EpubCFI(nextPageMapping.end);
+    const startCfi = new EpubCFI(pageMappings.start);
+    const endCfi = new EpubCFI(pageMappings.end);
 
     let startRange = startCfi.toRange(currentView.contents.document);
     let endRange = endCfi.toRange(currentView.contents.document);
@@ -804,6 +768,7 @@ function _hasNextPageInCurrentSection(currentSection: Section) {
 
   return hasNext;
 }
+
 async function _getFirstPageParagraphsInNextSection(
   rendition: Rendition,
   currentView: View
@@ -816,7 +781,7 @@ async function _getFirstPageParagraphsInNextSection(
 
   // Try to find if the next section is already loaded as a view
   let nextView = rendition.manager.views.find({ index: nextSection.index });
-
+  //
   if (!nextView) {
     // The next section is not loaded as a view yet
     // Load the section content directly without creating a view
@@ -975,64 +940,19 @@ async function _getPreviousPageParagraphsInSectionAsync(
   try {
     const layout = rendition.manager.layout;
     const currentPage = currentSection.pages ? currentSection.pages[0] : 1; // First page in the current view
-    const currentIndex = currentPage - 1;
-    const previousPageStart = Math.max(0, currentIndex - 2) * layout.pageWidth;
+    const previousPageStart =
+      currentPage * layout.pageWidth - layout.pageWidth * 2;
 
     const previousPageEnd = _getEndFomStart(
       previousPageStart,
       layout.pageWidth
     );
-
-    const previousPageMapping = rendition.manager.mapping.page(
-      currentView.contents,
-      currentView.section.cfiBase,
-      previousPageStart,
-      previousPageEnd
-    );
-
-    if (
-      !previousPageMapping ||
-      !previousPageMapping.start ||
-      !previousPageMapping.end
-    ) {
-      return [];
-    }
-
-    const startCfi = new EpubCFI(previousPageMapping.start);
-    const endCfi = new EpubCFI(previousPageMapping.end);
-
-    let startRange = startCfi.toRange(currentView.contents.document);
-    let endRange = endCfi.toRange(currentView.contents.document);
-
-    if (!startRange || !endRange) {
-      return [];
-    }
-
-    try {
-      const comparison = startRange.compareBoundaryPoints(
-        Range.START_TO_START,
-        endRange
-      );
-      if (comparison > 0) {
-        const temp = startRange;
-        startRange = endRange;
-        endRange = temp;
-      }
-    } catch (e) {
-      console.error("Error comparing range boundaries:", e);
-    }
-
-    const range = currentView.contents.document.createRange();
-    range.setStart(startRange.startContainer, startRange.startOffset);
-    range.setEnd(endRange.endContainer, endRange.endOffset);
-
-    const paragraphs = _getParagraphsFromRange(
+    return await _getParagraphs({
       rendition,
-      range,
-      currentView.contents
-    );
-
-    return paragraphs;
+      currentView,
+      startPageNumberPx: previousPageStart,
+      endPageNumberPx: previousPageEnd,
+    });
   } catch (e) {
     console.error("Error extracting previous page paragraphs:", e);
     return [];
@@ -1070,7 +990,7 @@ async function _getLastPageParagraphsInPreviousSection(
   rendition: Rendition,
   currentView: View
 ) {
-  const previousSection = currentView.section.prev();
+  const previousSection = await currentView.section.prev();
 
   if (!previousSection) {
     return []; // No previous section available
@@ -1231,4 +1151,791 @@ function _getLastPageMapping(
   }
 
   return rendition.manager.mapping.page(contents, section.cfiBase, start, end);
+}
+function paginatedLocation(rendition: Rendition) {
+  const manager = rendition.manager;
+  let visible = manager.visible();
+  let container = manager.container.getBoundingClientRect();
+
+  let scrolledX = 0;
+  let pixelsUsedByPreviousPages = 0;
+
+  if (manager.settings.fullsize) {
+    scrolledX = window.scrollX;
+  }
+
+  let sections = visible.map((view) => {
+    let { index, href } = view.section;
+    let globalViewPortPosition;
+    let globalChapterPosition = view.position();
+    let width = view.width();
+
+    // Find mapping
+    let localViewPortStartPosition;
+    let localViewPortEndPosition;
+    let pageWidth;
+
+    if (manager.settings.direction === "rtl") {
+      globalViewPortPosition = container.right - scrolledX;
+      pageWidth =
+        Math.min(
+          Math.abs(globalViewPortPosition - globalChapterPosition.left),
+          manager.layout.width
+        ) - pixelsUsedByPreviousPages;
+      localViewPortEndPosition =
+        globalChapterPosition.width -
+        (globalChapterPosition.right - globalViewPortPosition) -
+        pixelsUsedByPreviousPages;
+      localViewPortStartPosition = localViewPortEndPosition - pageWidth;
+    } else {
+      globalViewPortPosition = container.left + scrolledX;
+      pageWidth =
+        Math.min(
+          globalChapterPosition.right - globalViewPortPosition,
+          manager.layout.width
+        ) - pixelsUsedByPreviousPages;
+      localViewPortStartPosition =
+        globalViewPortPosition -
+        globalChapterPosition.left +
+        pixelsUsedByPreviousPages;
+      localViewPortEndPosition = localViewPortStartPosition + pageWidth;
+    }
+
+    pixelsUsedByPreviousPages += pageWidth;
+
+    let mapping = manager.mapping.page(
+      view.contents,
+      view.section.cfiBase,
+      localViewPortStartPosition,
+      localViewPortEndPosition
+    );
+
+    let totalPages = manager.layout.count(width).pages;
+    let startPage = Math.floor(
+      localViewPortStartPosition / manager.layout.pageWidth
+    );
+    let pages = [];
+    let endPage = Math.floor(
+      localViewPortEndPosition / manager.layout.pageWidth
+    );
+
+    // start page should not be negative
+    if (startPage < 0) {
+      startPage = 0;
+      endPage = endPage + 1;
+    }
+
+    // Reverse page counts for rtl
+    if (manager.settings.direction === "rtl") {
+      let tempStartPage = startPage;
+      startPage = totalPages - endPage;
+      endPage = totalPages - tempStartPage;
+    }
+
+    for (var i = startPage + 1; i <= endPage; i++) {
+      let pg = i;
+      pages.push(pg);
+    }
+
+    return {
+      index,
+      href,
+      pages,
+      totalPages,
+      mapping,
+    };
+  });
+
+  return sections;
+}
+
+function getCurrentLocationPosition(rendition: Rendition) {
+  const manager = rendition.manager;
+  let visible = manager.visible();
+  let container = manager.container.getBoundingClientRect();
+
+  let scrolledX = 0;
+  let pixelsUsedByPreviousPages = 0;
+
+  if (manager.settings.fullsize) {
+    scrolledX = window.scrollX;
+  }
+  if (visible.length === 0) {
+    return null;
+  }
+  const view = visible[0];
+
+  let { index, href } = view.section;
+  let globalViewPortPosition;
+  let globalChapterPosition = view.position();
+
+  // Find mapping
+  let localViewPortStartPosition;
+  let localViewPortEndPosition;
+  let pageWidth;
+
+  if (manager.settings.direction === "rtl") {
+    globalViewPortPosition = container.right - scrolledX;
+    pageWidth =
+      Math.min(
+        Math.abs(globalViewPortPosition - globalChapterPosition.left),
+        manager.layout.width
+      ) - pixelsUsedByPreviousPages;
+    localViewPortEndPosition =
+      globalChapterPosition.width -
+      (globalChapterPosition.right - globalViewPortPosition) -
+      pixelsUsedByPreviousPages;
+    localViewPortStartPosition = localViewPortEndPosition - pageWidth;
+  } else {
+    globalViewPortPosition = container.left + scrolledX;
+    pageWidth =
+      Math.min(
+        globalChapterPosition.right - globalViewPortPosition,
+        manager.layout.width
+      ) - pixelsUsedByPreviousPages;
+    localViewPortStartPosition =
+      globalViewPortPosition -
+      globalChapterPosition.left +
+      pixelsUsedByPreviousPages;
+    localViewPortEndPosition = localViewPortStartPosition + pageWidth;
+  }
+
+  pixelsUsedByPreviousPages += pageWidth;
+
+  // let mapping = manager.mapping.page(
+  //   view.contents,
+  //   view.section.cfiBase,
+  //   localViewPortStartPosition,
+  //   localViewPortEndPosition
+  // );
+
+  // start page should not be negative
+
+  return {
+    index,
+    href,
+    localViewPortStartPosition,
+    localViewPortEndPosition,
+  };
+}
+
+function getMapping(
+  rendition: Rendition,
+  localViewPortStartPosition: number,
+  localViewPortEndPosition: number,
+  view: View
+) {
+  if (!view || !view.contents || !view.contents.document) {
+    return null;
+  }
+  const manager = rendition.manager;
+  let mapping = manager.mapping.page(
+    view.contents,
+    view.section.cfiBase,
+    localViewPortStartPosition,
+    localViewPortEndPosition
+  );
+
+  return mapping;
+}
+
+export function getCurrentView(rendition: Rendition) {
+  const location = rendition.manager.currentLocation();
+
+  if (!location || !location.length || !location[0]) {
+    return null;
+  }
+
+  const visibleSection = location[0];
+
+  if (
+    !visibleSection.mapping ||
+    !visibleSection.mapping.start ||
+    !visibleSection.mapping.end
+  ) {
+    return null;
+  }
+  const index = visibleSection.index;
+  const view = rendition.manager.views.find({ index });
+  return view || null;
+}
+
+export function getCurrentIndex(rendition: Rendition) {
+  const location = rendition.manager.currentLocation();
+
+  if (!location || !location.length || !location[0]) {
+    return null;
+  }
+
+  const visibleSection = location[0];
+
+  if (
+    !visibleSection.mapping ||
+    !visibleSection.mapping.start ||
+    !visibleSection.mapping.end
+  ) {
+    return null;
+  }
+  const index = visibleSection.index;
+
+  return index;
+}
+export function getCurrentViewParagraphs(
+  rendition: Rendition
+): ParagraphWithCFI[] {
+  if (!rendition.manager) {
+    return [];
+  }
+  const locationPosition = getCurrentLocationPosition(rendition);
+
+  if (!locationPosition) {
+    return [];
+  }
+  const view = getCurrentView(rendition);
+  if (!view) {
+    return [];
+  }
+
+  const mapping = getMapping(
+    rendition,
+    locationPosition.localViewPortStartPosition,
+    locationPosition.localViewPortEndPosition,
+    view
+  );
+  if (!mapping) {
+    return [];
+  }
+
+  return getParagraphsFromMapping({
+    rendition,
+
+    startCfiString: mapping.start,
+    endCfiString: mapping.end,
+  });
+}
+
+export async function getFirstOfNextSection(
+  rendition: Rendition,
+  nextView: View
+) {
+  const localViewPortStartPosition = 0;
+  const localViewPortEndPosition = rendition.manager.layout.width;
+  console.log(
+    ">>> first of next section",
+    localViewPortStartPosition,
+    localViewPortEndPosition
+  );
+
+  if (!nextView || !nextView.contents || !nextView.contents.document) {
+    // The next section is not loaded as a view yet
+    // Load the section content directly without creating a view
+    try {
+      // Load the section content directly using the book's load method with timeout
+      const loadPromise = spineItem.load(
+        rendition.book.load.bind(rendition.book)
+      );
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Section load timeout")), 20000)
+      );
+
+      const loadedContent = (await Promise.race([
+        loadPromise,
+        timeoutPromise,
+      ])) as Section;
+
+      if (!loadedContent || !loadedContent.document) {
+        return [];
+      }
+
+      const document = loadedContent.document;
+      const body = document.body;
+
+      if (!body) {
+        return [];
+      }
+
+      // Create a Contents object from the loaded section
+      const contents = new Contents(
+        document,
+        body,
+        spineItem.cfiBase,
+        spineItem.index
+      );
+
+      // Get the first page mapping instead of the entire section
+      const firstPageMapping = _getFirstPageMapping(
+        rendition,
+        contents,
+        spineItem
+      );
+
+      if (
+        !firstPageMapping ||
+        !firstPageMapping.start ||
+        !firstPageMapping.end
+      ) {
+        return [];
+      }
+
+      // Convert CFIs to DOM ranges
+      const startCfi = new EpubCFI(firstPageMapping.start);
+      const endCfi = new EpubCFI(firstPageMapping.end);
+
+      const startRange = startCfi.toRange(document);
+      const endRange = endCfi.toRange(document);
+
+      if (!startRange || !endRange) {
+        return [];
+      }
+
+      // Create a range that encompasses the first page content
+      const range = document.createRange();
+      range.setStart(startRange.startContainer, startRange.startOffset);
+      range.setEnd(endRange.endContainer, endRange.endOffset);
+
+      // Extract paragraphs from the range
+      const paragraphs = _getParagraphsFromRange(rendition, range, contents);
+
+      return paragraphs;
+    } catch (e) {
+      console.error("Error loading next section content:", e);
+      return [];
+    }
+  }
+
+  // If the view is already loaded, use it
+  try {
+    // Get the first page mapping instead of the entire section
+    const firstPageMapping = _getFirstPageMapping(
+      rendition,
+      nextView.contents,
+      nextView.section
+    );
+
+    if (!firstPageMapping || !firstPageMapping.start || !firstPageMapping.end) {
+      return [];
+    }
+
+    // Convert CFIs to DOM ranges
+    const startCfi = new EpubCFI(firstPageMapping.start);
+    const endCfi = new EpubCFI(firstPageMapping.end);
+
+    const startRange = startCfi.toRange(nextView.contents.document);
+    const endRange = endCfi.toRange(nextView.contents.document);
+
+    if (!startRange || !endRange) {
+      return [];
+    }
+
+    // Create a range that encompasses the first page content
+    const range = nextView.contents.document.createRange();
+    range.setStart(startRange.startContainer, startRange.startOffset);
+    range.setEnd(endRange.endContainer, endRange.endOffset);
+
+    // Extract paragraphs from the range
+    const paragraphs = _getParagraphsFromRange(
+      rendition,
+      range,
+      nextView.contents
+    );
+
+    return paragraphs;
+  } catch (e) {
+    console.error("Error extracting paragraphs from next view:", e);
+    return [];
+  }
+}
+async function getViewFromSpineItem(
+  spineItem: SpineItem,
+  rendition: Rendition
+) {
+  const loadPromise = spineItem.load(rendition.book.load.bind(rendition.book));
+
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("Section load timeout")), 10000)
+  );
+
+  const loadedSection = (await Promise.race([
+    loadPromise,
+    timeoutPromise,
+  ])) as Section;
+
+  // if (!loadedSection || !loadedSection.document) {
+  //   return null;
+  // }
+  //console.log(">>> loadedSection", loadedSection);
+  let view = rendition.manager.views.find({ index: spineItem.index });
+  if (view) {
+    return view;
+  }
+
+  view = rendition.manager.views.find({ index: loadedSection.index });
+  if (!view) {
+    return null;
+  }
+  return view;
+}
+
+function getIntermediateParagraphs({
+  rendition,
+  firstChapter,
+  secondChapter,
+  localViewPortEndPosition,
+  localViewPortStartPosition,
+}: {
+  rendition: Rendition;
+  localViewPortStartPosition: number;
+  localViewPortEndPosition: number;
+  firstChapter: View;
+  secondChapter: View;
+}) {
+  const pageWidth = rendition.manager.layout.width;
+  const firstChapterUsedWidth =
+    firstChapter.position().right - localViewPortStartPosition;
+  const secondChapterRemainingWidth = pageWidth - firstChapterUsedWidth;
+  const paragraphs = [];
+
+  const firstMapping = getMapping(
+    rendition,
+    localViewPortStartPosition,
+    Math.min(localViewPortEndPosition, firstChapter.position().right),
+    firstChapter
+  );
+  const secondMapping = getMapping(
+    rendition,
+    0,
+    secondChapterRemainingWidth,
+    secondChapter
+  );
+  if (firstMapping) {
+    paragraphs.push(
+      ...getParagraphsFromMapping({
+        rendition,
+        startCfiString: firstMapping.start,
+        endCfiString: firstMapping.end,
+      })
+    );
+  }
+  if (secondMapping) {
+    paragraphs.push(
+      ...getParagraphsFromMapping({
+        rendition,
+        startCfiString: secondMapping.start,
+        endCfiString: secondMapping.end,
+      })
+    );
+  }
+
+  return paragraphs;
+}
+function clampedToChapterLocalDimentions(localPosition: number, chapter: View) {
+  const localCurrentChapterEnd =
+    chapter.position().right - chapter.position().left;
+  if (localPosition > localCurrentChapterEnd) {
+    return localCurrentChapterEnd;
+  }
+  if (localPosition < 0) {
+    return 0;
+  }
+  return localPosition;
+}
+export async function getNextViewParagraphs(
+  rendition: Rendition
+): Promise<ParagraphWithCFI[]> {
+  if (!rendition.manager) {
+    return [];
+  }
+  const locationPosition = getCurrentLocationPosition(rendition);
+  if (!locationPosition) {
+    return [];
+  }
+  const viewPortWidth = rendition.manager.layout.width;
+
+  let view = getCurrentView(rendition);
+  if (!view) {
+    return [];
+  }
+
+  const secondChapter = await getViewFromSpineItem(
+    view.section.next(),
+    rendition
+  );
+  const firstChapterStart = clampedToChapterLocalDimentions(
+    locationPosition.localViewPortStartPosition + viewPortWidth,
+    view
+  );
+  const firstChapterEnd = clampedToChapterLocalDimentions(
+    locationPosition.localViewPortEndPosition + viewPortWidth,
+    view
+  );
+  const firstChapterWidth = firstChapterEnd - firstChapterStart;
+  const secondChapterWidth = viewPortWidth - firstChapterWidth;
+
+  const secondChapterEnd = secondChapter
+    ? clampedToChapterLocalDimentions(secondChapterWidth, secondChapter)
+    : 0;
+  const positions: ParagraphPosition[] = [
+    {
+      start: firstChapterStart,
+      end: firstChapterEnd,
+      view: view,
+    },
+  ];
+  if (secondChapter) {
+    positions.push({
+      start: 0,
+      end: secondChapterEnd,
+      view: secondChapter,
+    });
+  }
+  console.log(">>> positions", positions);
+
+  return createParagraphsFromPostions(positions, rendition);
+}
+type ParagraphPosition = {
+  start: number;
+  end: number;
+  view: View;
+};
+function createParagraphsFromPostions(
+  positions: ParagraphPosition[],
+  rendition: Rendition
+): ParagraphWithCFI[] {
+  const paragraphs: ParagraphWithCFI[] = [];
+  for (const position of positions) {
+    const mapping = getMapping(
+      rendition,
+      position.start,
+      position.end,
+      position.view
+    );
+
+    if (!mapping) {
+      continue;
+    }
+
+    const paragraphsGot = getParagraphsFromMapping({
+      rendition,
+
+      startCfiString: mapping.start,
+      endCfiString: mapping.end,
+      view: position.view,
+    });
+    paragraphs.push(...paragraphsGot);
+  }
+
+  return paragraphs;
+}
+
+export function getPreviousViewParagraphs(
+  rendition: Rendition
+): ParagraphWithCFI[] {
+  if (!rendition.manager) {
+    return [];
+  }
+  const locationPosition = getCurrentLocationPosition(rendition);
+  if (!locationPosition) {
+    return [];
+  }
+  const width = rendition.manager.layout.width;
+
+  const view = getCurrentView(rendition);
+  if (!view) {
+    return [];
+  }
+  const localViewPortStartPosition =
+    locationPosition.localViewPortStartPosition - width;
+  const localViewPortEndPosition =
+    locationPosition.localViewPortEndPosition - width;
+  if (localViewPortStartPosition < 0 || localViewPortEndPosition < 0) {
+    return [];
+  }
+  const mapping = getMapping(
+    rendition,
+    localViewPortStartPosition,
+    localViewPortEndPosition,
+    view
+  );
+
+  if (!mapping) {
+    return [];
+  }
+
+  return getParagraphsFromMapping({
+    rendition,
+
+    startCfiString: mapping.start,
+    endCfiString: mapping.end,
+  });
+}
+export function getParagraphsFromMapping({
+  rendition,
+  startCfiString,
+  endCfiString,
+  view: providedView,
+}: {
+  rendition: Rendition;
+
+  startCfiString: string;
+  endCfiString: string;
+  view?: View;
+}) {
+  // Use provided view or find the view for this section
+  const view = providedView || getCurrentView(rendition);
+  if (!view) {
+    return [];
+  }
+
+  if (!view || !view.contents || !view.contents.document) {
+    return [];
+  }
+
+  try {
+    // Create CFI ranges for the visible page
+    const startCfi = new EpubCFI(startCfiString);
+    const endCfi = new EpubCFI(endCfiString);
+
+    // Convert CFIs to DOM ranges
+    const startRange = startCfi.toRange(view.contents.document);
+    const endRange = endCfi.toRange(view.contents.document);
+
+    if (!startRange || !endRange) {
+      return [];
+    }
+
+    // Create a range that encompasses the visible content
+    const range = view.contents.document.createRange();
+    range.setStart(startRange.startContainer, startRange.startOffset);
+    range.setEnd(endRange.endContainer, endRange.endOffset);
+
+    // Extract paragraphs from the range
+    const paragraphs = _getParagraphsFromRange(rendition, range, view.contents);
+    return paragraphs;
+  } catch (e) {
+    console.error("Error extracting paragraphs:", e);
+    return [];
+  }
+}
+async function _getLastPageParagraphsInPreviousSection2(
+  rendition: Rendition,
+  currentView: View
+) {
+  const previousSection = await currentView.section.prev();
+
+  if (!previousSection) {
+    return []; // No previous section available
+  }
+
+  // Try to find if the previous section is already loaded as a view
+  let previousView = rendition.manager.views.find({
+    index: previousSection.index,
+  });
+
+  // If the view is already loaded, use it
+  if (
+    !previousView ||
+    !previousView.contents ||
+    !previousView.contents.document
+  ) {
+    return [];
+  }
+
+  try {
+    const lastPageMapping = _getLastPageMapping2(
+      rendition,
+      previousView!.contents,
+      previousSection
+    );
+
+    return getMapping(
+      rendition,
+      lastPageMapping.start,
+      lastPageMapping.end,
+      previousView
+    );
+  } catch (e) {
+    console.error("Error extracting paragraphs from previous view:", e);
+    return [];
+  }
+}
+
+async function _getFirstPageParagraphsInPreviousSection2(
+  rendition: Rendition,
+  currentView: View
+) {
+  const nextSection = await currentView.section.next();
+
+  if (!nextSection) {
+    return []; // No previous section available
+  }
+
+  // Try to find if the previous section is already loaded as a view
+  let nextView = rendition.manager.views.find({
+    index: nextSection.index,
+  });
+
+  // If the view is already loaded, use it
+  if (!nextView || !nextView.contents || !nextView.contents.document) {
+    return [];
+  }
+
+  try {
+    const firstPageMapping = _getFirstPageMapping2(rendition);
+
+    return getMapping(
+      rendition,
+      firstPageMapping.start,
+      firstPageMapping.end,
+      nextView
+    );
+  } catch (e) {
+    console.error("Error extracting paragraphs from previous view:", e);
+    return [];
+  }
+}
+
+function _getLastPageMapping2(
+  rendition: Rendition,
+  contents: Contents,
+  section: Section | SpineItem
+) {
+  const layout = rendition.manager.layout;
+
+  // For the last page, calculate based on total content height
+  let start: number, end: number;
+
+  if (rendition.manager.settings.axis === "horizontal") {
+    // For horizontal layout, get the last page width
+    const totalWidth = section.width();
+    start = Math.max(0, totalWidth - layout.width);
+    end = totalWidth;
+  } else {
+    // For vertical layout, get the last page height
+    const totalHeight = contents.content.scrollHeight;
+    start = Math.max(0, totalHeight - layout.height);
+    end = totalHeight;
+  }
+
+  return {
+    start,
+    end,
+  };
+}
+function _getFirstPageMapping2(rendition: Rendition) {
+  const layout = rendition.manager.layout;
+
+  // For the first page, start at 0 and use page width/height
+  let start = 0;
+  let end: any;
+
+  if (rendition.manager.settings.axis === "horizontal") {
+    end = layout.pageWidth;
+  } else {
+    end = layout.height;
+  }
+
+  return {
+    start,
+    end,
+  };
 }
