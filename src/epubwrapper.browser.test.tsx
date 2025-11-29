@@ -71,7 +71,7 @@ describe("EpubWrapper", () => {
   it.only("should get next view paragraphs", { timeout: 60000 }, async () => {
     const { rendition } = await getBook();
 
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < 10; i++) {
       const nextParagraphs = await getNextViewParagraphs(rendition!);
       // expect(nextParagraphs.length).toBeGreaterThan(0);
       await rendition?.next();

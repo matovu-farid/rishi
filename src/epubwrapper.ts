@@ -1414,137 +1414,35 @@ export function getCurrentViewParagraphs(
   });
 }
 
-export async function getFirstOfNextSection(
+/**
+ * Polls for a view to be created by epubjs after a section is loaded.
+ * Checks repeatedly until the view exists or the maximum wait time is reached.
+ * @param rendition - The epubjs Rendition instance
+ * @param sectionIndex - The index of the section to find the view for
+ * @param maxWaitTimeMs - Maximum time to wait in milliseconds (default: 2000)
+ * @param pollIntervalMs - Interval between checks in milliseconds (default: 50)
+ * @returns The View if found, null otherwise
+ */
+async function pollForViewToBeCreated(
   rendition: Rendition,
-  nextView: View
-) {
-  const localViewPortStartPosition = 0;
-  const localViewPortEndPosition = rendition.manager.layout.width;
-  console.log(
-    ">>> first of next section",
-    localViewPortStartPosition,
-    localViewPortEndPosition
-  );
+  sectionIndex: number,
+  maxWaitTimeMs: number = 2000,
+  pollIntervalMs: number = 50
+): Promise<View | null> {
+  const startTime = Date.now();
 
-  if (!nextView || !nextView.contents || !nextView.contents.document) {
-    // The next section is not loaded as a view yet
-    // Load the section content directly without creating a view
-    try {
-      // Load the section content directly using the book's load method with timeout
-      const loadPromise = spineItem.load(
-        rendition.book.load.bind(rendition.book)
-      );
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Section load timeout")), 20000)
-      );
-
-      const loadedContent = (await Promise.race([
-        loadPromise,
-        timeoutPromise,
-      ])) as Section;
-
-      if (!loadedContent || !loadedContent.document) {
-        return [];
-      }
-
-      const document = loadedContent.document;
-      const body = document.body;
-
-      if (!body) {
-        return [];
-      }
-
-      // Create a Contents object from the loaded section
-      const contents = new Contents(
-        document,
-        body,
-        spineItem.cfiBase,
-        spineItem.index
-      );
-
-      // Get the first page mapping instead of the entire section
-      const firstPageMapping = _getFirstPageMapping(
-        rendition,
-        contents,
-        spineItem
-      );
-
-      if (
-        !firstPageMapping ||
-        !firstPageMapping.start ||
-        !firstPageMapping.end
-      ) {
-        return [];
-      }
-
-      // Convert CFIs to DOM ranges
-      const startCfi = new EpubCFI(firstPageMapping.start);
-      const endCfi = new EpubCFI(firstPageMapping.end);
-
-      const startRange = startCfi.toRange(document);
-      const endRange = endCfi.toRange(document);
-
-      if (!startRange || !endRange) {
-        return [];
-      }
-
-      // Create a range that encompasses the first page content
-      const range = document.createRange();
-      range.setStart(startRange.startContainer, startRange.startOffset);
-      range.setEnd(endRange.endContainer, endRange.endOffset);
-
-      // Extract paragraphs from the range
-      const paragraphs = _getParagraphsFromRange(rendition, range, contents);
-
-      return paragraphs;
-    } catch (e) {
-      console.error("Error loading next section content:", e);
-      return [];
+  while (Date.now() - startTime < maxWaitTimeMs) {
+    const view = rendition.manager.views.find({ index: sectionIndex });
+    if (view) {
+      return view;
     }
+
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
   }
 
-  // If the view is already loaded, use it
-  try {
-    // Get the first page mapping instead of the entire section
-    const firstPageMapping = _getFirstPageMapping(
-      rendition,
-      nextView.contents,
-      nextView.section
-    );
-
-    if (!firstPageMapping || !firstPageMapping.start || !firstPageMapping.end) {
-      return [];
-    }
-
-    // Convert CFIs to DOM ranges
-    const startCfi = new EpubCFI(firstPageMapping.start);
-    const endCfi = new EpubCFI(firstPageMapping.end);
-
-    const startRange = startCfi.toRange(nextView.contents.document);
-    const endRange = endCfi.toRange(nextView.contents.document);
-
-    if (!startRange || !endRange) {
-      return [];
-    }
-
-    // Create a range that encompasses the first page content
-    const range = nextView.contents.document.createRange();
-    range.setStart(startRange.startContainer, startRange.startOffset);
-    range.setEnd(endRange.endContainer, endRange.endOffset);
-
-    // Extract paragraphs from the range
-    const paragraphs = _getParagraphsFromRange(
-      rendition,
-      range,
-      nextView.contents
-    );
-
-    return paragraphs;
-  } catch (e) {
-    console.error("Error extracting paragraphs from next view:", e);
-    return [];
-  }
+  return null;
 }
+
 async function getViewFromSpineItem(
   spineItem: SpineItem,
   rendition: Rendition
@@ -1570,9 +1468,20 @@ async function getViewFromSpineItem(
   }
 
   view = rendition.manager.views.find({ index: loadedSection.index });
-  if (!view) {
-    return null;
+  if (view) {
+    return view;
   }
+
+  // If view doesn't exist yet, poll for it
+  // epubjs might need time to create the view after loading the section
+  view =
+    (await pollForViewToBeCreated(rendition, spineItem.index)) || undefined;
+  if (view) {
+    return view;
+  }
+
+  view =
+    (await pollForViewToBeCreated(rendition, loadedSection.index)) || undefined;
   return view;
 }
 
@@ -1656,10 +1565,11 @@ export async function getNextViewParagraphs(
     return [];
   }
 
-  const secondChapter = await getViewFromSpineItem(
-    view.section.next(),
-    rendition
-  );
+  const nextSpineItem = view.section.next();
+
+  const secondChapter = nextSpineItem
+    ? await getViewFromSpineItem(nextSpineItem, rendition).catch(() => null)
+    : null;
   const firstChapterStart = clampedToChapterLocalDimentions(
     locationPosition.localViewPortStartPosition + viewPortWidth,
     view
@@ -1674,7 +1584,7 @@ export async function getNextViewParagraphs(
   const secondChapterEnd = secondChapter
     ? clampedToChapterLocalDimentions(secondChapterWidth, secondChapter)
     : 0;
-  const positions: ParagraphPosition[] = [
+  let positions: ParagraphPosition[] = [
     {
       start: firstChapterStart,
       end: firstChapterEnd,
@@ -1688,6 +1598,7 @@ export async function getNextViewParagraphs(
       view: secondChapter,
     });
   }
+  positions = positions.filter((position) => position.end > position.start);
   console.log(">>> positions", positions);
 
   return createParagraphsFromPostions(positions, rendition);
