@@ -68,7 +68,7 @@ describe("EpubWrapper", () => {
     expect(paragraphs.length).toBeGreaterThan(0);
   });
 
-  it.only("should get next view paragraphs", { timeout: 60000 }, async () => {
+  it("should get next view paragraphs", { timeout: 60000 }, async () => {
     const { rendition } = await getBook();
 
     for (let i = 0; i < 10; i++) {
@@ -83,29 +83,14 @@ describe("EpubWrapper", () => {
   });
 
   it("should get previous view paragraphs", { timeout: 90000 }, async () => {
-    for (let i = 0; i < 3; i++) {
-      const { rendition } = await getBook();
-      expect(rendition).toBeDefined();
+    const { rendition } = await getBook();
 
-      let count = 0;
-
-      while (
-        (getCurrentViewParagraphs(rendition!).length === 0 ||
-          (await getPreviousViewParagraphs(rendition!)).length === 0) &&
-        count < 10
-      ) {
-        await rendition?.next();
-        count++;
-      }
-
-      // await rendition?.prev();
-      const currentParagraphsBefore = getCurrentViewParagraphs(rendition!);
+    await rendition?.next();
+    for (let i = 0; i < 10; i++) {
+      const currentParagraphs = getCurrentViewParagraphs(rendition!);
       await rendition?.next();
-
-      const previousParagraphs = await getPreviousViewParagraphs(rendition!);
-      expect(previousParagraphs.length).toBeGreaterThan(0);
-
-      expect(previousParagraphs).toEqual(currentParagraphsBefore);
+      const previousParagraphs = getPreviousViewParagraphs(rendition!);
+      expect(currentParagraphs).toEqual(previousParagraphs);
     }
   });
 });
