@@ -1579,10 +1579,10 @@ export async function getNextViewParagraphs(
     view
   );
   const firstChapterWidth = firstChapterEnd - firstChapterStart;
-  const secondChapterWidth = viewPortWidth - firstChapterWidth;
+  const secondChapterLocalEnd = viewPortWidth - firstChapterWidth;
 
   const secondChapterEnd = secondChapter
-    ? clampedToChapterLocalDimentions(secondChapterWidth, secondChapter)
+    ? clampedToChapterLocalDimentions(secondChapterLocalEnd, secondChapter)
     : 0;
   let positions: ParagraphPosition[] = [
     {
@@ -1637,10 +1637,9 @@ function createParagraphsFromPostions(
 
   return paragraphs;
 }
-
-export function getPreviousViewParagraphs(
+export async function getPreviousViewParagraphs(
   rendition: Rendition
-): ParagraphWithCFI[] {
+): Promise<ParagraphWithCFI[]> {
   if (!rendition.manager) {
     return [];
   }
@@ -1648,37 +1647,58 @@ export function getPreviousViewParagraphs(
   if (!locationPosition) {
     return [];
   }
-  const width = rendition.manager.layout.width;
+  const viewPortWidth = rendition.manager.layout.width;
 
-  const view = getCurrentView(rendition);
+  let view = getCurrentView(rendition);
   if (!view) {
     return [];
   }
-  const localViewPortStartPosition =
-    locationPosition.localViewPortStartPosition - width;
-  const localViewPortEndPosition =
-    locationPosition.localViewPortEndPosition - width;
-  if (localViewPortStartPosition < 0 || localViewPortEndPosition < 0) {
-    return [];
-  }
-  const mapping = getMapping(
-    rendition,
-    localViewPortStartPosition,
-    localViewPortEndPosition,
+
+  const previousSpineItem = view.section.prev();
+
+  const secondChapter = previousSpineItem
+    ? await getViewFromSpineItem(previousSpineItem, rendition).catch(() => null)
+    : null;
+  const firstChapterStart = clampedToChapterLocalDimentions(
+    locationPosition.localViewPortStartPosition - viewPortWidth,
     view
   );
+  const firstChapterEnd = clampedToChapterLocalDimentions(
+    locationPosition.localViewPortEndPosition - viewPortWidth,
+    view
+  );
+  const firstChapterWidth = firstChapterEnd - firstChapterStart;
+  const remainingWidthForSecondChapter = viewPortWidth - firstChapterWidth;
+  const secondChapterLocalEnd = secondChapter
+    ? secondChapter.position().right - secondChapter.position().left
+    : 0;
 
-  if (!mapping) {
-    return [];
+  const secondChapterStart = secondChapter
+    ? clampedToChapterLocalDimentions(
+        secondChapterLocalEnd - remainingWidthForSecondChapter,
+        secondChapter
+      )
+    : 0;
+  let positions: ParagraphPosition[] = [
+    {
+      start: firstChapterStart,
+      end: firstChapterEnd,
+      view: view,
+    },
+  ];
+  if (secondChapter) {
+    positions.push({
+      start: secondChapterStart,
+      end: secondChapterLocalEnd,
+      view: secondChapter,
+    });
   }
+  positions = positions.filter((position) => position.end > position.start);
+  console.log(">>> positions", positions);
 
-  return getParagraphsFromMapping({
-    rendition,
-
-    startCfiString: mapping.start,
-    endCfiString: mapping.end,
-  });
+  return createParagraphsFromPostions(positions, rendition);
 }
+
 export function getParagraphsFromMapping({
   rendition,
   startCfiString,

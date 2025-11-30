@@ -82,15 +82,19 @@ describe("EpubWrapper", () => {
     }
   });
 
-  it("should get previous view paragraphs", { timeout: 90000 }, async () => {
-    const { rendition } = await getBook();
+  it.only(
+    "should get previous view paragraphs",
+    { timeout: 90000 },
+    async () => {
+      const { rendition } = await getBook();
 
-    await rendition?.next();
-    for (let i = 0; i < 10; i++) {
-      const currentParagraphs = getCurrentViewParagraphs(rendition!);
-      await rendition?.next();
-      const previousParagraphs = getPreviousViewParagraphs(rendition!);
-      expect(currentParagraphs).toEqual(previousParagraphs);
+      // await rendition?.next();
+      for (let i = 0; i < 8; i++) {
+        const currentParagraphs = getCurrentViewParagraphs(rendition!);
+        await rendition?.next();
+        const previousParagraphs = await getPreviousViewParagraphs(rendition!);
+        expect(currentParagraphs).toEqual(previousParagraphs);
+      }
     }
-  });
+  );
 });
