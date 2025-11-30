@@ -1579,10 +1579,10 @@ export async function getNextViewParagraphs(
     view
   );
   const firstChapterWidth = firstChapterEnd - firstChapterStart;
-  const secondChapterLocalEnd = viewPortWidth - firstChapterWidth;
+  const secondChapterWidth = viewPortWidth - firstChapterWidth;
 
   const secondChapterEnd = secondChapter
-    ? clampedToChapterLocalDimentions(secondChapterLocalEnd, secondChapter)
+    ? clampedToChapterLocalDimentions(secondChapterWidth, secondChapter)
     : 0;
   let positions: ParagraphPosition[] = [
     {
@@ -1669,6 +1669,88 @@ export async function getPreviousViewParagraphs(
   );
   const firstChapterWidth = firstChapterEnd - firstChapterStart;
   const remainingWidthForSecondChapter = viewPortWidth - firstChapterWidth;
+
+  // If secondChapter is null but previousSpineItem exists, try to load the section directly
+  let secondChapterParagraphs: ParagraphWithCFI[] = [];
+  if (
+    !secondChapter &&
+    previousSpineItem &&
+    remainingWidthForSecondChapter > 0
+  ) {
+    try {
+      const loadPromise = previousSpineItem.load(
+        rendition.book.load.bind(rendition.book)
+      );
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Section load timeout")), 10000)
+      );
+
+      const loadedSection = (await Promise.race([
+        loadPromise,
+        timeoutPromise,
+      ])) as Section;
+
+      if (loadedSection && loadedSection.document) {
+        const document = loadedSection.document;
+        const body = document.body;
+
+        if (body) {
+          // Create a Contents object from the loaded section
+          const contents = new Contents(
+            document,
+            body,
+            previousSpineItem.cfiBase,
+            previousSpineItem.index
+          );
+
+          // Get dimensions
+          const totalWidth =
+            rendition.manager.settings.axis === "horizontal"
+              ? body.scrollWidth
+              : body.scrollHeight; // Using body dimensions as proxy for content dimensions
+
+          const start = Math.max(
+            0,
+            totalWidth - remainingWidthForSecondChapter
+          );
+          const end = totalWidth;
+
+          const mapping = rendition.manager.mapping.page(
+            contents,
+            previousSpineItem.cfiBase,
+            start,
+            end
+          );
+
+          if (mapping && mapping.start && mapping.end) {
+            // Convert CFIs to DOM ranges
+            const startCfi = new EpubCFI(mapping.start);
+            const endCfi = new EpubCFI(mapping.end);
+
+            const startRange = startCfi.toRange(document);
+            const endRange = endCfi.toRange(document);
+
+            if (startRange && endRange) {
+              // Create a range that encompasses the content
+              const range = document.createRange();
+              range.setStart(startRange.startContainer, startRange.startOffset);
+              range.setEnd(endRange.endContainer, endRange.endOffset);
+
+              // Extract paragraphs from the range
+              secondChapterParagraphs = _getParagraphsFromRange(
+                rendition,
+                range,
+                contents
+              );
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Error loading previous section content:", e);
+    }
+  }
+
   const secondChapterLocalEnd = secondChapter
     ? secondChapter.position().right - secondChapter.position().left
     : 0;
@@ -1696,7 +1778,17 @@ export async function getPreviousViewParagraphs(
   positions = positions.filter((position) => position.end > position.start);
   console.log(">>> positions", positions);
 
-  return createParagraphsFromPostions(positions, rendition);
+  const paragraphsFromPositions = createParagraphsFromPostions(
+    positions,
+    rendition
+  );
+
+  // If we got paragraphs from the loaded section directly, include them
+  if (secondChapterParagraphs.length > 0) {
+    return [...secondChapterParagraphs, ...paragraphsFromPositions];
+  }
+
+  return paragraphsFromPositions;
 }
 
 export function getParagraphsFromMapping({

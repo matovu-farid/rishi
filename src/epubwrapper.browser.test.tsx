@@ -5,12 +5,9 @@ import { ReactReader } from "@/components/react-reader";
 import { themes } from "./themes/themes";
 import { ThemeType } from "./themes/common";
 import createIReactReaderTheme from "./themes/readerThemes";
-import isEqual from "lodash.isequal";
-import { z } from "zod";
 import {
   getCurrentViewParagraphs,
   getNextViewParagraphs,
-  getNextViewParagraphsOld,
   getPreviousViewParagraphs,
 } from "./epubwrapper";
 
@@ -82,19 +79,16 @@ describe("EpubWrapper", () => {
     }
   });
 
-  it.only(
-    "should get previous view paragraphs",
-    { timeout: 90000 },
-    async () => {
-      const { rendition } = await getBook();
+  it("should get previous view paragraphs", { timeout: 90000 }, async () => {
+    const { rendition } = await getBook();
 
-      // await rendition?.next();
-      for (let i = 0; i < 8; i++) {
-        const currentParagraphs = getCurrentViewParagraphs(rendition!);
-        await rendition?.next();
-        const previousParagraphs = await getPreviousViewParagraphs(rendition!);
-        expect(currentParagraphs).toEqual(previousParagraphs);
-      }
+    for (let i = 0; i < 10; i++) {
+      const currentParagraphs = getCurrentViewParagraphs(rendition!);
+      await rendition?.next();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const previousParagraphs = await getPreviousViewParagraphs(rendition!);
+      expect(currentParagraphs).toEqual(previousParagraphs);
     }
-  );
+  });
 });
