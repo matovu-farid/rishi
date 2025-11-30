@@ -6,7 +6,6 @@ import { EpubViewStyle as defaultStyles, type IEpubViewStyle } from "./style";
 import type { ParagraphWithCFI } from "@//types";
 import {
   getCurrentViewParagraphs,
-  getCurrentViewText,
   getNextViewParagraphs,
   getPreviousViewParagraphs,
   highlightRange,
@@ -381,21 +380,6 @@ export class EpubView extends Component<IEpubViewProps, IEpubViewState> {
     const { epubViewStyles = defaultStyles } = this.props;
     return <div ref={this.viewerRef} style={epubViewStyles.view} />;
   }
-
-  /**
-   * Extract visible text from the currently displayed page
-   * Returns structured data with text content and location metadata
-   */
-  getCurrentPageText = () => {
-    if (!this.rendition) {
-      return { text: "" };
-    }
-    const currentView = getCurrentViewText(this.rendition);
-    // Handle both string and object return types from getCurrentViewText
-    const textValue =
-      typeof currentView === "string" ? currentView : currentView?.text || "";
-    return { text: textValue };
-  };
 
   /**
    * Extract paragraphs from the currently displayed page using rendition.getContents()

@@ -109,18 +109,6 @@ export class ReactReader extends PureComponent<
   };
 
   /**
-   * Get text from the currently displayed page
-   * Delegates to the EpubView component's getCurrentPageText method
-   */
-  getCurrentPageText = () => {
-    const node = this.readerRef.current;
-    if (node && node.getCurrentPageText) {
-      return node.getCurrentPageText();
-    }
-    return { text: "", location: "", html: "" };
-  };
-
-  /**
    * Handle TOC changes
    * Called when TOC is loaded from the EPUB file
    * Updates state and notifies parent component

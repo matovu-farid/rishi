@@ -30,11 +30,7 @@ import {
   eventBusLogsAtom,
   PlayingState,
 } from "@/utils/bus";
-import {
-  getCurrentViewParagraphs,
-  highlightRange,
-  removeHighlight,
-} from "@/epubwrapper";
+import { highlightRange, removeHighlight } from "@/epubwrapper";
 import { customStore } from "@/stores/jotai";
 import { Book } from "@/modules/kysley";
 import { updateBookLocation } from "@/modules/sql";
