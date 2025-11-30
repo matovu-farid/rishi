@@ -45,29 +45,27 @@ export const getEpubNextViewParagraphsAtom = atom(async (get) => {
   const rendition = get(renditionAtom);
   get(currentEpubLocationAtom);
   if (rendition) {
-    return getNextViewParagraphs(rendition).map((paragraph) => ({
-      text: paragraph.text,
-      index: paragraph.cfiRange,
-    }));
+    return await getNextViewParagraphs(rendition).then((paragraphs) =>
+      paragraphs.map((paragraph) => ({
+        text: paragraph.text,
+        index: paragraph.cfiRange,
+      }))
+    );
   }
   return [] as ParagraphWithIndex[];
 });
 getEpubNextViewParagraphsAtom.debugLabel = "getEpubNextViewParagraphsAtom";
-// observe((get) => {
-//   void get(getEpubNextViewParagraphsAtom).then((paragraphs) => {
-//     eventBus.publish(EventBusEvent.NEXT_VIEW_PARAGRAPHS_AVAILABLE, paragraphs);
-//   });
-// }, customStore);
-export const getEpubPreviousViewParagraphsAtom = atom(async (get) => {
-  // Depend on version to trigger refetch
 
+export const getEpubPreviousViewParagraphsAtom = atom(async (get) => {
   const rendition = get(renditionAtom);
   get(currentEpubLocationAtom);
   if (rendition) {
-    return getPreviousViewParagraphs(rendition).map((paragraph) => ({
-      text: paragraph.text,
-      index: paragraph.cfiRange,
-    }));
+    return await getPreviousViewParagraphs(rendition).then((paragraphs) =>
+      paragraphs.map((paragraph) => ({
+        text: paragraph.text,
+        index: paragraph.cfiRange,
+      }))
+    );
   }
   return [] as ParagraphWithIndex[];
 });
