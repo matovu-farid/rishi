@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render } from "vitest-browser-react";
-import { Rendition } from "epubjs";
+import { Rendition, EpubCFI } from "epubjs";
 import { ReactReader } from "@/components/react-reader";
 import { themes } from "./themes/themes";
 import { ThemeType } from "./themes/common";
@@ -9,6 +9,7 @@ import {
   getCurrentViewParagraphs,
   getNextViewParagraphs,
   getPreviousViewParagraphs,
+  getAllParagraphsForBook,
 } from "./epubwrapper";
 
 async function getBook() {
@@ -48,6 +49,7 @@ async function getBook() {
 
   return { buffer, rendition };
 }
+
 // @ts-ignore
 
 describe("EpubWrapper", () => {
@@ -91,4 +93,16 @@ describe("EpubWrapper", () => {
       expect(currentParagraphs).toEqual(previousParagraphs);
     }
   });
+
+  it.only(
+    "should get paragraphs for all pages",
+    { timeout: 60000 },
+    async () => {
+      const { rendition } = await getBook();
+      const book = rendition?.book;
+      expect(book).toBeDefined();
+      const totalPages = await getAllParagraphsForBook(rendition!);
+      expect(totalPages.length).toBeGreaterThan(0);
+    }
+  );
 });

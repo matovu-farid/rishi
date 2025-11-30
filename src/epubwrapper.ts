@@ -1,10 +1,10 @@
-import type { Book, Layout, Rendition } from "epubjs";
+import type { Book, Rendition } from "epubjs";
 import type { BookOptions } from "epubjs/types/book";
 import type View from "epubjs/types/managers/view";
 import type Section from "epubjs/types/section";
-import type { SpineItem } from "epubjs/types/section";
+//import type { SpineItem } from "epubjs/types/section";
 import Epub, { EpubCFI, Contents } from "epubjs";
-import Mapping from "epubjs/types/mapping";
+import { SpineItem } from "epubjs/types/section";
 
 export type ParagraphWithCFI = {
   text: string;
@@ -317,40 +317,40 @@ function _findContainingBlockElement(textNode: Node) {
   return null;
 }
 
-export async function getTotalPages(book: Book) {
-  const res = await book.ready;
+export async function getAllParagraphsForBook(rendition: Rendition) {
+  const book = rendition.book;
 
-  const spineItems = await book.loaded.spine.then((spine) => spine.items);
-  const views = await Promise.all(
-    spineItems.map(async (item) => {
-      const section = book.spine.get(item);
-      await section.render();
-      const view = book.rendition.manager.views.find({ index: section.index });
-      console.log(view);
-      // console.log(rendered);
+  const sections: Section[] = await book.loaded.spine.then((spine: any) => {
+    const sections = spine.spineItems;
+    return sections;
+  });
+  const paragraphs = (
+    await Promise.all(
+      sections.map(async (section) => {
+        const view = await rendition.manager.add(section, false);
 
-      // const pageList = section.pages;
+        const position = view?.position();
+        const mapping = getMapping(
+          rendition,
+          0,
+          position?.right - position?.left,
+          view
+        );
+        if (!mapping) return [];
 
-      return section.totalPages;
-    })
-  );
-  // xwconsole.log(views);
-
-  // void book.loaded.pageList.then((pageList) => {
-  //   console.log(pageList);
-  // });
-  // await new Promise((resolve) => setTimeout(resolve, 3000));
-  // console.log(book.pageList);
-
-  return 1;
-  // await book.load(book.path);
-  // await new Promise((resolve) => setTimeout(resolve, 3000));
-
-  // const pageList = book.pageList;
-  // const res = pageList.totalPages;
-  // console.log({ res });
-
-  return res;
+        const paragraphs = getParagraphsFromMapping({
+          rendition,
+          startCfiString: mapping.start,
+          endCfiString: mapping.end,
+          view: view,
+        });
+        return paragraphs;
+      })
+    )
+  ).flat();
+  // console.log(JSON.stringify(paragraphs, null, 2));
+  console.log(paragraphs.length);
+  return paragraphs;
 }
 function _getParagraphsFromRange(
   rendition: Rendition,
