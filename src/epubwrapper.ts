@@ -381,43 +381,54 @@ export async function getAllParagraphsForBook(
     return sections;
   });
   sections = sections.sort((a, b) => a.index - b.index);
+  const views = await Promise.all(
+    sections.map(async (section) => {
+      return await rendition.manager.add(section, false);
+    })
+  );
 
-  const paragraphs = (
-    await Promise.all(
-      sections.map(async (section) => {
-        const view = await rendition.manager.add(section, false);
-        const position = getPosition(view);
-        if (!position) {
-          return [];
-        }
-        // const position = view?.position();
-        const mapping = getMapping(
-          rendition,
-          0,
-          position.right - position.left,
-          view
-        );
-        if (!mapping) return [];
+  const paragraphs = views
+    .map((view) => {
+      //  const view = await rendition.manager.add(section, false);
+      const position = getPosition(view);
+      if (!position) {
+        return [];
+      }
+      // const position = view?.position();
+      const mapping = getMapping(
+        rendition,
+        0,
+        position.right - position.left,
+        view
+      );
+      if (!mapping) return [];
 
-        const paragraphs = reducePraragraphs(
-          reducePraragraphs(
-            getParagraphsFromMapping({
-              rendition,
-              startCfiString: mapping.start,
-              endCfiString: mapping.end,
-              view: view,
-            })
-          ),
-          { direction: "backward" }
-        ).map((paragraph) => ({
-          ...paragraph,
-          sectionId: section.index,
-        }));
+      const paragraphs = reducePraragraphs(
+        reducePraragraphs(
+          getParagraphsFromMapping({
+            rendition,
+            startCfiString: mapping.start,
+            endCfiString: mapping.end,
+            view: view,
+          })
+        ),
+        { direction: "backward" }
+      ).map((paragraph) => ({
+        ...paragraph,
+        sectionId: view.section.index,
+      }));
 
-        return paragraphs;
-      })
-    )
-  ).flat();
+      return paragraphs;
+    })
+
+    .flat();
+
+  try {
+    rendition.manager.clear();
+  } catch (error) {
+    console.error("Error removing view:", error);
+  }
+
   rendition.manager.updateLayout();
   // console.log(JSON.stringify(paragraphs, null, 2));
 

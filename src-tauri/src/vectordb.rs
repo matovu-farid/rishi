@@ -12,12 +12,12 @@ use tauri::Manager;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Vector {
-    pub id: u32,
+    pub id: u64,
     pub vector: Vec<f32>,
 }
 
 impl Vector {
-    pub fn new(id: u32, vector: Vec<f32>) -> Self {
+    pub fn new(id: u64, vector: Vec<f32>) -> Self {
         Self { id, vector }
     }
 }

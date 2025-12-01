@@ -84,14 +84,45 @@ pub async fn embed_text(embedparams: Vec<EmbedParam>) -> Result<Vec<EmbedResult>
         .iter()
         .map(|p| Some(p.metadata.clone().into()))
         .collect::<Vec<_>>();
+    println!(">>> Processing chunks");
 
-    let embeddings = process_chunks(&chunks, &metadata, &embedding_model, None, None)
+    let embeddings = process_chunks(&chunks, &metadata, &embedding_model, Some(1), None)
         .await
         .map_err(|e| {
             println!("error: {:#?}", e.to_string());
             e.to_string()
         })?;
 
+  
+
     let res = Arc::into_inner(embeddings).ok_or("Failed to get embeddings")?;
     Ok(res.into_iter().map(EmbedResult::from).collect::<Vec<_>>())
+}
+// Object = $2
+
+// metadata: {id: 7271375624100750, pageNumber: 11, bookId: 1}
+
+// text: "Chapter 4. Logical Components: The Building Blocks↵Ready to start creating an architecture? It’s not as easy as it sounds—and if you don’…"
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_embed_text() {
+        let mut embedparams = vec![];
+        for i in 0..10 {
+            let _ =  &mut embedparams.push(EmbedParam {
+                text: "Chapter 4. Logical Components: The Building Blocks↵Ready to start creating an architecture? It’s not as easy as it sounds—and if you don’…".to_string(),
+                metadata: Metadata {
+                    id: 7271375624100750,
+                    page_number: 11,
+                    book_id: 1,
+                },
+            });
+        }
+        let res = embed_text(embedparams).await.unwrap();
+
+        assert!(!res.is_empty());
+    }
 }

@@ -187,6 +187,7 @@ export async function processJob(
 }
 
 export async function hasSavedEpubData(bookId: string) {
+  return false;
   const result = await db
     .selectFrom("chunk_data")
     .where("bookId", "=", bookId)
@@ -194,6 +195,14 @@ export async function hasSavedEpubData(bookId: string) {
     .executeTakeFirst();
 
   return !!result;
+}
+function batchEmbed(embedParams: EmbedParam[]): EmbedParam[][] {
+  const batchSize = 2;
+  const batches: EmbedParam[][] = [];
+  for (let i = 0; i < embedParams.length; i += batchSize) {
+    batches.push(embedParams.slice(i, i + batchSize));
+  }
+  return batches;
 }
 
 export async function processEpubJob(
@@ -223,28 +232,33 @@ export async function processEpubJob(
     // Save page data first, then embed
     // This ensures data is in the database even if embedding fails
     await savePageDataMany(pageData);
+    const batches = batchEmbed(embedParams);
+    for (const batch of batches) {
+      const embedResults = await embed({ embedparams: batch });
 
-    const embedResults = await embed({ embedparams: embedParams });
+      // const embedResults = await embed({ embedparams: embedParams });
 
-    const vectorObjects = embedResults.map((result) => {
-      return {
-        id: result.metadata.id,
-        vector: result.embedding,
-        text: result.text,
-        metadata: result.metadata,
-      };
-    });
-    const vectors: Vector[] = vectorObjects.map((vector) => ({
-      id: vector.id,
-      vector: vector.vector,
-    }));
+      const vectorObjects = embedResults.map((result) => {
+        return {
+          id: result.metadata.id,
+          vector: result.embedding,
+          text: result.text,
+          metadata: result.metadata,
+        };
+      });
+      const vectors: Vector[] = vectorObjects.map((vector) => ({
+        id: vector.id,
+        vector: vector.vector,
+      }));
 
-    await saveVectors({
-      name: `${bookId}-vectordb`,
-      dim: vectorObjects[0].vector.length,
-      vectors,
-    });
+      await saveVectors({
+        name: `${bookId}-vectordb`,
+        dim: vectorObjects[0].vector.length,
+        vectors,
+      });
+    }
   } catch (error) {
+    console.error(">>> Error in processEpubJob:", error);
     throw error;
   }
 }
