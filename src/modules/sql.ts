@@ -186,13 +186,14 @@ export async function processJob(
   }
 }
 
-async function hasSavedEpubData(bookId: string) {
+export async function hasSavedEpubData(bookId: string) {
   const result = await db
     .selectFrom("chunk_data")
     .where("bookId", "=", bookId)
     .select("id")
     .executeTakeFirst();
-  return result !== null;
+
+  return !!result;
 }
 
 export async function processEpubJob(

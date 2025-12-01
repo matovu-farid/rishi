@@ -11,7 +11,7 @@ import { observe } from "jotai-effect";
 import { customStore } from "./jotai";
 import { eventBus, EventBusEvent } from "@/utils/bus";
 import { loadable } from "jotai/utils";
-import { processEpubJob } from "@/modules/sql";
+import { hasSavedEpubData, processEpubJob } from "@/modules/sql";
 export const renditionAtom = atom<Rendition | null>(null);
 renditionAtom.debugLabel = "renditionAtom";
 
@@ -29,14 +29,16 @@ renditionCountAtom.debugLabel = "renditionCountAtom";
 observe((get) => {
   const rendition = get(paragraphRenditionAtom);
 
-
   const bookId = get(bookIdAtom);
-  if (rendition && bookId) {
-    void getAllParagraphsForBook(rendition, bookId).then((paragraphs) => {
-      console.log(">>> PARAGRAPHS", paragraphs);
-      void processEpubJob(bookId, paragraphs);
-    });
-  }
+  void hasSavedEpubData(bookId).then((hasSaved) => {
+    if (rendition && bookId && !hasSaved) {
+      console.log(">>> GETTING PARAGRAPHS");
+      void getAllParagraphsForBook(rendition, bookId).then((paragraphs) => {
+        console.log(">>> PARAGRAPHS", paragraphs);
+        void processEpubJob(bookId, paragraphs);
+      });
+    }
+  });
 }, customStore);
 
 // Write-only atoms to trigger refetch (increment version)

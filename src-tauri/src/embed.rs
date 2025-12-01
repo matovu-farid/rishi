@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Metadata {
-    pub id: u32,
+    pub id: u64,
     pub page_number: usize,
     pub book_id: u32,
 }
