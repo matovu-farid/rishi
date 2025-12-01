@@ -376,10 +376,11 @@ export async function getAllParagraphsForBook(
 ): Promise<ChunkInsertable[]> {
   const book = rendition.book;
 
-  const sections: Section[] = await book.loaded.spine.then((spine: any) => {
+  let sections: Section[] = await book.loaded.spine.then((spine: any) => {
     const sections = spine.spineItems;
     return sections;
   });
+  sections = sections.sort((a, b) => a.index - b.index);
 
   const paragraphs = (
     await Promise.all(
@@ -417,6 +418,7 @@ export async function getAllParagraphsForBook(
       })
     )
   ).flat();
+  rendition.manager.updateLayout();
   // console.log(JSON.stringify(paragraphs, null, 2));
 
   const chunkData = paragraphs.map((paragraph) => ({

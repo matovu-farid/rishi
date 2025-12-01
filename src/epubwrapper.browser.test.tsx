@@ -95,21 +95,14 @@ describe("EpubWrapper", () => {
     }
   });
 
-  it.only(
-    "should get paragraphs for all pages",
-    { timeout: 60000 },
-    async () => {
-      const { rendition } = await getBook();
-      const book = rendition?.book;
-      expect(book).toBeDefined();
-      const totalPages = await getAllParagraphsForBook(rendition!, "test");
-      for (let i = 0; i < 10; i++) {
-        console.log(totalPages[i]);
-      }
-      console.log(totalPages.length);
-      expect(totalPages.length).toBeGreaterThan(0);
-    }
-  );
+  it("should get paragraphs for all pages", { timeout: 100000 }, async () => {
+    const { rendition } = await getBook();
+    const book = rendition?.book;
+    expect(book).toBeDefined();
+    const totalPages = await getAllParagraphsForBook(rendition!, "test");
+
+    expect(totalPages.length).toBeGreaterThan(0);
+  });
   it("should get total pages for book", { timeout: 60000 }, async () => {
     const { rendition } = await getBook();
     const totalPages = await getTotalPagesForBook(rendition!);

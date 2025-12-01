@@ -185,6 +185,68 @@ export async function processJob(
     throw error;
   }
 }
+
+async function hasSavedEpubData(bookId: string) {
+  const result = await db
+    .selectFrom("chunk_data")
+    .where("bookId", "=", bookId)
+    .select("id")
+    .executeTakeFirst();
+  return result !== null;
+}
+
+export async function processEpubJob(
+  bookId: string,
+  pageData: PageDataInsertable[]
+) {
+  try {
+    if (pageData.length === 0) {
+      return;
+    }
+    if (await hasSavedEpubData(bookId)) {
+      return;
+    }
+
+    const embedParams: EmbedParam[] = pageData.map((item) => {
+      const metadata: Metadata = {
+        id: item.id,
+        pageNumber: item.pageNumber,
+        bookId: parseInt(bookId),
+      };
+      return {
+        text: item.data,
+        metadata,
+      };
+    });
+
+    // Save page data first, then embed
+    // This ensures data is in the database even if embedding fails
+    await savePageDataMany(pageData);
+
+    const embedResults = await embed({ embedparams: embedParams });
+
+    const vectorObjects = embedResults.map((result) => {
+      return {
+        id: result.metadata.id,
+        vector: result.embedding,
+        text: result.text,
+        metadata: result.metadata,
+      };
+    });
+    const vectors: Vector[] = vectorObjects.map((vector) => ({
+      id: vector.id,
+      vector: vector.vector,
+    }));
+
+    await saveVectors({
+      name: `${bookId}-vectordb`,
+      dim: vectorObjects[0].vector.length,
+      vectors,
+    });
+  } catch (error) {
+    throw error;
+  }
+}
 export async function updateBookLocation(bookId: string, location: string) {
   // await updateBook({ id: bookId, location: location }, store);
   await db

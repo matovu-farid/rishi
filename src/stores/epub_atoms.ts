@@ -1,6 +1,7 @@
 import { atom } from "jotai";
 import type Rendition from "epubjs/types/rendition";
 import {
+  getAllParagraphsForBook,
   getCurrentViewParagraphs,
   getNextViewParagraphs,
   getPreviousViewParagraphs,
@@ -10,11 +11,33 @@ import { observe } from "jotai-effect";
 import { customStore } from "./jotai";
 import { eventBus, EventBusEvent } from "@/utils/bus";
 import { loadable } from "jotai/utils";
+import { processEpubJob } from "@/modules/sql";
 export const renditionAtom = atom<Rendition | null>(null);
 renditionAtom.debugLabel = "renditionAtom";
 
+export const paragraphRenditionAtom = atom<Rendition | null>(null);
+paragraphRenditionAtom.debugLabel = "paragraphRenditionAtom";
+
+export const bookIdAtom = atom<string>("");
+
+bookIdAtom.debugLabel = "bookIdAtom";
 export const currentEpubLocationAtom = atom<string>("");
 currentEpubLocationAtom.debugLabel = "currentEpubLocationAtom";
+export const renditionCountAtom = atom(0);
+renditionCountAtom.debugLabel = "renditionCountAtom";
+
+observe((get) => {
+  const rendition = get(paragraphRenditionAtom);
+
+
+  const bookId = get(bookIdAtom);
+  if (rendition && bookId) {
+    void getAllParagraphsForBook(rendition, bookId).then((paragraphs) => {
+      console.log(">>> PARAGRAPHS", paragraphs);
+      void processEpubJob(bookId, paragraphs);
+    });
+  }
+}, customStore);
 
 // Write-only atoms to trigger refetch (increment version)
 
