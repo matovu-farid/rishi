@@ -49,6 +49,7 @@ declare module "epubjs/types/managers/view" {
     section: Section;
     index: number;
     position(): ViewPosition;
+    element: HTMLDivElement;
   }
 }
 

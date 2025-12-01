@@ -25,4 +25,4 @@ dist-ssr
 CLAUDE.md
 testAudioData/*
 test-files/*
-__screenshots__/*
+src/__screenshots__/*

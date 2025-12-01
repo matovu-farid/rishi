@@ -44,4 +44,5 @@ export type PageData = DB["chunk_data"];
 export type PageDataInsertable = Insertable<PageData>;
 export type Book = Selectable<DB["books"]>;
 export type BookInsertable = Insertable<DB["books"]>;
+export type ChunkInsertable = Insertable<DB["chunk_data"]>;
 export type BookData = Book & { id: string };

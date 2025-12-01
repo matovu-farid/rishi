@@ -5,6 +5,8 @@ import type Section from "epubjs/types/section";
 //import type { SpineItem } from "epubjs/types/section";
 import Epub, { EpubCFI, Contents } from "epubjs";
 import { SpineItem } from "epubjs/types/section";
+import { ChunkInsertable } from "./modules/kysley";
+import { stringToNumberID } from "@components/lib/utils";
 
 export type ParagraphWithCFI = {
   text: string;
@@ -316,41 +318,156 @@ function _findContainingBlockElement(textNode: Node) {
 
   return null;
 }
+function getPosition(view: View) {
+  const element = view?.element as HTMLDivElement;
+  const iframe = element.querySelector("iframe");
+  const position = iframe?.getBoundingClientRect();
+  if (!position) {
+    return null;
+  }
 
-export async function getAllParagraphsForBook(rendition: Rendition) {
+  return {
+    left: position.left,
+    right: position.right,
+    width: position.width,
+    height: position.height,
+  };
+}
+export async function getTotalPagesForBook(
+  rendition: Rendition
+): Promise<number> {
   const book = rendition.book;
 
   const sections: Section[] = await book.loaded.spine.then((spine: any) => {
     const sections = spine.spineItems;
     return sections;
   });
-  const paragraphs = (
+
+  const positions = (
     await Promise.all(
       sections.map(async (section) => {
         const view = await rendition.manager.add(section, false);
 
-        const position = view?.position();
+        return getPosition(view);
+      })
+    )
+  )
+    .filter((poisition) => poisition !== null)
+    .sort((a, b) => a.right - b.right);
+  const firstPosition = positions[0];
+  if (!firstPosition) {
+    return 0;
+  }
+
+  const lastPosition = positions[positions.length - 1];
+  if (!lastPosition) {
+    return 0;
+  }
+
+  const totalWidth = lastPosition.right - firstPosition.left;
+  const pagesCount = totalWidth / rendition.manager.layout.width;
+  console.log({ pagesCount });
+  return pagesCount;
+}
+
+export async function getAllParagraphsForBook(
+  rendition: Rendition,
+  bookId: string
+): Promise<ChunkInsertable[]> {
+  const book = rendition.book;
+
+  const sections: Section[] = await book.loaded.spine.then((spine: any) => {
+    const sections = spine.spineItems;
+    return sections;
+  });
+
+  const paragraphs = (
+    await Promise.all(
+      sections.map(async (section) => {
+        const view = await rendition.manager.add(section, false);
+        const position = getPosition(view);
+        if (!position) {
+          return [];
+        }
+        // const position = view?.position();
         const mapping = getMapping(
           rendition,
           0,
-          position?.right - position?.left,
+          position.right - position.left,
           view
         );
         if (!mapping) return [];
 
-        const paragraphs = getParagraphsFromMapping({
-          rendition,
-          startCfiString: mapping.start,
-          endCfiString: mapping.end,
-          view: view,
-        });
+        const paragraphs = reducePraragraphs(
+          reducePraragraphs(
+            getParagraphsFromMapping({
+              rendition,
+              startCfiString: mapping.start,
+              endCfiString: mapping.end,
+              view: view,
+            })
+          ),
+          { direction: "backward" }
+        ).map((paragraph) => ({
+          ...paragraph,
+          sectionId: section.index,
+        }));
+
         return paragraphs;
       })
     )
   ).flat();
   // console.log(JSON.stringify(paragraphs, null, 2));
-  console.log(paragraphs.length);
-  return paragraphs;
+
+  const chunkData = paragraphs.map((paragraph) => ({
+    data: paragraph.text,
+    bookId: bookId,
+    pageNumber: paragraph.sectionId,
+    id: stringToNumberID(
+      bookId +
+        "-" +
+        paragraph.sectionId +
+        "-" +
+        paragraph.startCfi +
+        "-" +
+        paragraph.endCfi
+    ),
+  }));
+  return chunkData;
+}
+function reducePraragraphs(
+  paragraphs: ParagraphWithCFI[],
+  options: {
+    minLength?: number;
+    direction?: "forward" | "backward";
+  } = {
+    minLength: 500,
+    direction: "forward",
+  }
+): ParagraphWithCFI[] {
+  const { minLength = 500, direction = "forward" } = options;
+
+  return paragraphs.reduce((acc, paragraph) => {
+    let pushed = paragraph;
+    const isPreviousParagraphTooShort =
+      acc.length > 0 &&
+      acc[acc.length - 1].text.length < minLength &&
+      direction === "backward";
+    const isCurrentParagraphTooShort =
+      acc.length > 0 &&
+      paragraph.text.length < minLength &&
+      direction === "forward";
+
+    if (isPreviousParagraphTooShort || isCurrentParagraphTooShort) {
+      const lastParagraph = acc.pop()!;
+
+      lastParagraph.text += "\n" + paragraph.text;
+      lastParagraph.endCfi = paragraph.endCfi;
+      pushed = lastParagraph;
+    }
+    acc.push(pushed);
+    return acc;
+  }, [] as ParagraphWithCFI[]);
 }
 function _getParagraphsFromRange(
   rendition: Rendition,
