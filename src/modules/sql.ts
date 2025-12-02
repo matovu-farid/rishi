@@ -1,44 +1,8 @@
 import { embed, EmbedParam, Metadata, saveVectors, Vector } from "@/generated";
 import { Book, BookInsertable, db, PageDataInsertable } from "./kysley";
-import { sql } from "kysely";
 
-await db.schema
-  .createTable("chunk_data")
-  .ifNotExists()
-  .addColumn("id", "integer", (cb) => cb.primaryKey())
-  .addColumn("bookId", "integer")
-  .addColumn("pageNumber", "integer")
-  .addColumn("data", "text")
-  .addColumn("created_at", "timestamp", (col) =>
-    col.defaultTo(sql`CURRENT_TIMESTAMP`)
-  )
-  .addColumn("updated_at", "timestamp", (col) =>
-    col.defaultTo(sql`CURRENT_TIMESTAMP`)
-  )
-  .execute();
 
-await db.schema
-  .createTable("books")
-  .ifNotExists()
-  .addColumn("id", "integer", (col) => col.primaryKey())
-  .addColumn("kind", "text")
-  .addColumn("cover", "blob")
-  .addColumn("title", "text")
-  .addColumn("author", "text")
-  .addColumn("publisher", "text")
-  .addColumn("filepath", "text")
-  .addColumn("location", "text")
-  .addColumn("cover_kind", "text")
-  .addColumn("version", "integer")
-  .addColumn("created_at", "timestamp", (col) =>
-    col.defaultTo(sql`CURRENT_TIMESTAMP`)
-  )
-  .addColumn("updated_at", "timestamp", (col) =>
-    col.defaultTo(sql`CURRENT_TIMESTAMP`)
-  )
-  // unique filepath
-  .addUniqueConstraint("filepath", ["filepath"])
-  .execute();
+
 
 async function hasSavedData(pageNumber: number, bookId: string) {
   // if we have atleast one chink
@@ -187,7 +151,6 @@ export async function processJob(
 }
 
 export async function hasSavedEpubData(bookId: string) {
-  return false;
   const result = await db
     .selectFrom("chunk_data")
     .where("bookId", "=", bookId)
@@ -196,72 +159,7 @@ export async function hasSavedEpubData(bookId: string) {
 
   return !!result;
 }
-function batchEmbed(embedParams: EmbedParam[]): EmbedParam[][] {
-  const batchSize = 2;
-  const batches: EmbedParam[][] = [];
-  for (let i = 0; i < embedParams.length; i += batchSize) {
-    batches.push(embedParams.slice(i, i + batchSize));
-  }
-  return batches;
-}
 
-export async function processEpubJob(
-  bookId: string,
-  pageData: PageDataInsertable[]
-) {
-  try {
-    if (pageData.length === 0) {
-      return;
-    }
-    if (await hasSavedEpubData(bookId)) {
-      return;
-    }
-
-    const embedParams: EmbedParam[] = pageData.map((item) => {
-      const metadata: Metadata = {
-        id: item.id,
-        pageNumber: item.pageNumber,
-        bookId: parseInt(bookId),
-      };
-      return {
-        text: item.data,
-        metadata,
-      };
-    });
-
-    // Save page data first, then embed
-    // This ensures data is in the database even if embedding fails
-    await savePageDataMany(pageData);
-    const batches = batchEmbed(embedParams);
-    for (const batch of batches) {
-      const embedResults = await embed({ embedparams: batch });
-
-      // const embedResults = await embed({ embedparams: embedParams });
-
-      const vectorObjects = embedResults.map((result) => {
-        return {
-          id: result.metadata.id,
-          vector: result.embedding,
-          text: result.text,
-          metadata: result.metadata,
-        };
-      });
-      const vectors: Vector[] = vectorObjects.map((vector) => ({
-        id: vector.id,
-        vector: vector.vector,
-      }));
-
-      await saveVectors({
-        name: `${bookId}-vectordb`,
-        dim: vectorObjects[0].vector.length,
-        vectors,
-      });
-    }
-  } catch (error) {
-    console.error(">>> Error in processEpubJob:", error);
-    throw error;
-  }
-}
 export async function updateBookLocation(bookId: string, location: string) {
   // await updateBook({ id: bookId, location: location }, store);
   await db
@@ -269,4 +167,12 @@ export async function updateBookLocation(bookId: string, location: string) {
     .set({ location })
     .where("id", "=", parseInt(bookId))
     .execute();
+}
+export async function getTextFromVectorId(vectorId: number) : Promise<string> {
+  const res = await db
+    .selectFrom("chunk_data")
+    .where("id", "=", vectorId)
+    .select("data")
+    .executeTakeFirst();
+  return res?.data || "";
 }

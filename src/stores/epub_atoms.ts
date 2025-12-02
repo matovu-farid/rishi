@@ -11,7 +11,8 @@ import { observe } from "jotai-effect";
 import { customStore } from "./jotai";
 import { eventBus, EventBusEvent } from "@/utils/bus";
 import { loadable } from "jotai/utils";
-import { hasSavedEpubData, processEpubJob } from "@/modules/sql";
+import { hasSavedEpubData } from "@/modules/sql";
+import { processEpubJob } from "@/modules/process_epub";
 export const renditionAtom = atom<Rendition | null>(null);
 renditionAtom.debugLabel = "renditionAtom";
 

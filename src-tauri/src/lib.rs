@@ -5,6 +5,18 @@ mod pdf;
 mod shared;
 pub mod vectordb;
 
+mod db;
+
+pub mod models;
+pub mod schema;
+pub mod sql;
+
+#[cfg(test)]
+mod test_fixtures;
+
+#[cfg(test)]
+mod test_helpers;
+
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -18,6 +30,13 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_os::init())
+        .setup(|app| {
+            //let _conn = db::init_database(app.handle())?;
+            db::setup_database(app.handle())?;
+
+            // You can store this conn somewhere global if needed
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::is_dev,
             commands::unzip,
@@ -26,6 +45,18 @@ pub fn run() {
             commands::embed,
             commands::save_vectors,
             commands::search_vectors,
+            commands::process_job,
+            // SQL commands
+            sql::save_page_data_many,
+            sql::get_all_page_data_by_book_id,
+            sql::save_book,
+            sql::get_book,
+            sql::get_books,
+            sql::delete_book,
+            sql::update_book_cover,
+            sql::has_saved_epub_data,
+            sql::update_book_location,
+            sql::get_text_from_vector_id,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

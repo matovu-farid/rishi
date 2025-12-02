@@ -11,13 +11,25 @@ use crate::pdf::Pdf;
 use crate::shared::books::store_book_data;
 use crate::shared::books::Extractable;
 use crate::shared::types::BookData;
-use crate::vectordb::{vector_store, SearchResult, Vector};
+use crate::sql;
+use crate::vectordb::{self, SearchResult, Vector};
+use tauri::Manager;
 
 #[tauri::command]
 pub fn get_book_data(app: tauri::AppHandle, path: &Path) -> Result<BookData, String> {
     let data = Epub::new(path);
     store_book_data(app, &data).map_err(|e| e.to_string())?;
     data.extract().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn process_job(
+    page_number: i32,
+    book_id: i32,
+    page_data: Vec<sql::ChunkDataInsertable>,
+    app_data_dir: PathBuf,
+) -> Result<(), String> {
+    sql::process_job(page_number, book_id, page_data, &app_data_dir).await
 }
 
 #[tauri::command]
@@ -30,15 +42,12 @@ pub fn save_vectors(
     if vectors.is_empty() {
         return Err("Vectors cannot be empty".to_string());
     }
-    let mut vectorstore = vector_store().lock().map_err(|e| e.to_string())?;
-    vectorstore
-        .init(&app, dim, name)
-        .map_err(|e| e.to_string())?;
-    //let mut vector_store = VectorStore::new(&app, dim, name).map_err(|e| e.to_string())?;
-    // println!(">>> Adding {} vectors to vector store", vectors.len());
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data directory: {:?}", e))?;
 
-    // vector_store.add_vectors(vectors).map_err(|e| e.to_string())
-    vectorstore.add_vectors(vectors).map_err(|e| e.to_string())
+    vectordb::save_vectors(vectors, app_data_dir, dim, name).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -49,14 +58,12 @@ pub fn search_vectors(
     dim: usize,
     k: usize,
 ) -> Result<Vec<SearchResult>, String> {
-    let mut vectorstore = vector_store().lock().map_err(|e| e.to_string())?;
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data directory: {:?}", e))?;
 
-    vectorstore
-        .init(&app, dim, name)
-        .map_err(|e| e.to_string())?;
-
-    let res = vectorstore.search(query, k).map_err(|e| e.to_string());
-    res
+    vectordb::search_vectors(app_data_dir, dim, name, query, k).map_err(|e| e.to_string())
 }
 #[tauri::command]
 pub fn get_pdf_data(app: tauri::AppHandle, path: &Path) -> Result<BookData, String> {

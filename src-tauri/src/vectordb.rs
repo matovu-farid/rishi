@@ -5,10 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex, OnceLock};
-
-// Import PathResolver trait for Tauri v2
-use tauri::Manager;
+use std::sync::{Arc, Mutex, MutexGuard, OnceLock};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Vector {
@@ -24,12 +21,12 @@ impl Vector {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchResult {
-    pub id: u32,
+    pub id: u64,
     pub distance: f32,
 }
 
 impl SearchResult {
-    pub fn new(id: u32, distance: f32) -> Self {
+    pub fn new(id: u64, distance: f32) -> Self {
         Self { id, distance }
     }
 }
@@ -53,18 +50,9 @@ impl VectorStore {
             add_vector_queue: Vec::new(),
         })
     }
-    pub fn init(
-        &mut self,
-        app: &tauri::AppHandle,
-        dim: usize,
-        basename: &str,
-    ) -> anyhow::Result<()> {
-        let app_data_dir = app
-            .path()
-            .app_data_dir()
-            .map_err(|e| anyhow::anyhow!("Failed to get app data directory: {:?}", e))?;
-        fs::create_dir_all(&app_data_dir)?;
-        self.directory = app_data_dir;
+    pub fn init(&mut self, directory: PathBuf, dim: usize, basename: &str) -> anyhow::Result<()> {
+        fs::create_dir_all(&directory)?;
+        self.directory = directory;
 
         self.dim = dim;
         self.basename = basename.to_string();
@@ -128,7 +116,7 @@ impl VectorStore {
         self.process_vectors()?;
         Ok(())
     }
-    /// Add a new vector to the store.  
+    /// Add a new vector to the store.
     /// id must be unique — you manage this externally.
     pub fn process_vectors(&mut self) -> anyhow::Result<()> {
         // remove the first 5 vectors from the queue and process them
@@ -221,7 +209,7 @@ impl VectorStore {
         // Convert Vec<Neighbour> to Vec<(u32, f32)>
         let results = neighbours
             .into_iter()
-            .map(|n| SearchResult::new(n.d_id as u32, n.distance))
+            .map(|n| SearchResult::new(n.d_id as u64, n.distance))
             .collect::<Vec<_>>();
 
         Ok(results)
@@ -243,4 +231,46 @@ pub fn vector_store() -> &'static Arc<Mutex<VectorStore>> {
             VectorStore::new().expect("Failed to create VectorStore"),
         ))
     })
+}
+
+fn init_vector_store(
+    app_data_dir: PathBuf,
+    dim: usize,
+    name: &str,
+) -> anyhow::Result<MutexGuard<'static, VectorStore>> {
+    let mut vectorstore = vector_store()
+        .lock()
+        .map_err(|e| anyhow::anyhow!("Failed to lock vector store: {}", e))?;
+    vectorstore
+        .init(app_data_dir, dim, name)
+        .map_err(|e| anyhow::anyhow!("Failed to initialize vector store: {}", e))?;
+    Ok(vectorstore)
+}
+pub fn save_vectors(
+    vectors: Vec<Vector>,
+    app_data_dir: PathBuf,
+    dim: usize,
+    name: &str,
+) -> anyhow::Result<()> {
+    let mut vectorstore = init_vector_store(app_data_dir, dim, name)?;
+
+    vectorstore
+        .add_vectors(vectors)
+        .map_err(|e| anyhow::anyhow!("Failed to add vectors: {}", e))?;
+    Ok(())
+}
+
+pub fn search_vectors(
+    app_data_dir: PathBuf,
+    dim: usize,
+    name: &str,
+    query: Vec<f32>,
+    k: usize,
+) -> anyhow::Result<Vec<SearchResult>> {
+    let vectorstore = init_vector_store(app_data_dir, dim, name)?;
+
+    let res = vectorstore
+        .search(query, k)
+        .map_err(|e| anyhow::anyhow!("Failed to search vectors: {}", e))?;
+    Ok(res)
 }

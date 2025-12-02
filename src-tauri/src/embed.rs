@@ -93,8 +93,6 @@ pub async fn embed_text(embedparams: Vec<EmbedParam>) -> Result<Vec<EmbedResult>
             e.to_string()
         })?;
 
-  
-
     let res = Arc::into_inner(embeddings).ok_or("Failed to get embeddings")?;
     Ok(res.into_iter().map(EmbedResult::from).collect::<Vec<_>>())
 }
@@ -111,8 +109,8 @@ mod tests {
     #[tokio::test]
     async fn test_embed_text() {
         let mut embedparams = vec![];
-        for i in 0..10 {
-            let _ =  &mut embedparams.push(EmbedParam {
+        for _ in 0..10 {
+            embedparams.push(EmbedParam {
                 text: "Chapter 4. Logical Components: The Building Blocks↵Ready to start creating an architecture? It’s not as easy as it sounds—and if you don’…".to_string(),
                 metadata: Metadata {
                     id: 7271375624100750,
