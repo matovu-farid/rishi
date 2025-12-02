@@ -8,7 +8,7 @@ import { TextItem, TextMarkedContent, type TextContent } from "react-pdf";
 import { freezeAtom } from "jotai/utils";
 import { customStore } from "@/stores/jotai";
 import { observe } from "jotai-effect";
-import { Book } from "@/modules/kysley";
+import { Book } from "@/generated";
 
 export const virtualizerAtom = atom<any | null>(null);
 

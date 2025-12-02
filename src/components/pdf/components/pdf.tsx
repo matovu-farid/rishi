@@ -41,8 +41,7 @@ import { PDFDocumentProxy } from "pdfjs-dist";
 import { useVirualization } from "../hooks/useVirualization";
 import { eventBusLogsAtom } from "@/utils/bus";
 import { TextExtractor } from "./text-extractor.tsx";
-import { Book } from "@/modules/kysley.ts";
-import { updateBookLocation } from "@/modules/sql.ts";
+import { updateBookLocation, Book } from "@/generated";
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -107,7 +106,10 @@ export function PdfView({
       bookId: string;
       location: string;
     }) => {
-      await updateBookLocation(bookId, location);
+      await updateBookLocation({
+        bookId: Number(bookId),
+        newLocation: location,
+      });
     },
 
     onError(_error) {

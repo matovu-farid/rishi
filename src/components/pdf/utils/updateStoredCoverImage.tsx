@@ -5,8 +5,8 @@
 //   SheetTitle,
 // } from "@/components/ui/sheet";
 
-import { Book } from "@/modules/kysley";
-import { getBook, updateBookCover } from "@/modules/sql";
+import { Book } from "@/generated";
+import { getBook, updateBookCover } from "@/generated";
 
 // Import required CSS for text and annotation layers
 
@@ -29,7 +29,7 @@ export async function updateStoredCoverImage(book: Book) {
 }
 
 export async function updateCoverImage(blob: Blob, id: number) {
-  const book = await getBook(id);
+  const book = await getBook({ bookId: id });
   if (!book) return;
   // only update it once
   if (book.version && book.version > 0) return;
@@ -37,12 +37,6 @@ export async function updateCoverImage(blob: Blob, id: number) {
   if (book.kind != "pdf") return;
   const bytes = await blob.bytes();
   const cover = Array.from(bytes);
-  // await updateBook(
-  //   {
-  //     id: book.id,
-  //     cover,
-  //   },
-  //   store
-  // );
-  await updateBookCover(id, cover);
+
+  await updateBookCover({ bookId: id, newCover: cover });
 }

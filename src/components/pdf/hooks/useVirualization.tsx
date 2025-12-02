@@ -15,7 +15,7 @@ import {
 } from "../atoms/paragraph-atoms";
 import { useAtomValue, useSetAtom } from "jotai";
 import { PAGE_HEIGHT } from "../utils/constants";
-import { Book } from "@/modules/kysley";
+import { Book } from "@/generated";
 function easeInOutQuint(t: number) {
   return t < 0.5 ? 16 * t * t * t * t * t : 1 + 16 * --t * t * t * t * t;
 }

@@ -37,8 +37,8 @@ import {
   removeHighlight,
 } from "@/epubwrapper";
 import { customStore } from "@/stores/jotai";
-import { Book } from "@/modules/kysley";
-import { processEpubJob, updateBookLocation } from "@/modules/sql";
+import { Book } from "@/generated";
+import { updateBookLocation } from "@/generated";
 
 function cn(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
@@ -164,7 +164,10 @@ export function EpubView({ book }: { book: Book }): React.JSX.Element {
       bookId: string;
       location: string;
     }) => {
-      await updateBookLocation(bookId, location);
+      await updateBookLocation({
+        bookId: Number(bookId),
+        newLocation: location,
+      });
     },
 
     onError(_error) {

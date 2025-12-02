@@ -7,7 +7,7 @@ import {
   Vector,
 } from "@/generated";
 import { db, PageDataInsertable } from "./kysley";
-import { getTextFromVectorId, hasSavedEpubData, savePageDataMany } from "./sql";
+import { hasSavedEpubData, savePageDataMany } from "@/generated";
 function batchEmbed(embedParams: EmbedParam[]): EmbedParam[][] {
   const batchSize = 2;
   const batches: EmbedParam[][] = [];
@@ -24,7 +24,7 @@ export async function processEpubJob(
     if (pageData.length === 0) {
       return;
     }
-    if (await hasSavedEpubData(bookId)) {
+    if (await hasSavedEpubData({ bookId: Number(bookId) })) {
       return;
     }
 
@@ -42,7 +42,7 @@ export async function processEpubJob(
 
     // Save page data first, then embed
     // This ensures data is in the database even if embedding fails
-    await savePageDataMany(pageData);
+    await savePageDataMany({ pageData: pageData });
     const batches = batchEmbed(embedParams);
     for (const batch of batches) {
       const embedResults = await embed({ embedparams: batch });
@@ -74,33 +74,3 @@ export async function processEpubJob(
   }
 }
 
-export async function getContextForQuery(
-  query: string,
-  bookId: string
-): Promise<string[]> {
-  const results = await embed({
-    embedparams: [
-      {
-        text: query,
-        metadata: { id: 0, pageNumber: 0, bookId: parseInt(bookId) },
-      },
-    ],
-  });
-  if (results.length === 0) {
-    return [""];
-  }
-
-  const queryData = results[0];
-  const vectors = await searchVectors({
-    name: `${bookId}-vectordb`,
-    query: queryData.embedding,
-    dim: queryData.dim,
-    k: 10,
-  });
-  if (vectors.length === 0) {
-    return [""];
-  }
-  return await Promise.all(
-    vectors.map((vector) => getTextFromVectorId(vector.id))
-  );
-}

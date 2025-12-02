@@ -11,8 +11,8 @@ import { observe } from "jotai-effect";
 import { customStore } from "./jotai";
 import { eventBus, EventBusEvent } from "@/utils/bus";
 import { loadable } from "jotai/utils";
-import { hasSavedEpubData } from "@/modules/sql";
 import { processEpubJob } from "@/modules/process_epub";
+import { hasSavedEpubData } from "@/generated";
 export const renditionAtom = atom<Rendition | null>(null);
 renditionAtom.debugLabel = "renditionAtom";
 
@@ -31,7 +31,7 @@ observe((get) => {
   const rendition = get(paragraphRenditionAtom);
 
   const bookId = get(bookIdAtom);
-  void hasSavedEpubData(bookId).then((hasSaved) => {
+  void hasSavedEpubData({ bookId: Number(bookId) }).then((hasSaved) => {
     if (rendition && bookId && !hasSaved) {
       console.log(">>> GETTING PARAGRAPHS");
       void getAllParagraphsForBook(rendition, bookId).then((paragraphs) => {

@@ -11,12 +11,12 @@ import { useEffect } from "react";
 import { isPdfRenderedAtom } from "@components/pdf/atoms/paragraph-atoms";
 import { useAtomValue } from "jotai";
 import { updateStoredCoverImage } from "../utils/updateStoredCoverImage";
-import { Book } from "@/modules/kysley";
+import { Book } from "@/generated";
 
 export function useUpdateCoverIMage(book: Book) {
   const isRendered = useAtomValue(isPdfRenderedAtom);
   useEffect(() => {
-    if (isRendered(book.id)) {
+    if (isRendered(book.id.toString())) {
       void updateStoredCoverImage(book);
     }
   }, [isRendered]);

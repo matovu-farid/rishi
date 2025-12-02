@@ -7,7 +7,7 @@ import {
 import { Loader2 } from "lucide-react";
 import { wordsToFinalParagraphs } from "../utils/wordsToParaagraphs";
 import { useSetAtom } from "jotai";
-import { processJob } from "@/modules/sql";
+import { processJob } from "@/generated";
 
 export function BackgroundPageComponent({
   thispageNumber: pageNumber,
@@ -52,7 +52,11 @@ export function BackgroundPageComponent({
             return { id, bookId, data: item, pageNumber };
           });
           //void createJob({ pageNumber, bookId, pageData: page });
-          void processJob(pageNumber, bookId, page);
+          void processJob({
+            pageNumber,
+            pageData: page,
+            bookId: Number(bookId),
+          });
 
           setBackgroundPage((pageNumber) => pageNumber + 1);
         } catch (error) {

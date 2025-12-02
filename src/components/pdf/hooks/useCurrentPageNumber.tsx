@@ -25,8 +25,8 @@ import { pageDataToParagraphs } from "../utils/getPageParagraphs";
 import { customStore } from "@/stores/jotai";
 import isEqual from "fast-deep-equal";
 import { eventBus, EventBusEvent } from "@/utils/bus";
-import { Book } from "@/modules/kysley";
-import { updateBookLocation } from "@/modules/sql";
+import { Book } from "@/generated";
+import { updateBookLocation } from "@/generated";
 
 // --------------------------------------------------------------------------------------
 // Returns and maintains the current page number for the active PDF view. The hook:
@@ -140,7 +140,10 @@ export function useCurrentPageNumber(
       bookId: string;
       location: string;
     }) => {
-      await updateBookLocation(bookId, location);
+      await updateBookLocation({
+        bookId: Number(bookId),
+        newLocation: location,
+      });
     },
 
     onError(_error) {
@@ -178,7 +181,7 @@ export function useCurrentPageNumber(
     setTimeout(() => {
       debounce(1000, () => {
         updateBookLocationMutation.mutate({
-          bookId: bookId,
+          bookId: bookId.toString(),
           location: currentPageNumber.toString(),
         });
       })();

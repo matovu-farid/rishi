@@ -46,6 +46,7 @@ pub fn run() {
             commands::save_vectors,
             commands::search_vectors,
             commands::process_job,
+            commands::get_context_for_query,
             // SQL commands
             sql::save_page_data_many,
             sql::get_all_page_data_by_book_id,

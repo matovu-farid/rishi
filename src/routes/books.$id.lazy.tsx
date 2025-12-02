@@ -13,7 +13,7 @@ import {
   bookNavigationStateAtom,
 } from "@components/pdf/atoms/paragraph-atoms";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { getBook, saveBook } from "@/modules/sql";
+import { getBook } from "@/generated";
 export const Route = createLazyFileRoute("/books/$id")({
   component: () => <BookView />,
 });
@@ -30,12 +30,23 @@ function BookView(): React.JSX.Element {
   } = useQuery({
     queryKey: ["book", id],
     queryFn: async () => {
-      const book = await getBook(Number(id));
+      const book = await getBook({ bookId: Number(id) });
       if (!book) {
         throw new Error("Book not found");
       }
 
-      setBook(book);
+      setBook({
+        id: book.id,
+        kind: book.kind,
+        cover: book.cover,
+        title: book.title,
+        author: book.author,
+        publisher: book.publisher,
+        filepath: book.filepath,
+        location: book.location,
+        version: book.version,
+        coverKind: book.coverKind,
+      });
       return book;
     },
   });

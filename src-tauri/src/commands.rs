@@ -12,6 +12,7 @@ use crate::shared::books::store_book_data;
 use crate::shared::books::Extractable;
 use crate::shared::types::BookData;
 use crate::sql;
+use crate::sql::ChunkDataInsertable;
 use crate::vectordb::{self, SearchResult, Vector};
 use tauri::Manager;
 
@@ -24,12 +25,30 @@ pub fn get_book_data(app: tauri::AppHandle, path: &Path) -> Result<BookData, Str
 
 #[tauri::command]
 pub async fn process_job(
+    app: tauri::AppHandle,
     page_number: i32,
     book_id: i32,
-    page_data: Vec<sql::ChunkDataInsertable>,
-    app_data_dir: PathBuf,
+    page_data: Vec<ChunkDataInsertable>,
 ) -> Result<(), String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data directory: {:?}", e))?;
     sql::process_job(page_number, book_id, page_data, &app_data_dir).await
+}
+
+#[tauri::command]
+pub async fn get_context_for_query(
+    app: tauri::AppHandle,
+    query_text: String,
+    book_id: u32,
+    k: usize,
+) -> Result<Vec<String>, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data directory: {:?}", e))?;
+    sql::get_context_for_query(query_text, book_id, &app_data_dir, k).await
 }
 
 #[tauri::command]

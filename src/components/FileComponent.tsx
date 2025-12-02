@@ -6,7 +6,14 @@ import { IconButton } from "./ui/IconButton";
 import { Button } from "./ui/Button";
 import { Trash2, Plus } from "lucide-react";
 import { chooseFiles } from "@/modules/chooseFiles";
-import { getBookData, getPdfData } from "@/generated";
+import {
+  Book,
+  deleteBook,
+  getBookData,
+  getBooks,
+  getPdfData,
+  saveBook,
+} from "@/generated";
 import { copyBookToAppData } from "@/modules/books";
 import { useTauriDragDrop } from "./hooks/use-tauri-drag-drop";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,8 +24,7 @@ import {
   pdfsControllerAtom,
   setPageNumberAtom,
 } from "@components/pdf/atoms/paragraph-atoms";
-import { deleteBook, getBooks, saveBook } from "@/modules/sql";
-import { Book, BookInsertable } from "@/modules/kysley";
+
 
 const newBook = atom<string | null>(null);
 
@@ -116,7 +122,7 @@ function FileDrop(): React.JSX.Element {
   const deleteBookMutation = useMutation({
     mutationKey: ["deleteBook"],
     mutationFn: async ({ book }: { book: Book }) => {
-      await deleteBook(book.id);
+      await deleteBook({ bookId: book.id });
       setPfsController({ type: "remove", id: book.id });
     },
 
@@ -137,15 +143,17 @@ function FileDrop(): React.JSX.Element {
       const epubPath = await copyBookToAppData(filePath);
       const bookData = await getBookData({ path: epubPath });
       const book = await saveBook({
-        cover_kind: bookData.coverKind || "",
-        title: bookData.title || "",
-        author: bookData.author || "",
-        publisher: bookData.publisher || "",
-        filepath: epubPath,
-        location: "1",
-        version: 0,
-        kind: bookData.kind,
-        cover: bookData.cover,
+        book: {
+          coverKind: bookData.coverKind || "",
+          title: bookData.title || "",
+          author: bookData.author || "",
+          publisher: bookData.publisher || "",
+          filepath: epubPath,
+          location: "1",
+          version: 0,
+          kind: bookData.kind,
+          cover: bookData.cover,
+        },
       });
       return book;
     },
@@ -174,15 +182,18 @@ function FileDrop(): React.JSX.Element {
 
       const bookData = await getPdfData({ path: pdfPath });
       const book = await saveBook({
-        cover_kind: bookData.coverKind || "",
-        title: bookData.title || "",
-        author: bookData.author || "",
-        publisher: bookData.publisher || "",
-        filepath: pdfPath,
-        location: "1",
-        version: 0,
-        kind: bookData.kind,
-        cover: bookData.cover,
+       
+        book: {
+          coverKind: bookData.coverKind || "",
+          title: bookData.title || "",
+          author: bookData.author || "",
+          publisher: bookData.publisher || "",
+          filepath: pdfPath,
+          location: "1",
+          version: 0,
+          kind: bookData.kind,
+          cover: bookData.cover,
+        },
       });
       return book;
     },

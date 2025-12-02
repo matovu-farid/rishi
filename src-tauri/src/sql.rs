@@ -345,7 +345,7 @@ pub fn has_saved_epub_data(book_id: i32) -> Result<bool, String> {
     Ok(result.is_some())
 }
 
-#[tauri::command]
+
 pub async fn get_context_for_query(
     query_text: String,
     book_id: u32,
@@ -418,8 +418,8 @@ mod tests {
     use pretty_assertions::assert_eq as pretty_assert_eq;
 
     use super::{
-        get_all_page_data_by_book_id, get_book, save_book, save_page_data_many,
-        BookInsertable, ChunkDataInsertable,
+        delete_book, get_all_page_data_by_book_id, get_book, save_book, save_page_data_many,
+        update_book_cover, BookInsertable, ChunkDataInsertable,
     };
 
     #[test]
@@ -550,6 +550,99 @@ mod tests {
         expect!(book.cover_kind.as_str()).to(be_equal_to("image/png"));
         expect!(book.version).to(be_equal_to(1));
         expect!(book.cover).to(be_equal_to(saved_book.cover));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_save_delete_and_verify_book_removed() -> Result<(), String> {
+        // Initialize test database
+        let _setup = init_test_database_setup()?;
+
+        // Create a test book with sensible data
+        let test_book = BookInsertable {
+            id: None, // Let the database assign the ID
+            kind: "epub".to_string(),
+            cover: vec![0xFF, 0xD8, 0xFF, 0xE0], // JPEG magic bytes as test cover
+            title: "Book To Delete".to_string(),
+            author: "Delete Author".to_string(),
+            publisher: "Delete Publisher".to_string(),
+            filepath: "/path/to/delete/book.epub".to_string(),
+            location: "epubcfi(/6/4[chap02ref]!/4/2/2)".to_string(),
+            cover_kind: "image/jpeg".to_string(),
+            version: 2,
+        };
+
+        // Save the book
+        let saved_book = save_book(test_book)?;
+
+        // Verify the book was saved with an ID
+        expect!(saved_book.id).to(be_greater_than(0));
+        let book_id = saved_book.id;
+
+        // Verify the book exists before deletion
+        let retrieved_book_before = get_book(book_id)?;
+        expect!(retrieved_book_before.is_some()).to(be_equal_to(true));
+        let book_before = retrieved_book_before.unwrap();
+        expect!(book_before.id).to(be_equal_to(book_id));
+        expect!(book_before.title.as_str()).to(be_equal_to("Book To Delete"));
+
+        // Delete the book
+        delete_book(book_id)?;
+
+        // Verify the book no longer exists
+        let retrieved_book_after = get_book(book_id)?;
+        expect!(retrieved_book_after.is_none()).to(be_equal_to(true));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_update_book_cover() -> Result<(), String> {
+        // Initialize test database
+        let _setup = init_test_database_setup()?;
+
+        // Create a test book with an empty cover
+        let test_book = BookInsertable {
+            id: None, // Let the database assign the ID
+            kind: "epub".to_string(),
+            cover: vec![], // Empty cover
+            title: "Book With Cover Update".to_string(),
+            author: "Cover Author".to_string(),
+            publisher: "Cover Publisher".to_string(),
+            filepath: "/path/to/cover/book.epub".to_string(),
+            location: "epubcfi(/6/4[chap03ref]!/4/2/2)".to_string(),
+            cover_kind: "image/png".to_string(),
+            version: 1,
+        };
+
+        // Save the book
+        let saved_book = save_book(test_book)?;
+        let book_id = saved_book.id;
+
+        // Verify the book was saved with an empty cover
+        expect!(saved_book.cover.is_empty()).to(be_equal_to(true));
+
+        // Retrieve the book to confirm empty cover
+        let retrieved_book_before = get_book(book_id)?;
+        expect!(retrieved_book_before.is_some()).to(be_equal_to(true));
+        let book_before = retrieved_book_before.unwrap();
+        expect!(book_before.cover.is_empty()).to(be_equal_to(true));
+
+        // Update the book cover with test image data (PNG magic bytes + some additional data)
+        let new_cover_data = vec![
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG magic bytes
+            0x00, 0x00, 0x00, 0x0D, // IHDR chunk length
+            0x49, 0x48, 0x44, 0x52, // IHDR
+        ];
+        update_book_cover(book_id, new_cover_data.clone())?;
+
+        // Retrieve the book and verify the cover matches what we set
+        let retrieved_book_after = get_book(book_id)?;
+        expect!(retrieved_book_after.is_some()).to(be_equal_to(true));
+        let book_after = retrieved_book_after.unwrap();
+        expect!(book_after.cover.len()).to(be_equal_to(16));
+        expect!(book_after.cover).to(be_equal_to(new_cover_data));
 
         Ok(())
     }

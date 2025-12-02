@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import type { JSX } from "react";
-import { getBooks } from "@/modules/sql";
+import { getBooks } from "@/generated";
 
 export const Route = createRootRoute({
   component: () => <RootComponent />,
