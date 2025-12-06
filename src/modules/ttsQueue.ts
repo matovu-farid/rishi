@@ -253,7 +253,6 @@ export class TTSQueue extends EventEmitter {
 
     try {
       const requestBody = {
-        model: "tts-1",
         voice: "alloy",
         input: item.text,
         response_format: "mp3",

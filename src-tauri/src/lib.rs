@@ -7,10 +7,13 @@ pub mod vectordb;
 
 pub mod db;
 
+pub mod llm;
 pub mod models;
 pub mod schema;
+pub mod speach;
 pub mod sql;
-pub mod transcribe;
+
+pub mod pipeline;
 
 #[cfg(test)]
 pub mod test_fixtures;
@@ -48,6 +51,7 @@ pub fn run() {
             commands::search_vectors,
             commands::process_job,
             commands::get_context_for_query,
+            commands::get_audio_answer_with_context,
             // SQL commands
             sql::save_page_data_many,
             sql::get_all_page_data_by_book_id,

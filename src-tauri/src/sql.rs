@@ -345,7 +345,6 @@ pub fn has_saved_epub_data(book_id: i32) -> Result<bool, String> {
     Ok(result.is_some())
 }
 
-
 pub async fn get_context_for_query(
     query_text: String,
     book_id: u32,
