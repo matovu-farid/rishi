@@ -26,7 +26,7 @@ tauri-typegen = "0.3.2"
 tauri = { version = "2", features = ["protocol-asset", "tray-icon"] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde_json = "1.0.89"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 zip = "6.0.0"
@@ -51,6 +51,10 @@ tokio = { version = "1", features = ["full"] }
 diesel = { version = "2.3.4", features = ["sqlite", "serde_json", "returning_clauses_for_sqlite_3_35", "r2d2"] }
 diesel_migrations = "2.3.1"
 r2d2 = "0.8.10"
+whisper-rs = "0.15.1"
+reqwest = "0.12.24"
+wav_io = "0.1.15"
+
 
 # sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite", "macros"] }
 
