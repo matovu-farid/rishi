@@ -58,7 +58,6 @@ pub fn setup_database(app: &tauri::AppHandle) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[cfg(test)]
 pub fn init_test_database(db_path: &str) -> anyhow::Result<()> {
     use std::fs;
 

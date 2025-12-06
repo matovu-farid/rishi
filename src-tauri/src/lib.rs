@@ -5,17 +5,18 @@ mod pdf;
 mod shared;
 pub mod vectordb;
 
-mod db;
+pub mod db;
 
 pub mod models;
 pub mod schema;
 pub mod sql;
+pub mod transcribe;
 
 #[cfg(test)]
-mod test_fixtures;
+pub mod test_fixtures;
 
 #[cfg(test)]
-mod test_helpers;
+pub mod test_helpers;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 
