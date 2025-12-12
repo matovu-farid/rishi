@@ -8,7 +8,6 @@ import {
   SkipForward,
   Volume2,
   AlertTriangle,
-  Bug,
   Info,
   Loader2,
   Mic,
@@ -18,15 +17,10 @@ import {
 import { toast } from "react-toastify";
 import { useEffect, useState } from "react";
 import player from "@/models/Player";
-import { useDebug } from "@/hooks/useDebug";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { EventBusEvent, PlayingState } from "@/utils/bus";
 import { eventBus } from "@/utils/bus";
-import {
-  isChattingAtom,
-  realtimeSessionAtom,
-  stopConversationAtom,
-} from "@/stores/chat_atoms";
+import { isChattingAtom, stopConversationAtom } from "@/stores/chat_atoms";
 
 interface TTSControlsProps {
   bookId: string;
@@ -84,7 +78,6 @@ export default function TTSControls({
   const [playingState, setPlayingState] = useState<PlayingState>(
     PlayingState.Stopped
   );
-  const { setIsDebugging, shouldDebug } = useDebug();
 
   useEffect(() => {
     eventBus.on(EventBusEvent.PLAYING_STATE_CHANGED, setPlayingState);
@@ -291,17 +284,6 @@ export default function TTSControls({
               className="text-white hover:bg-white/10 disabled:text-white/30"
             >
               <MicOff size={24} />
-            </IconButton>
-          )}
-          {/* Debug Button */}
-          {shouldDebug && (
-            <IconButton
-              size="large"
-              onClick={() => setIsDebugging((isDebugging) => !isDebugging)}
-              disabled={disabled || playingState !== PlayingState.Playing}
-              className="text-white hover:bg-white/10 disabled:text-white/30"
-            >
-              <Bug size={24} />
             </IconButton>
           )}
 
