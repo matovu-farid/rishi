@@ -18,10 +18,14 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import player from "@/models/Player";
 import { useDebug } from "@/hooks/useDebug";
 import { load } from "@tauri-apps/plugin-store";
-import { atom, useAtom, useAtomValue } from "jotai";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { EventBusEvent, PlayingState } from "@/utils/bus";
 import { eventBus } from "@/utils/bus";
-import { isChattingAtom } from "@/stores/chat_atoms";
+import {
+  isChattingAtom,
+  realtimeSessionAtom,
+  stopConversationAtom,
+} from "@/stores/chat_atoms";
 
 interface TTSControlsProps {
   bookId: string;
@@ -61,7 +65,7 @@ export default function TTSControls({
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
   const dragOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const player = useAtomValue(playerAtom);
-
+  const stopConversation = useSetAtom(stopConversationAtom);
   const error = errors.join("\n");
   const [isChatting, setIsChatting] = useAtom(isChattingAtom);
 
@@ -95,6 +99,8 @@ export default function TTSControls({
       y: Math.max(minY, Math.min(maxY, y)),
     };
   }, []);
+
+  const chatSession = useAtomValue(realtimeSessionAtom);
 
   // Load saved position from Tauri Store on mount, and calculate default position after mount
   useEffect(() => {
@@ -191,6 +197,7 @@ export default function TTSControls({
   };
   const stopChat = async () => {
     void toggleChat();
+    void stopConversation();
   };
 
   const handlePrev = async () => {

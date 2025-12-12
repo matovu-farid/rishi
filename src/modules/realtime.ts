@@ -34,4 +34,5 @@ export async function startRealtime(bookId: number) {
   await session.connect({
     apiKey,
   });
+  return session;
 }
