@@ -90,6 +90,9 @@ export default function TTSControls({
     eventBus.on(EventBusEvent.PLAYING_STATE_CHANGED, setPlayingState);
     return () => {
       player.cleanup();
+      if (isChatting) {
+        stopConversation();
+      }
     };
   }, []);
 
