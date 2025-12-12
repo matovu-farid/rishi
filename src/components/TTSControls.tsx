@@ -1,4 +1,5 @@
 import { IconButton } from "./ui/IconButton";
+import Draggable from "./ui/Draggable";
 import {
   Play,
   Pause,
@@ -15,10 +16,9 @@ import {
   CircleX,
 } from "lucide-react";
 import { toast } from "react-toastify";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState } from "react";
 import player from "@/models/Player";
 import { useDebug } from "@/hooks/useDebug";
-import { load } from "@tauri-apps/plugin-store";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { EventBusEvent, PlayingState } from "@/utils/bus";
 import { eventBus } from "@/utils/bus";
@@ -34,7 +34,6 @@ interface TTSControlsProps {
 }
 
 const STORE_PATH = "tts-controls-position.json";
-const POSITION_KEY = "position";
 
 // Get default position (center-bottom of screen)
 const getDefaultPosition = (): { x: number; y: number } => {
@@ -44,6 +43,19 @@ const getDefaultPosition = (): { x: number; y: number } => {
 
   const defaultX = window.innerWidth / 2 - 150; // Approximate center, adjusted for component width
   const defaultY = window.innerHeight - 128; // 8rem (32px) from bottom + some offset
+
+  return { x: defaultX, y: defaultY };
+};
+
+// Get default chat overlay position (center of screen)
+const getDefaultChatPosition = (): { x: number; y: number } => {
+  if (typeof window === "undefined") {
+    return { x: 0, y: 0 };
+  }
+
+  const chatSize = 100; // Chat overlay is 100x100
+  const defaultX = window.innerWidth / 2 - chatSize / 2;
+  const defaultY = window.innerHeight / 2 - chatSize / 2;
 
   return { x: defaultX, y: defaultY };
 };
@@ -58,13 +70,6 @@ export default function TTSControls({
   const [showError, setShowError] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [hasShownError, setHasShownError] = useState(false);
-  const [position, setPosition] = useState<{ x: number; y: number } | null>(
-    null
-  );
-  const [isDragging, setIsDragging] = useState(false);
-  const dragRef = useRef<HTMLDivElement>(null);
-  const dragStartPos = useRef<{ x: number; y: number } | null>(null);
-  const dragOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const player = useAtomValue(playerAtom);
   const stopConversation = useSetAtom(stopConversationAtom);
   const error = errors.join("\n");
@@ -80,63 +85,6 @@ export default function TTSControls({
     PlayingState.Stopped
   );
   const { setIsDebugging, shouldDebug } = useDebug();
-
-  // Constrain position within viewport bounds
-  const constrainPosition = useCallback((x: number, y: number) => {
-    if (typeof window === "undefined") {
-      return { x: 0, y: 0 };
-    }
-
-    const componentWidth = 300; // Approximate component width
-    const componentHeight = 60; // Approximate component height
-
-    const minX = 0;
-    const minY = 0;
-    const maxX = window.innerWidth - componentWidth;
-    const maxY = window.innerHeight - componentHeight;
-
-    return {
-      x: Math.max(minX, Math.min(maxX, x)),
-      y: Math.max(minY, Math.min(maxY, y)),
-    };
-  }, []);
-
-  // Load saved position from Tauri Store on mount, and calculate default position after mount
-  useEffect(() => {
-    const loadPosition = async () => {
-      try {
-        const store = await load(STORE_PATH, { defaults: {}, autoSave: false });
-        const savedPosition = await store.get<{ x: number; y: number }>(
-          POSITION_KEY
-        );
-
-        if (
-          savedPosition &&
-          typeof savedPosition.x === "number" &&
-          typeof savedPosition.y === "number"
-        ) {
-          // Validate saved position is within viewport
-          const constrained = constrainPosition(
-            savedPosition.x,
-            savedPosition.y
-          );
-          setPosition(constrained);
-        } else {
-          // No saved position, use default
-          setPosition(getDefaultPosition());
-        }
-      } catch (error) {
-        console.error(
-          "Failed to load TTS controls position from store:",
-          error
-        );
-        // Use default position if loading fails
-        setPosition(getDefaultPosition());
-      }
-    };
-
-    void loadPosition();
-  }, [constrainPosition]);
 
   useEffect(() => {
     eventBus.on(EventBusEvent.PLAYING_STATE_CHANGED, setPlayingState);
@@ -230,124 +178,18 @@ export default function TTSControls({
     return <Play size={24} />;
   };
 
-  // Save position to Tauri Store
-  const savePosition = useCallback((x: number, y: number) => {
-    void (async () => {
-      try {
-        const store = await load(STORE_PATH, { defaults: {}, autoSave: false });
-        await store.set(POSITION_KEY, { x, y });
-        await store.save();
-      } catch (error) {
-        console.error("Failed to save TTS controls position to store:", error);
-      }
-    })();
-  }, []);
-
-  // Handle drag start
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!position) return;
-
-      // Prevent dragging if clicking on buttons or interactive elements
-      const target = e.target as HTMLElement;
-      if (
-        target.closest("button") ||
-        target.closest("[role='button']") ||
-        target.tagName === "BUTTON"
-      ) {
-        return;
-      }
-
-      e.preventDefault();
-      e.stopPropagation(); // Prevent event from bubbling to underlying elements
-      setIsDragging(true);
-      dragStartPos.current = { x: e.clientX, y: e.clientY };
-      dragOffset.current = { x: position.x, y: position.y };
-    },
-    [position]
-  );
-
-  // Handle drag move
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (!isDragging || !dragStartPos.current) return;
-
-      e.preventDefault();
-      e.stopPropagation(); // Prevent event from bubbling to underlying elements
-
-      const deltaX = e.clientX - dragStartPos.current.x;
-      const deltaY = e.clientY - dragStartPos.current.y;
-
-      const newX = dragOffset.current.x + deltaX;
-      const newY = dragOffset.current.y + deltaY;
-
-      const constrained = constrainPosition(newX, newY);
-      setPosition(constrained);
-    },
-    [isDragging, constrainPosition]
-  );
-
-  // Handle drag end
-  const handleMouseUp = useCallback(
-    (e?: MouseEvent) => {
-      if (isDragging && position) {
-        if (e) {
-          e.preventDefault();
-          e.stopPropagation(); // Prevent event from bubbling to underlying elements
-        }
-        setIsDragging(false);
-        dragStartPos.current = null;
-        savePosition(position.x, position.y);
-      }
-    },
-    [isDragging, position, savePosition]
-  );
-
-  // Set up global mouse event listeners for dragging
-  useEffect(() => {
-    if (isDragging) {
-      const mouseMoveHandler = (e: MouseEvent) => handleMouseMove(e);
-      const mouseUpHandler = (e: MouseEvent) => handleMouseUp(e);
-
-      window.addEventListener("mousemove", mouseMoveHandler, {
-        passive: false,
-      });
-      window.addEventListener("mouseup", mouseUpHandler, { passive: false });
-      document.body.style.userSelect = "none"; // Prevent text selection while dragging
-
-      return () => {
-        window.removeEventListener("mousemove", mouseMoveHandler);
-        window.removeEventListener("mouseup", mouseUpHandler);
-        document.body.style.userSelect = "";
-      };
-    }
-  }, [isDragging, handleMouseMove, handleMouseUp]);
-
-  // Constrain position when window is resized
-  useEffect(() => {
-    if (!position) return;
-
-    const handleResize = () => {
-      const constrained = constrainPosition(position.x, position.y);
-      if (constrained.x !== position.x || constrained.y !== position.y) {
-        setPosition(constrained);
-      }
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [position, constrainPosition]);
-
-  // Don't render until position is calculated
-  if (position === null) {
-    return null;
-  }
-
   return (
     <>
       {isChatting && (
-        <div className="fixed rounded-full  top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
-          <div className="absolute -top-2 -right-2 ">
+        <Draggable
+          storePath={STORE_PATH}
+          storeKey="chatPosition"
+          defaultPosition={getDefaultChatPosition}
+          width={100}
+          height={100}
+          className="rounded-full"
+        >
+          <div className="absolute -top-2 -right-2" data-no-drag>
             <CircleX
               className="cursor-pointer"
               onClick={stopChat}
@@ -363,29 +205,15 @@ export default function TTSControls({
               alt="AI"
             />
           </div>
-        </div>
+        </Draggable>
       )}
-      <div
-        ref={dragRef}
-        className="fixed z-50 tts-controls-drag-handle"
-        style={{
-          left: `${position.x}px`,
-          top: `${position.y}px`,
-          cursor: isDragging ? "grabbing" : "grab",
-        }}
-        onMouseDown={handleMouseDown}
-        onTouchStart={(e) => {
-          // Prevent touch events from bubbling to underlying swipe handlers
-          e.stopPropagation();
-        }}
-        onTouchMove={(e) => {
-          // Prevent touch events from bubbling to underlying swipe handlers
-          e.stopPropagation();
-        }}
-        onTouchEnd={(e) => {
-          // Prevent touch events from bubbling to underlying swipe handlers
-          e.stopPropagation();
-        }}
+      <Draggable
+        storePath={STORE_PATH}
+        storeKey="position"
+        defaultPosition={getDefaultPosition}
+        width={300}
+        height={60}
+        className="tts-controls-drag-handle"
       >
         <div className="flex items-center gap-4 px-6 py-3 bg-black/80 rounded-3xl backdrop-blur-lg shadow-lg border border-white/10">
           {/* Volume Icon */}
@@ -489,7 +317,7 @@ export default function TTSControls({
             </>
           )}
         </div>
-      </div>
+      </Draggable>
 
       {/* Error Toast */}
       {showError && !!error && (
