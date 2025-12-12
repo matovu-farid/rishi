@@ -1,10 +1,3 @@
-// import {
-//   Sheet,
-//   SheetContent,
-//   SheetHeader,
-//   SheetTitle,
-// } from "@/components/ui/sheet";
-
 import { Book } from "@/generated";
 import { getBook, updateBookCover } from "@/generated";
 import { customStore } from "@/stores/jotai";
