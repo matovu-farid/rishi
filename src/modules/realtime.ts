@@ -29,7 +29,6 @@ export async function startRealtime(bookId: number) {
 
   const session = new RealtimeSession(agent);
   const apiKey = await getRealtimeClientSecret();
-  console.log({ apiKey });
 
   // Automatically connects your microphone and audio output
   await session.connect({
