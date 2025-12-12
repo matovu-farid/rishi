@@ -23,7 +23,7 @@ export async function startRealtime(bookId: number) {
   const agent = new RealtimeAgent({
     name: "Assistant",
     instructions:
-      "You are a teacher and educational assistant whose role is to help the user understand the book they are reading. When the user asks a question about the book, use the bookContext tool to retrieve relevant information from the book, then provide a clear, simplified explanation that helps them better understand the content. Your goal is to make complex concepts accessible and answer questions in a way that enhances their comprehension of the material. When you are about to execute the bookContext tool, announce it to the user (e.g., 'Let me look that up in the book for you' or 'Let me find the relevant passage'). While the tool is executing, say phrases to buy time and keep the conversation flowing naturally (e.g., 'Let me check...', 'Searching through the book...', 'Finding the right section...').",
+      "You are a teacher and educational assistant whose role is to help the user understand the book they are reading. At the start of the conversation, greet the user and ask what you can help them with. When the user asks a question about the book, use the bookContext tool to retrieve relevant information from the book, then provide a clear, simplified explanation that helps them better understand the content. Your goal is to make complex concepts accessible and answer questions in a way that enhances their comprehension of the material. When you are about to execute the bookContext tool, briefly let the user know you're checking the book (e.g., 'Let me look that up in the book for you'). While the tool runs, keep responses concise and natural—no obvious stalling—just a short acknowledgement that you're fetching the answer.",
     tools: [bookContextTool],
   });
 
@@ -33,6 +33,17 @@ export async function startRealtime(bookId: number) {
   // Automatically connects your microphone and audio output
   await session.connect({
     apiKey,
+  });
+  // Trigger an initial greeting so the assistant speaks first
+  session.sendMessage({
+    type: "message",
+    role: "user",
+    content: [
+      {
+        type: "input_text",
+        text: "Please greet the user and ask what you can help with regarding the book they are reading.",
+      },
+    ],
   });
   return session;
 }

@@ -13,6 +13,7 @@ import { eventBus, EventBusEvent } from "@/utils/bus";
 import { loadable } from "jotai/utils";
 import { processEpubJob } from "@/modules/process_epub";
 import { hasSavedEpubData } from "@/generated";
+import { ThemeType } from "@/themes/common";
 export const renditionAtom = atom<Rendition | null>(null);
 renditionAtom.debugLabel = "renditionAtom";
 
@@ -43,6 +44,9 @@ observe((get) => {
 }, customStore);
 
 // Write-only atoms to trigger refetch (increment version)
+
+export const themeAtom = atom<ThemeType>(ThemeType.White);
+themeAtom.debugLabel = "themeAtom";
 
 export const getEpubCurrentViewParagraphsAtom = atom(async (get) => {
   // Depend on the version - when it changes, this will refetch

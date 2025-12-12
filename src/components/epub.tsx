@@ -24,6 +24,7 @@ import {
   getEpubCurrentViewParagraphsAtom,
   paragraphRenditionAtom,
   renditionAtom,
+  themeAtom,
 } from "@/stores/epub_atoms";
 import {
   eventBus,
@@ -39,6 +40,7 @@ import {
 import { customStore } from "@/stores/jotai";
 import { Book } from "@/generated";
 import { updateBookLocation } from "@/generated";
+import { BackButton } from "./BackButton";
 
 function cn(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
@@ -52,8 +54,7 @@ function updateTheme(rendition: Rendition, theme: ThemeType) {
 }
 
 export function EpubView({ book }: { book: Book }): React.JSX.Element {
-  //const rendition = useRef<Rendition | undefined>(undefined);
-  const [theme, setTheme] = useState<ThemeType>(ThemeType.White);
+  const [theme, setTheme] = useAtom(themeAtom);
   const [menuOpen, setMenuOpen] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<string>(
     book.location || "0"
@@ -190,14 +191,7 @@ export function EpubView({ book }: { book: Book }): React.JSX.Element {
   return (
     <div className="relative">
       <div className="absolute right-2 top-2 z-10 flex items-center gap-2">
-        <Link to="/">
-          <Button
-            variant="ghost"
-            className={cn("disabled:invisible cursor-pointer", getTextColor())}
-          >
-            Back
-          </Button>
-        </Link>
+        <BackButton />
 
         <Menu
           trigger={

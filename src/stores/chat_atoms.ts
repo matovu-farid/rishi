@@ -25,6 +25,7 @@ export const stopConversationAtom = atom(null, (get, set) => {
   if (chatSession) {
     chatSession.close();
     set(realtimeSessionAtom, null);
+    set(isChattingAtom, false);
   }
 });
 

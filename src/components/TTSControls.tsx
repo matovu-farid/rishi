@@ -85,6 +85,7 @@ export default function TTSControls({
       player.cleanup();
       if (isChatting) {
         stopConversation();
+        setIsChatting(false);
       }
     };
   }, []);

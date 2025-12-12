@@ -42,6 +42,7 @@ import { useVirualization } from "../hooks/useVirualization";
 import { eventBusLogsAtom } from "@/utils/bus";
 import { TextExtractor } from "./text-extractor.tsx";
 import { updateBookLocation, Book } from "@/generated";
+import { BackButton } from "@components/BackButton.tsx";
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -197,14 +198,7 @@ export function PdfView({
           </IconButton>
 
           <div className="flex items-center gap-2 bg-white">
-            <Link to="/">
-              <Button
-                variant="ghost"
-                className={cn("shadow-sm cursor-pointer", getTextColor())}
-              >
-                Back
-              </Button>
-            </Link>
+            <BackButton />
           </div>
         </div>
       </div>
