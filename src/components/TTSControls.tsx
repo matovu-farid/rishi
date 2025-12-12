@@ -12,6 +12,7 @@ import {
   Loader2,
   Mic,
   MicOff,
+  CircleX,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -99,8 +100,6 @@ export default function TTSControls({
       y: Math.max(minY, Math.min(maxY, y)),
     };
   }, []);
-
-  const chatSession = useAtomValue(realtimeSessionAtom);
 
   // Load saved position from Tauri Store on mount, and calculate default position after mount
   useEffect(() => {
@@ -347,9 +346,19 @@ export default function TTSControls({
   return (
     <>
       {isChatting && (
-        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
+        <div className="fixed rounded-full  top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
+          <div className="absolute -top-2 -right-2 ">
+            <CircleX
+              className="cursor-pointer"
+              onClick={stopChat}
+              color="red"
+              size={24}
+            />
+          </div>
           <div>
             <img
+              width={100}
+              height={100}
               src="https://rishi-tauri.s3.us-east-1.amazonaws.com/ai.gif"
               alt="AI"
             />
