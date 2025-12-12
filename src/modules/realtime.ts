@@ -8,11 +8,7 @@ import {
 import { Agent, run } from "@openai/agents";
 import { z } from "zod";
 import { customStore } from "@/stores/jotai";
-import {
-  isChattingAtom,
-  realtimeSessionAtom,
-  stopConversationAtom,
-} from "@/stores/chat_atoms";
+import { isChattingAtom, realtimeSessionAtom } from "@/stores/chat_atoms";
 
 const guardrailAgent = new Agent({
   name: "Guardrail check",
