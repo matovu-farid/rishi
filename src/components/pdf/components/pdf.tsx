@@ -1,6 +1,4 @@
-import { Link } from "@tanstack/react-router";
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import { Button } from "@components/ui/Button";
 import { IconButton } from "@components/ui/IconButton";
 import { ThemeType } from "@/themes/common";
 import { Loader2, Menu as MenuIcon } from "lucide-react";

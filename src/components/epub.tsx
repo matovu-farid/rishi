@@ -3,9 +3,7 @@ import { ReactReader } from "@components/react-reader";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 
-import { Link } from "@tanstack/react-router";
 import React, { useEffect, useRef, useState } from "react";
-import { Button } from "@components/ui/Button";
 import { IconButton } from "@components/ui/IconButton";
 import { Menu } from "@components/ui/Menu";
 import { Radio, RadioGroup } from "@components/ui/Radio";
@@ -32,11 +30,7 @@ import {
   eventBusLogsAtom,
   PlayingState,
 } from "@/utils/bus";
-import {
-  getAllParagraphsForBook,
-  highlightRange,
-  removeHighlight,
-} from "@/epubwrapper";
+import { highlightRange, removeHighlight } from "@/epubwrapper";
 import { customStore } from "@/stores/jotai";
 import { Book } from "@/generated";
 import { updateBookLocation } from "@/generated";
