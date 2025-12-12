@@ -7,14 +7,18 @@
 
 import { Book } from "@/generated";
 import { getBook, updateBookCover } from "@/generated";
+import { customStore } from "@/stores/jotai";
+import { pageNumberAtom, setPageNumberAtom } from "../atoms/paragraph-atoms";
 
 // Import required CSS for text and annotation layers
 
 export async function updateStoredCoverImage(book: Book) {
-  if (book.version && book.version > 0) return;
-  const canvas = document.querySelector<HTMLCanvasElement>(
-    '[data-isactive="true"] canvas'
-  );
+  if (book.coverKind && book.coverKind != "fallback") return;
+  // set page to 1
+  if (customStore.get(pageNumberAtom) !== 1) {
+    customStore.set(setPageNumberAtom, 1);
+  }
+  const canvas = document.querySelector<HTMLCanvasElement>("canvas");
   if (!canvas) return;
   console.log(">>> Found canvas for cover image extraction.");
 
