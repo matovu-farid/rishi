@@ -48,6 +48,9 @@
         },
         {
           "url": "https://rishi-worker.faridmato90.workers.dev/**"
+        },
+        {
+          "url": " http://localhost:1420"
         }
       ],
       "deny": [
@@ -59,6 +62,7 @@
     "store:default",
     "deep-link:default",
     "sql:default",
-    "sql:allow-execute"
+    "sql:allow-execute",
+    "mic-recorder:default"
   ]
 }

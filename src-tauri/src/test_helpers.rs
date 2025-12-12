@@ -21,7 +21,9 @@ impl TestDatabaseSetup {
     /// Get the database path as a string
     #[allow(dead_code)]
     pub fn db_path_str(&self) -> &str {
-        self.db_path.to_str().expect("Failed to convert path to string")
+        self.db_path
+            .to_str()
+            .expect("Failed to convert path to string")
     }
 }
 
@@ -39,8 +41,7 @@ impl TestDatabaseSetup {
 /// // Use db_path and setup.app_data_dir in your tests
 /// ```
 pub fn init_test_database_setup() -> Result<TestDatabaseSetup, String> {
-    let temp_dir = TempDir::new()
-        .map_err(|e| format!("Failed to create temp directory: {}", e))?;
+    let temp_dir = TempDir::new().map_err(|e| format!("Failed to create temp directory: {}", e))?;
     let app_data_dir = temp_dir.path().to_path_buf();
     let db_path = app_data_dir.join("test_rishi.db");
 
@@ -53,4 +54,3 @@ pub fn init_test_database_setup() -> Result<TestDatabaseSetup, String> {
         db_path,
     })
 }
-

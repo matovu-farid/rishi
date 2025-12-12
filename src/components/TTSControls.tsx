@@ -21,6 +21,7 @@ import { load } from "@tauri-apps/plugin-store";
 import { atom, useAtom, useAtomValue } from "jotai";
 import { EventBusEvent, PlayingState } from "@/utils/bus";
 import { eventBus } from "@/utils/bus";
+import { isChattingAtom } from "@/stores/chat_atoms";
 
 interface TTSControlsProps {
   bookId: string;
@@ -62,7 +63,7 @@ export default function TTSControls({
   const player = useAtomValue(playerAtom);
 
   const error = errors.join("\n");
-  const [isChatting, setIsChatting] = useState(false);
+  const [isChatting, setIsChatting] = useAtom(isChattingAtom);
 
   useEffect(() => {
     void (async () => {
@@ -338,6 +339,16 @@ export default function TTSControls({
 
   return (
     <>
+      {isChatting && (
+        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
+          <div>
+            <img
+              src="https://rishi-tauri.s3.us-east-1.amazonaws.com/ai.gif"
+              alt="AI"
+            />
+          </div>
+        </div>
+      )}
       <div
         ref={dragRef}
         className="fixed z-50 tts-controls-drag-handle"

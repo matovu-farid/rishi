@@ -16,6 +16,7 @@
     "test:headless": "vitest --browser.headless --config=vitest.browser.config.ts"
   },
   "dependencies": {
+    "@openai/agents": "^0.3.4",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.4",
@@ -77,11 +78,14 @@
     "serve-index": "^1.9.1",
     "serve-static": "^1.16.2",
     "tailwind-merge": "^3.3.1",
+    "tauri-plugin-media-api": "^0.1.1",
+    "tauri-plugin-mic-recorder-api": "^2.0.0",
     "throttle-debounce": "^5.0.2",
     "ts-retry-promise": "^0.8.1",
     "update-electron-app": "^3.1.1",
     "uuid": "^13.0.0",
     "xml-js": "^1.6.11",
+    "zod": "3",
     "zustand": "^5.0.8"
   },
   "devDependencies": {

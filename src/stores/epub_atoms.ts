@@ -36,7 +36,7 @@ observe((get) => {
       console.log(">>> GETTING PARAGRAPHS");
       void getAllParagraphsForBook(rendition, bookId).then((paragraphs) => {
         console.log(">>> PARAGRAPHS", paragraphs);
-        void processEpubJob(bookId, paragraphs);
+        void processEpubJob(Number(bookId), paragraphs);
       });
     }
   });

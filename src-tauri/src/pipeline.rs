@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crate::{
     llm::get_llm_response_with_context,
-    speach::{transcribe, transcribe_audio, tts},
+    speach::{transcribe_audio, tts},
     sql::get_context_for_query,
 };
 

@@ -434,7 +434,7 @@ export async function getAllParagraphsForBook(
 
   const chunkData = paragraphs.map((paragraph) => ({
     data: paragraph.text,
-    bookId: bookId,
+    bookId: Number(bookId),
     pageNumber: paragraph.sectionId,
     id: stringToNumberID(
       bookId +

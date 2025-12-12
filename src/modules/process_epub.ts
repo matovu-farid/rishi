@@ -3,7 +3,6 @@ import {
   EmbedParam,
   Metadata,
   saveVectors,
-  searchVectors,
   Vector,
 } from "@/generated";
 import { db, PageDataInsertable } from "./kysley";
@@ -17,14 +16,14 @@ function batchEmbed(embedParams: EmbedParam[]): EmbedParam[][] {
   return batches;
 }
 export async function processEpubJob(
-  bookId: string,
+  bookId: number,
   pageData: PageDataInsertable[]
 ) {
   try {
     if (pageData.length === 0) {
       return;
     }
-    if (await hasSavedEpubData({ bookId: Number(bookId) })) {
+    if (await hasSavedEpubData({ bookId })) {
       return;
     }
 
@@ -32,7 +31,7 @@ export async function processEpubJob(
       const metadata: Metadata = {
         id: item.id,
         pageNumber: item.pageNumber,
-        bookId: parseInt(bookId),
+        bookId,
       };
       return {
         text: item.data,
@@ -73,4 +72,3 @@ export async function processEpubJob(
     throw error;
   }
 }
-

@@ -13,6 +13,7 @@ pub mod schema;
 pub mod speach;
 pub mod sql;
 
+mod api;
 pub mod pipeline;
 
 #[cfg(test)]
@@ -34,10 +35,10 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_os::init())
+        .plugin(tauri_plugin_mic_recorder::init())
         .setup(|app| {
             //let _conn = db::init_database(app.handle())?;
             db::setup_database(app.handle())?;
-
             // You can store this conn somewhere global if needed
             Ok(())
         })
@@ -52,6 +53,7 @@ pub fn run() {
             commands::process_job,
             commands::get_context_for_query,
             commands::get_audio_answer_with_context,
+            api::get_realtime_client_secret,
             // SQL commands
             sql::save_page_data_many,
             sql::get_all_page_data_by_book_id,

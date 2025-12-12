@@ -49,7 +49,7 @@ export function BackgroundPageComponent({
             // Format ensures no collisions between pages/books
             const id = pageNumber * 1000000 + parseInt(bookId) * 10000 + index;
 
-            return { id, bookId, data: item, pageNumber };
+            return { id, bookId: Number(bookId), data: item, pageNumber };
           });
           //void createJob({ pageNumber, bookId, pageData: page });
           void processJob({
