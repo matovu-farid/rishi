@@ -50,7 +50,7 @@
           "url": "https://rishi-worker.faridmato90.workers.dev/**"
         },
         {
-          "url": " http://localhost:1420"
+          "url": "http://localhost:1420"
         }
       ],
       "deny": [
