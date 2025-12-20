@@ -10,6 +10,7 @@ use crate::shared::{
 use pdf::file::FileOptions;
 
 pub enum Cover {
+    #[allow(dead_code)]
     Normal(Vec<u8>),
     Fallback(Vec<u8>),
 }

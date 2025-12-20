@@ -11,9 +11,9 @@ use crate::pdf::Pdf;
 use crate::shared::books::store_book_data;
 use crate::shared::books::Extractable;
 use crate::shared::types::BookData;
+use crate::sql;
 use crate::sql::ChunkDataInsertable;
 use crate::vectordb::{self, SearchResult, Vector};
-use crate::{pipeline, sql};
 use tauri::Manager;
 
 #[tauri::command]
@@ -49,21 +49,6 @@ pub async fn get_context_for_query(
         .app_data_dir()
         .map_err(|e| format!("Failed to get app data directory: {:?}", e))?;
     sql::get_context_for_query(query_text, book_id, &app_data_dir, k).await
-}
-
-#[tauri::command]
-pub async fn get_audio_answer_with_context(
-    app: tauri::AppHandle,
-    audio_data: Vec<f32>,
-    book_id: u32,
-) -> Result<Vec<u8>, String> {
-    let app_data_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("Failed to get app data directory: {:?}", e))?;
-    pipeline::get_audio_answer_with_context(&app_data_dir, audio_data, book_id)
-        .await
-        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

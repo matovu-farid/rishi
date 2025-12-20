@@ -14,7 +14,6 @@ pub mod speach;
 pub mod sql;
 
 mod api;
-pub mod pipeline;
 
 #[cfg(test)]
 pub mod test_fixtures;
@@ -52,7 +51,6 @@ pub fn run() {
             commands::search_vectors,
             commands::process_job,
             commands::get_context_for_query,
-            commands::get_audio_answer_with_context,
             api::get_realtime_client_secret,
             // SQL commands
             sql::save_page_data_many,

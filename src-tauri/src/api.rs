@@ -11,7 +11,7 @@ pub async fn get_realtime_client_secret() -> Result<String, String> {
 }
 
 #[cfg(test)]
-mod Test {
+mod tests {
     use super::*;
 
     #[tokio::test]
