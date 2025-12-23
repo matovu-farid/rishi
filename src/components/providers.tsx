@@ -13,7 +13,7 @@ import { observe } from "jotai-effect";
 
 export const queryClient = new QueryClient();
 const isDevAtom = atom(false);
-observe((get, set) => {
+observe((_, set) => {
   void isDev().then((isDev) => {
     set(isDevAtom, isDev);
   });
