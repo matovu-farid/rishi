@@ -13,8 +13,11 @@ use crate::shared::books::Extractable;
 use crate::shared::types::BookData;
 use crate::sql;
 use crate::sql::ChunkDataInsertable;
+use crate::user::User;
 use crate::vectordb::{self, SearchResult, Vector};
+use serde_json::json;
 use tauri::Manager;
+use tauri_plugin_store::StoreExt;
 
 #[tauri::command]
 pub fn get_book_data(app: tauri::AppHandle, path: &Path) -> Result<BookData, String> {
@@ -69,6 +72,46 @@ pub fn save_vectors(
     vectordb::save_vectors(vectors, app_data_dir, dim, name).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub fn get_state() -> String {
+    use uuid::Uuid;
+    // create a random state
+    let state = Uuid::new_v4().to_string();
+    state
+}
+#[tauri::command]
+pub async fn signout(app: tauri::AppHandle) -> Result<(), String> {
+    let store = app.store("store.json").map_err(|e| e.to_string())?;
+    let deleted = store.delete("user");
+    if !deleted {
+        return Err("User not found".to_string());
+    }
+    store.save().map_err(|e| e.to_string())?;
+    Ok(())
+}
+#[tauri::command]
+pub fn get_user_from_store(app: tauri::AppHandle) -> Result<User, String> {
+    let store = app.store("store.json").map_err(|e| e.to_string())?;
+    let user_value = store.get("user").ok_or("User not found")?;
+    let user: User = serde_json::from_value(user_value).map_err(|e| e.to_string())?;
+    Ok(user)
+}
+
+#[tauri::command]
+pub async fn get_user(app: tauri::AppHandle, user_id: &str) -> Result<User, String> {
+    // /api/clerk/user/:userId from the worker
+    let worker_url = "https://rishi-worker.faridmato90.workers.dev";
+    let path = format!("/api/clerk/user/{}", user_id);
+    let url = format!("{}{}", worker_url, path);
+    let response = reqwest::get(url).await.map_err(|e| e.to_string())?;
+    let user = response.json::<User>().await.map_err(|e| e.to_string())?;
+    // save user to the database
+
+    let store = app.store("store.json").map_err(|e| e.to_string())?;
+    store.set("user", json!(user));
+    store.save().map_err(|e| e.to_string())?;
+    Ok(user)
+}
 #[tauri::command]
 pub fn search_vectors(
     app: tauri::AppHandle,

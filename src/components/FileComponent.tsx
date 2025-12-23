@@ -4,7 +4,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "react-toastify";
 import { IconButton } from "./ui/IconButton";
 import { Button } from "./ui/Button";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, LogIn } from "lucide-react";
 import { chooseFiles } from "@/modules/chooseFiles";
 import {
   Book,
@@ -24,7 +24,7 @@ import {
   pdfsControllerAtom,
   setPageNumberAtom,
 } from "@components/pdf/atoms/paragraph-atoms";
-
+import { LoginButton } from "./LoginButton";
 
 const newBook = atom<string | null>(null);
 
@@ -182,7 +182,6 @@ function FileDrop(): React.JSX.Element {
 
       const bookData = await getPdfData({ path: pdfPath });
       const book = await saveBook({
-       
         book: {
           coverKind: bookData.coverKind || "",
           title: bookData.title || "",
@@ -213,7 +212,6 @@ function FileDrop(): React.JSX.Element {
       }, 0);
     },
   });
-  const setCurrentPageNumber = useSetAtom(setPageNumberAtom);
 
   // Extract file processing logic to be reusable
   const processFilePaths = (filePaths: string[]) => {
@@ -271,6 +269,7 @@ function FileDrop(): React.JSX.Element {
         >
           Add Book
         </Button>
+       <LoginButton />
       </div>
 
       <motion.div

@@ -14,6 +14,7 @@ pub mod speach;
 pub mod sql;
 
 mod api;
+mod user;
 
 #[cfg(test)]
 pub mod test_fixtures;
@@ -51,6 +52,10 @@ pub fn run() {
             commands::search_vectors,
             commands::process_job,
             commands::get_context_for_query,
+            commands::get_state,
+            commands::get_user,
+            commands::signout,
+            commands::get_user_from_store,
             api::get_realtime_client_secret,
             // SQL commands
             sql::save_page_data_many,
