@@ -33,6 +33,7 @@ pub fn run() {
         "https://e67d34cb7b6a7fa22a04e39ab2100227@o4510586781958144.ingest.de.sentry.io/4510588300361808",
         sentry::ClientOptions {
             release: sentry::release_name!(),
+            enable_logs: true,
             auto_session_tracking: true,
             ..Default::default()
         },
