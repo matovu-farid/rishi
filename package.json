@@ -82,6 +82,7 @@
     "tailwind-merge": "^3.3.1",
     "tauri-plugin-media-api": "^0.1.1",
     "tauri-plugin-mic-recorder-api": "^2.0.0",
+    "tauri-plugin-sentry-api": "^0.5.0",
     "throttle-debounce": "^5.0.2",
     "ts-retry-promise": "^0.8.1",
     "update-electron-app": "^3.1.1",

@@ -16,6 +16,9 @@ pub mod sql;
 mod api;
 mod user;
 
+use sentry;
+use tauri_plugin_sentry;
+
 #[cfg(test)]
 pub mod test_fixtures;
 
@@ -26,7 +29,21 @@ pub mod test_helpers;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let client = sentry::init((
+        "https://e67d34cb7b6a7fa22a04e39ab2100227@o4510586781958144.ingest.de.sentry.io/4510588300361808",
+        sentry::ClientOptions {
+            release: sentry::release_name!(),
+            auto_session_tracking: true,
+            ..Default::default()
+        },
+    ));
+
+    // Caution! Everything before here runs in both app and crash reporter processes
+    #[cfg(not(target_os = "ios"))]
+    let _guard = tauri_plugin_sentry::minidump::init(&client);
+    // Everything after here runs in only the app process
     tauri::Builder::default()
+        .plugin(tauri_plugin_sentry::init(&client))
         .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_store::Builder::new().build())

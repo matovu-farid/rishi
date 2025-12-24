@@ -56,6 +56,8 @@ cpal = "0.16.0"
 tauri-plugin-mic-recorder = "2.0.0"
 webrtc-audio-processing = { version = "0.5.0", features = ["bundled"] }
 uuid = { version = "1.19.0", features = ["v4"] }
+sentry = "0.42"
+tauri-plugin-sentry = "0.5"
 
 
 
