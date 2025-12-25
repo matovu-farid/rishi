@@ -30,33 +30,42 @@ export function LoginButton() {
       }
     })();
   }, []);
+  const [state, setState] = useState<string | null>(null);
+  useEffect(() => {
+    void (async () => {
+      const state = await getState();
+      setState(state);
+    })();
+  }, []);
+  async function handleDeepLink(urls: string[], state: string) {
+    if (urls.length === 0) return;
+    console.log("handleDeepLink", urls, state);
+    const url = new URL(urls[0]);
+    if (url.origin !== "rishi://auth/callback") return;
+    const receivedState = url.searchParams.get("state");
+    console.log("receivedState", receivedState);
+    if (state !== receivedState) return;
+    const userId = url.searchParams.get("userId");
+    console.log("userId", userId);
+    if (!userId) return;
+    const user = await getUser({ userId });
+    console.log("user", user);
+    if (!user) return;
+    setUser(user);
+  }
+
+  useEffect(() => {
+    if (state) {
+      void onOpenUrl((urls) => handleDeepLink(urls, state));
+    }
+  }, [state]);
+
   async function login() {
-    const state = await getState();
-    const startUrls = await getCurrent();
+    // const startUrls = await getCurrent();
 
     await openUrl(
       `https://rishi-web.matovu-farid.com?login=true&state=${state}`
     );
-    async function handleDeepLink(urls: string[]) {
-      if (urls.length === 0) return;
-      const url = new URL(urls[0]);
-      if (url.origin !== "rishi://auth/callback") return;
-      const receivedState = url.searchParams.get("state");
-      if (state !== receivedState) return;
-      const userId = url.searchParams.get("userId");
-      if (!userId) return;
-      const user = await getUser({ userId });
-      if (!user) return;
-      setUser(user);
-    }
-    if (startUrls) {
-      await handleDeepLink(startUrls);
-    }
-
-    // we are going to pause till we get the callback from the login
-    // rishi://auth/callback?state=1234567890
-
-    await onOpenUrl(handleDeepLink);
   }
   async function logout() {
     setUser(null);
