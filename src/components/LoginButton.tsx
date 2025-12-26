@@ -40,8 +40,9 @@ export function LoginButton() {
   async function handleDeepLink(urls: string[], state: string) {
     if (urls.length === 0) return;
     console.log("handleDeepLink", urls, state);
+    if (!urls[0].startsWith("rishi://auth/callback")) return;
     const url = new URL(urls[0]);
-    if (url.origin !== "rishi://auth/callback") return;
+
     const receivedState = url.searchParams.get("state");
     console.log("receivedState", receivedState);
     if (state !== receivedState) return;
@@ -62,6 +63,7 @@ export function LoginButton() {
 
   async function login() {
     // const startUrls = await getCurrent();
+    // await getUser({ userId: "user_36mjhJx5I1uq8DSWhg937ETDtcs" });
 
     await openUrl(
       `https://rishi-web.matovu-farid.com?login=true&state=${state}`

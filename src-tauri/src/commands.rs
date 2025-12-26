@@ -104,6 +104,7 @@ pub async fn get_user(app: tauri::AppHandle, user_id: &str) -> Result<User, Stri
     let path = format!("/api/clerk/user/{}", user_id);
     let url = format!("{}{}", worker_url, path);
     let response = reqwest::get(url).await.map_err(|e| e.to_string())?;
+    println!("response: {:?}", response);
     let user = response.json::<User>().await.map_err(|e| e.to_string())?;
     // save user to the database
 
