@@ -39,6 +39,26 @@ pub async fn process_job(
         .map_err(|e| format!("Failed to get app data directory: {:?}", e))?;
     sql::process_job(page_number, book_id, page_data, &app_data_dir).await
 }
+#[tauri::command]
+pub async fn poll_for_user(state: &str, timeout_sec: u64) -> Result<User, String> {
+    let worker_url = "https://rishi-worker.faridmato90.workers.dev";
+    let path = format!("/api/user/{}", state);
+    let url = format!("{}{}", worker_url, path);
+
+    let client = reqwest::Client::new();
+    let mut elapsed = 0;
+    let interval = 2; // seconds
+    while elapsed < timeout_sec {
+        let response = client.get(&url).send().await.map_err(|e| e.to_string())?;
+        if response.status().is_success() {
+            let user: User = response.json::<User>().await.map_err(|e| e.to_string())?;
+            return Ok(user);
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(interval)).await;
+        elapsed += interval;
+    }
+    Err("Timeout reached while polling for user ID".to_string())
+}
 
 #[tauri::command]
 pub async fn get_context_for_query(

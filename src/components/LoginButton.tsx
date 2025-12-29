@@ -2,10 +2,9 @@ import { LogIn, LogOut } from "lucide-react";
 import { Button } from "./ui/Button";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { getState, getUserFromStore, signout } from "@/generated";
-import { getCurrent, onOpenUrl } from "@tauri-apps/plugin-deep-link";
 import { useAtom, useAtomValue } from "jotai";
 import { isLoggedInAtom, userAtom } from "./pdf/atoms/user";
-import { getUser } from "@/generated";
+import { pollForUser } from "@/generated";
 import {
   Avatar,
   AvatarFallback,
@@ -37,29 +36,7 @@ export function LoginButton() {
       setState(state);
     })();
   }, []);
-  async function handleDeepLink(urls: string[], state: string) {
-    if (urls.length === 0) return;
-    console.log("handleDeepLink", urls, state);
-    if (!urls[0].startsWith("rishi://auth/callback")) return;
-    const url = new URL(urls[0]);
 
-    const receivedState = url.searchParams.get("state");
-    console.log("receivedState", receivedState);
-    if (state !== receivedState) return;
-    const userId = url.searchParams.get("userId");
-    console.log("userId", userId);
-    if (!userId) return;
-    const user = await getUser({ userId });
-    console.log("user", user);
-    if (!user) return;
-    setUser(user);
-  }
-
-  useEffect(() => {
-    if (state) {
-      void onOpenUrl((urls) => handleDeepLink(urls, state));
-    }
-  }, [state]);
 
   async function login() {
     // const startUrls = await getCurrent();
@@ -68,6 +45,13 @@ export function LoginButton() {
     await openUrl(
       `https://rishi-web.matovu-farid.com?login=true&state=${state}`
     );
+    if (state) {
+      const user = await pollForUser({ state, timeoutSec: 60 * 5 });
+      console.log("user", user);
+      if (!user) return;
+      setUser(user);
+
+    }
   }
   async function logout() {
     setUser(null);

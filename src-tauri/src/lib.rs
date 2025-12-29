@@ -74,6 +74,7 @@ pub fn run() {
             commands::get_user,
             commands::signout,
             commands::get_user_from_store,
+            commands::poll_for_user,
             api::get_realtime_client_secret,
             // SQL commands
             sql::save_page_data_many,
