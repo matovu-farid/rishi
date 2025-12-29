@@ -11,6 +11,14 @@ import {
   AvatarImage,
 } from "@/components/components/ui/avatar";
 import { useEffect, useState } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/components/ui/dropdown-menu";
 
 export function LoginButton() {
   const [user, setUser] = useAtom(userAtom);
@@ -38,9 +46,11 @@ export function LoginButton() {
   }, []);
 
 
+  async function onProfileClicked() {
+    if (!user) return;
+    await openUrl(`https://rishi-web.matovu-farid.com?profile=true`);
+  }
   async function login() {
-    // const startUrls = await getCurrent();
-    // await getUser({ userId: "user_36mjhJx5I1uq8DSWhg937ETDtcs" });
 
     await openUrl(
       `https://rishi-web.matovu-farid.com?login=true&state=${state}`
@@ -64,10 +74,25 @@ export function LoginButton() {
   if (user && isLoggedIn) {
     return (
       <div className="flex gap-2">
-        <Avatar>
-          <AvatarImage src={user.imageUrl ?? ""} />
-          <AvatarFallback>{user.firstName?.[0]}</AvatarFallback>
-        </Avatar>
+        <DropdownMenu>
+          <DropdownMenuTrigger>        <Avatar>
+            <AvatarImage src={user.imageUrl ?? ""} />
+            <AvatarFallback>{user.firstName?.[0]}</AvatarFallback>
+          </Avatar>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onProfileClicked}>Profile</DropdownMenuItem>
+
+            {/* 
+             <DropdownMenuItem>Billing</DropdownMenuItem>
+            <DropdownMenuItem>Team</DropdownMenuItem>
+            <DropdownMenuItem>Subscription</DropdownMenuItem>
+                        */}
+
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button
           variant="ghost"
           className="cursor-pointer"
