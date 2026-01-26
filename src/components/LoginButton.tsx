@@ -45,22 +45,17 @@ export function LoginButton() {
     })();
   }, []);
 
-
   async function onProfileClicked() {
     if (!user) return;
-    await openUrl(`https://rishi-web.matovu-farid.com?profile=true`);
+    await openUrl(`https://rishi.fidexa.org?profile=true`);
   }
   async function login() {
-
-    await openUrl(
-      `https://rishi-web.matovu-farid.com?login=true&state=${state}`
-    );
+    await openUrl(`https://rishi.fidexa.org?login=true&state=${state}`);
     if (state) {
       const user = await pollForUser({ state, timeoutSec: 60 * 5 });
       console.log("user", user);
       if (!user) return;
       setUser(user);
-
     }
   }
   async function logout() {
@@ -75,20 +70,23 @@ export function LoginButton() {
     return (
       <div className="flex gap-2">
         <DropdownMenu>
-          <DropdownMenuTrigger>        <Avatar>
-            <AvatarImage src={user.imageUrl ?? ""} />
-            <AvatarFallback>{user.firstName?.[0]}</AvatarFallback>
-          </Avatar>
+          <DropdownMenuTrigger>
+            {" "}
+            <Avatar>
+              <AvatarImage src={user.imageUrl ?? ""} />
+              <AvatarFallback>{user.firstName?.[0]}</AvatarFallback>
+            </Avatar>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuItem onClick={onProfileClicked}>Profile</DropdownMenuItem>
+            <DropdownMenuItem onClick={onProfileClicked}>
+              Profile
+            </DropdownMenuItem>
 
             {/* 
              <DropdownMenuItem>Billing</DropdownMenuItem>
             <DropdownMenuItem>Team</DropdownMenuItem>
             <DropdownMenuItem>Subscription</DropdownMenuItem>
                         */}
-
           </DropdownMenuContent>
         </DropdownMenu>
         <Button

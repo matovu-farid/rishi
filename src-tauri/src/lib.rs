@@ -44,6 +44,7 @@ pub fn run() {
     let _guard = tauri_plugin_sentry::minidump::init(&client);
     // Everything after here runs in only the app process
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_sentry::init(&client))
         .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_deep_link::init())

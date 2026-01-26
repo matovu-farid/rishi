@@ -70,3 +70,6 @@ pretty_assertions = "1.4"
 expect-test = "1.4"
 speculate = "0.1"
 
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-updater = "2"
+
