@@ -81,8 +81,6 @@ export function LoginButton() {
           </Avatar>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
-            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onProfileClicked}>Profile</DropdownMenuItem>
 
             {/* 
