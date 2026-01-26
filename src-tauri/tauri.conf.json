@@ -46,8 +46,7 @@
           "scheme": [
             "rishi"
           ],
-          "host": "rishi.fidexa.org",
-          "appLink": true
+          "appLink": false
         }
       ]
     },
